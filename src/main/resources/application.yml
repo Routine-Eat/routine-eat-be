@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: routine-eat-be
+
+  datasource:
+    url:  jdbc:mysql://${DB_HOST}:3306/${DB_NAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&rewriteBatchedStatements=true
+    username: ${DB_USER}
+    password: ${DB_PW}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+cors:
+  allowed-origins: http://localhost:3000,http://localhost:5173
+logging:
+  level:
+    root: INFO
+    com.likelion.routineeatbe: DEBUG

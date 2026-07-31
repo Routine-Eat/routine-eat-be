@@ -2,7 +2,7 @@
 name: "♻️ Refactor"
 about: 코드 구조 개선 및 최적화를 위한 이슈입니다.
 title: "[Refactor] : "
-labels: ''
+labels: refactoring
 assignees: ''
 
 ---

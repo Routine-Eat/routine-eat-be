@@ -109,9 +109,6 @@ jobs:
 
   # JOB 3. Nginx 설정 배포 및 컨테이너 기동
   deploy-nginx:
-    # 앞선 Docker 이미지 빌드가 성공한 뒤 Nginx 배포를 진행
-    needs: build-docker-image
-
     # SSH 및 SCP 명령을 실행할 GitHub Ubuntu Runner
     runs-on: ubuntu-latest
 
@@ -165,8 +162,8 @@ jobs:
 
   # JOB 4. MySQL 컨테이너 배포
   deploy-mysql-redis:
-    # Nginx 배포까지 성공한 뒤 MySQL 배포를 진행
-    needs: deploy-nginx
+    # Docker 이미지 빌드 후 Nginx 배포와 병렬로 MySQL 배포를 진행
+    needs: build-docker-image
 
     # SSH와 SCP 명령을 실행할 GitHub Ubuntu Runner
     runs-on: ubuntu-latest
@@ -251,8 +248,8 @@ jobs:
 
   # JOB 5. Spring Boot 이미지 및 컨테이너 배포
   deploy-springboot:
-    # MySQL 배포가 성공한 뒤 Spring Boot 배포를 진행
-    needs: deploy-mysql-redis
+    # Nginx와 MySQL/Redis 배포가 모두 성공한 뒤 Spring Boot 배포를 진행
+    needs: [deploy-nginx, deploy-mysql-redis]
 
     # Docker 이미지 Artifact 다운로드와 SSH 명령을 실행할 GitHub Ubuntu Runner
     runs-on: ubuntu-latest

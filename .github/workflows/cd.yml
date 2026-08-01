@@ -247,7 +247,7 @@ jobs:
   # JOB 5. Spring Boot 이미지 및 컨테이너 배포
   deploy-springboot:
     # Nginx와 MySQL/Redis 배포가 모두 성공한 뒤 Spring Boot 배포를 진행
-    needs: [deploy-nginx, deploy-mysql-redis]
+    needs: [deploy-nginx, deploy-mysql-redis, build-docker-image]
 
     # Docker 이미지 Artifact 다운로드와 SSH 명령을 실행할 GitHub Ubuntu Runner
     runs-on: ubuntu-latest

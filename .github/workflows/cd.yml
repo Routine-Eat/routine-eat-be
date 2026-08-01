@@ -162,8 +162,6 @@ jobs:
 
   # JOB 4. MySQL 컨테이너 배포
   deploy-mysql-redis:
-    # Docker 이미지 빌드 후 Nginx 배포와 병렬로 MySQL 배포를 진행
-    needs: build-docker-image
 
     # SSH와 SCP 명령을 실행할 GitHub Ubuntu Runner
     runs-on: ubuntu-latest

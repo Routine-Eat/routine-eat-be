@@ -124,7 +124,7 @@ jobs:
       NGINX_HOST: ${{ secrets.DEV_EC2_NGINX_HOST }}
       NGINX_SSH_USER: ${{ secrets.DEV_EC2_NGINX_SSH_USER }}
       NGINX_SSH_KEY: ${{ secrets.DEV_EC2_NGINX_SSH_KEY }}
-      NGINX_DEPLOY_PATH: /docker/ec2-nginx
+      NGINX_DEPLOY_PATH: /home/ubuntu/docker/ec2-nginx
 
     steps:
       # 1. 배포할 docker-compose.yml과 nginx.conf를 Runner에 내려받음
@@ -187,7 +187,7 @@ jobs:
       DEV_DB_NAME: ${{ secrets.DEV_DB_NAME }}
       DEV_DB_USER: ${{ secrets.DEV_DB_USER }}
       DEV_DB_PW: ${{ secrets.DEV_DB_PW }}
-      MYSQL_DEPLOY_PATH: /docker/ec2-mysql-redis
+      MYSQL_DEPLOY_PATH: /home/ubuntu/docker/ec2-mysql-redis
 
     steps:
       # 1. 배포할 MySQL docker-compose.yml을 Runner에 내려받음
@@ -274,7 +274,7 @@ jobs:
       DEV_DB_NAME: ${{ secrets.DEV_DB_NAME }}
       DEV_DB_USER: ${{ secrets.DEV_DB_USER }}
       DEV_DB_PW: ${{ secrets.DEV_DB_PW }}
-      SPRINGBOOT_DEPLOY_PATH: /docker/ec2-springboot
+      SPRINGBOOT_DEPLOY_PATH: /home/ubuntu/docker/ec2-springboot
 
     steps:
       # 1. Spring Boot Compose 파일을 Runner에 내려받음

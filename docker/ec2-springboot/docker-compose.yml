@@ -1,0 +1,17 @@
+services:
+  # 1. Spring Boot
+  app:
+    image: ${DEV_BACKEND_DOCKER_HUB_ID}/spring-api-server:latest
+    container_name: spring-api-server
+    ports:
+      - "8080:8080"
+    restart: always
+    command:
+      - --default-time-zone=+09:00
+    environment:
+      - TZ=Asia/Seoul
+      - SPRING_PROFILES_ACTIVE=dev
+      - DEV_DB_HOST=${DEV_DB_HOST}
+      - DEV_DB_NAME=${DEV_DB_NAME}
+      - DEV_DB_USER=${DEV_DB_USER}
+      - DEV_DB_PW=${DEV_DB_PW}

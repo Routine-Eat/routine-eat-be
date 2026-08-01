@@ -1,0 +1,18 @@
+services:
+  # 1. Spring Boot
+  app:
+    # GitHub Actions에서 빌드한 뒤 docker load로 적재한 로컬 이미지 사용
+    image: spring-api-server:latest
+    pull_policy: never
+    container_name: spring-api-server
+    ports:
+      - "8080:8080"
+    restart: always
+    environment:
+      - TZ=Asia/Seoul
+      - JAVA_TOOL_OPTIONS=-Duser.timezone=Asia/Seoul
+      - SPRING_PROFILES_ACTIVE=dev
+      - DEV_DB_HOST=${DEV_DB_HOST}
+      - DEV_DB_NAME=${DEV_DB_NAME}
+      - DEV_DB_USER=${DEV_DB_USER}
+      - DEV_DB_PW=${DEV_DB_PW}

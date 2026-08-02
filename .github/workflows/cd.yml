@@ -269,6 +269,7 @@ jobs:
       DEV_DB_NAME: ${{ secrets.DEV_DB_NAME }}
       DEV_DB_USER: ${{ secrets.DEV_DB_USER }}
       DEV_DB_PW: ${{ secrets.DEV_DB_PW }}
+      DEV_CLOUDFRONT_DOMAIN: ${{ secrets.DEV_CLOUDFRONT_DOMAIN }}
       SPRINGBOOT_DEPLOY_PATH: /home/ubuntu/docker/ec2-springboot
 
     steps:
@@ -331,12 +332,14 @@ jobs:
           DB_NAME_B64="$(printf '%s' "$DEV_DB_NAME" | base64 --wrap=0)"
           DB_USER_B64="$(printf '%s' "$DEV_DB_USER" | base64 --wrap=0)"
           DB_PW_B64="$(printf '%s' "$DEV_DB_PW" | base64 --wrap=0)"
+          DEV_CLOUDFRONT_DOMAIN_B64="$(printf '%s' "$DEV_CLOUDFRONT_DOMAIN" | base64 --wrap=0)"
 
           ssh springboot-server "
             export DEV_DB_HOST=\$(printf '%s' '$DB_HOST_B64' | base64 --decode)
             export DEV_DB_NAME=\$(printf '%s' '$DB_NAME_B64' | base64 --decode)
             export DEV_DB_USER=\$(printf '%s' '$DB_USER_B64' | base64 --decode)
             export DEV_DB_PW=\$(printf '%s' '$DB_PW_B64' | base64 --decode)
+            export DEV_CLOUDFRONT_DOMAIN=\$(printf '%s' '$DEV_CLOUDFRONT_DOMAIN_B64' | base64 --decode)
             cd $SPRINGBOOT_DEPLOY_PATH
             docker load --input spring-api-server.tar
             docker compose up -d --force-recreate

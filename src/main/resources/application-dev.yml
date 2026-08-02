@@ -10,6 +10,9 @@ spring:
     show-sql: false       # SQL문 안봄(dev 서버 로그 과부하 방지)
     hibernate:
       ddl-auto: update
+  cloud:
+    cloudfront:
+      domain: ${DEV_CLOUDFRONT_DOMAIN}
 
 # DEV 서버 로깅 전략 - INFO, DEBUG 전부 보이게 설정
 logging:

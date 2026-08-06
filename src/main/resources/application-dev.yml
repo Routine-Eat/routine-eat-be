@@ -36,3 +36,11 @@ server:
 springdoc:
   swagger-ui:
     enabled: true
+
+data:
+  crawling:
+    food-safety-korea:
+      base-url: http://openapi.foodsafetykorea.go.kr/api
+      service-id: ${FOOD_SAFETY_KOREA_RECIPE_SERVICE_ID}
+      data-type: ${FOOD_SAFETY_KOREA_RECIPE_DATA_TYPE}
+      api-key: ${FOOD_SAFETY_KOREA_RECIPE_API_KEY}

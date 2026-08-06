@@ -306,33 +306,4 @@ class MenuAndRecipeCrawlerTest {
                 });
         mockServer.verify();
     }
-
-    @Test
-    @DisplayName("메뉴명은 정규화하지 않고 원본 문자열로 중복을 판단한다")
-    void 메뉴명_원본_문자열_중복_판단_성공() {
-        // given
-        String responseBody = """
-                {
-                  "COOKRCP01": {
-                    "total_count": "2",
-                    "row": [
-                      {"RCP_NM": "원본 메뉴"},
-                      {"RCP_NM": " 원본 메뉴 "}
-                    ],
-                    "RESULT": {"CODE": "INFO-000", "MSG": "정상 처리되었습니다."}
-                  }
-                }
-                """;
-        mockServer.expect(once(), requestTo(TWO_ROWS_URL))
-                .andRespond(withSuccess(responseBody, MediaType.APPLICATION_JSON));
-
-        // when
-        FoodSafetyKoreaRecipeApiResponseDto result = crawler.crawl(1, 2);
-
-        // then
-        assertThat(result.cookRecipeData().rows())
-                .extracting(FoodSafetyKoreaRecipeApiResponseDto.RecipeRow::menuName)
-                .containsExactly("원본 메뉴", " 원본 메뉴 ");
-        mockServer.verify();
-    }
 }

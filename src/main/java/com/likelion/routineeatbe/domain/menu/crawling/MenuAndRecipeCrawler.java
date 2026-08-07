@@ -28,6 +28,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 @EnableConfigurationProperties(FoodSafetyKoreaProperties.class)
 public class MenuAndRecipeCrawler {
 
+    private static final int MAX_INCOMPLETE_RESPONSE_ATTEMPTS = 3;
+    private static final long INITIAL_RETRY_DELAY_MILLIS = 200L;
+
     private final RestTemplate restTemplate;
     private final FoodSafetyKoreaProperties properties;
 
@@ -45,21 +48,44 @@ public class MenuAndRecipeCrawler {
         URI requestUri = createRequestUri(request);
 
         try {
-            FoodSafetyKoreaRecipeApiResponseDto response = restTemplate.getForObject(
-                    requestUri,
-                    FoodSafetyKoreaRecipeApiResponseDto.class
-            );
-            validateResponse(response);
-            FoodSafetyKoreaRecipeApiResponseDto result = removeDuplicateMenus(response);
+            for (int attempt = 1; attempt <= MAX_INCOMPLETE_RESPONSE_ATTEMPTS; attempt++) {
+                FoodSafetyKoreaRecipeApiResponseDto response = restTemplate.getForObject(
+                        requestUri,
+                        FoodSafetyKoreaRecipeApiResponseDto.class
+                );
+                validateResponse(response);
 
-            log.info(
-                    "[MenuAndRecipeCrawler.crawl] 식품안전청 메뉴, 레시피 크롤링 완료 END - startIdx: {}, endIdx: {}, totalCount: {}, resultSize: {}",
-                    startIdx,
-                    endIdx,
-                    result.cookRecipeData().totalCount(),
-                    result.cookRecipeData().rows().size()
-            );
-            return result;
+                int expectedRowCount = calculateExpectedRowCount(response, startIdx, endIdx);
+                int rawRowCount = response.cookRecipeData().rows().size();
+                if (rawRowCount == expectedRowCount) {
+                    FoodSafetyKoreaRecipeApiResponseDto result = removeDuplicateMenus(response);
+                    log.info(
+                            "[MenuAndRecipeCrawler.crawl] 식품안전청 메뉴, 레시피 크롤링 완료 END - startIdx: {}, endIdx: {}, totalCount: {}, expectedRowCount: {}, rawRowCount: {}, uniqueRowCount: {}, attempt: {}",
+                            startIdx,
+                            endIdx,
+                            result.cookRecipeData().totalCount(),
+                            expectedRowCount,
+                            rawRowCount,
+                            result.cookRecipeData().rows().size(),
+                            attempt
+                    );
+                    return result;
+                }
+
+                log.warn(
+                        "[MenuAndRecipeCrawler.crawl] 식품안전청 불완전 응답 수신 - startIdx: {}, endIdx: {}, expectedRowCount: {}, rawRowCount: {}, attempt: {}, maxAttempts: {}",
+                        startIdx,
+                        endIdx,
+                        expectedRowCount,
+                        rawRowCount,
+                        attempt,
+                        MAX_INCOMPLETE_RESPONSE_ATTEMPTS
+                );
+                if (attempt < MAX_INCOMPLETE_RESPONSE_ATTEMPTS) {
+                    waitBeforeIncompleteResponseRetry(attempt);
+                }
+            }
+            throw new CustomException(MenuCrawlingErrorCode.INVALID_EXTERNAL_API_RESPONSE);
         } catch (ResourceAccessException exception) {
             if (hasTimeoutCause(exception)) {
                 log.error("식품안전청 API 응답 시간 초과 - startIdx: {}, endIdx: {}", startIdx, endIdx);
@@ -133,6 +159,33 @@ public class MenuAndRecipeCrawler {
         }
     }
 
+    private int calculateExpectedRowCount(
+            FoodSafetyKoreaRecipeApiResponseDto response,
+            int startIdx,
+            int endIdx
+    ) {
+        int totalCount = parseTotalCount(response);
+        if (startIdx > totalCount) {
+            return 0;
+        }
+        return Math.min(endIdx, totalCount) - startIdx + 1;
+    }
+
+    private void waitBeforeIncompleteResponseRetry(int attempt) {
+        long delayMillis = INITIAL_RETRY_DELAY_MILLIS * attempt;
+        log.warn(
+                "[MenuAndRecipeCrawler.crawl] 식품안전청 불완전 응답 재시도 대기 - attempt: {}, delayMillis: {}",
+                attempt,
+                delayMillis
+        );
+        try {
+            Thread.sleep(delayMillis);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new CustomException(MenuCrawlingErrorCode.EXTERNAL_API_CALL_FAILED);
+        }
+    }
+
     private FoodSafetyKoreaRecipeApiResponseDto mergeResponses(
             FoodSafetyKoreaRecipeApiResponseDto firstResponse,
             List<FoodSafetyKoreaRecipeApiResponseDto.RecipeRow> rows
@@ -199,6 +252,10 @@ public class MenuAndRecipeCrawler {
         if (messageCode != FoodSafetyKoreaApiMessageCode.INFO_000) {
             log.warn("식품안전청 API 오류 응답 - code: {}", cookRecipeData.result().code());
             throw new CustomException(messageCode);
+        }
+
+        if (cookRecipeData.rows() == null) {
+            throw new CustomException(MenuCrawlingErrorCode.INVALID_EXTERNAL_API_RESPONSE);
         }
     }
 

@@ -215,11 +215,27 @@ class MenuAndRecipeCrawlerTest {
     @DisplayName("전체 건수까지 반복 조회하고 페이지 간 중복 메뉴를 제거하여 병합한다")
     void 전체_데이터_반복_조회_페이지간_중복_제거_병합_성공() {
         // given
+        RestTemplate pagedRestTemplate = new RestTemplate();
+        MockRestServiceServer pagedMockServer = MockRestServiceServer.bindTo(pagedRestTemplate).build();
+        FoodSafetyKoreaProperties pagedProperties = new FoodSafetyKoreaProperties(
+                BASE_URL,
+                "test-key",
+                "COOKRCP01",
+                "json",
+                2
+        );
+        MenuAndRecipeCrawler pagedCrawler = new MenuAndRecipeCrawler(
+                pagedRestTemplate,
+                pagedProperties
+        );
         String firstResponseBody = """
                 {
                   "COOKRCP01": {
-                    "total_count": "1501",
-                    "row": [{"RCP_NM": "중복 메뉴"}],
+                    "total_count": "4",
+                    "row": [
+                      {"RCP_NM": "중복 메뉴"},
+                      {"RCP_NM": "첫 페이지 메뉴"}
+                    ],
                     "RESULT": {"CODE": "INFO-000", "MSG": "정상 처리되었습니다."}
                   }
                 }
@@ -227,7 +243,7 @@ class MenuAndRecipeCrawlerTest {
         String secondResponseBody = """
                 {
                   "COOKRCP01": {
-                    "total_count": "1501",
+                    "total_count": "4",
                     "row": [
                       {"RCP_NM": "중복 메뉴"},
                       {"RCP_NM": "신규 메뉴"}
@@ -236,19 +252,59 @@ class MenuAndRecipeCrawlerTest {
                   }
                 }
                 """;
-        mockServer.expect(once(), requestTo(FIRST_PAGE_URL))
+        pagedMockServer.expect(once(), requestTo(BASE_URL + "/test-key/COOKRCP01/json/1/2"))
                 .andRespond(withSuccess(firstResponseBody, MediaType.APPLICATION_JSON));
-        mockServer.expect(once(), requestTo(SECOND_PAGE_URL))
+        pagedMockServer.expect(once(), requestTo(BASE_URL + "/test-key/COOKRCP01/json/3/4"))
                 .andRespond(withSuccess(secondResponseBody, MediaType.APPLICATION_JSON));
 
         // when
-        FoodSafetyKoreaRecipeApiResponseDto result = crawler.crawlAll();
+        FoodSafetyKoreaRecipeApiResponseDto result = pagedCrawler.crawlAll();
 
         // then
-        assertThat(result.cookRecipeData().totalCount()).isEqualTo("1501");
+        assertThat(result.cookRecipeData().totalCount()).isEqualTo("4");
         assertThat(result.cookRecipeData().rows())
                 .extracting(FoodSafetyKoreaRecipeApiResponseDto.RecipeRow::menuName)
-                .containsExactly("중복 메뉴", "신규 메뉴");
+                .containsExactly("중복 메뉴", "첫 페이지 메뉴", "신규 메뉴");
+        pagedMockServer.verify();
+    }
+
+    @Test
+    @DisplayName("행이 누락된 정상 응답을 받으면 동일 범위를 재시도한다")
+    void 불완전_정상_응답_동일_범위_재시도_성공() {
+        // given
+        String incompleteResponseBody = """
+                {
+                  "COOKRCP01": {
+                    "total_count": "2",
+                    "row": [{"RCP_NM": "첫 번째 메뉴"}],
+                    "RESULT": {"CODE": "INFO-000", "MSG": "정상 처리되었습니다."}
+                  }
+                }
+                """;
+        String completeResponseBody = """
+                {
+                  "COOKRCP01": {
+                    "total_count": "2",
+                    "row": [
+                      {"RCP_NM": "첫 번째 메뉴"},
+                      {"RCP_NM": "두 번째 메뉴"}
+                    ],
+                    "RESULT": {"CODE": "INFO-000", "MSG": "정상 처리되었습니다."}
+                  }
+                }
+                """;
+        mockServer.expect(once(), requestTo(TWO_ROWS_URL))
+                .andRespond(withSuccess(incompleteResponseBody, MediaType.APPLICATION_JSON));
+        mockServer.expect(once(), requestTo(TWO_ROWS_URL))
+                .andRespond(withSuccess(completeResponseBody, MediaType.APPLICATION_JSON));
+
+        // when
+        FoodSafetyKoreaRecipeApiResponseDto result = crawler.crawl(1, 2);
+
+        // then
+        assertThat(result.cookRecipeData().rows())
+                .extracting(FoodSafetyKoreaRecipeApiResponseDto.RecipeRow::menuName)
+                .containsExactly("첫 번째 메뉴", "두 번째 메뉴");
         mockServer.verify();
     }
 

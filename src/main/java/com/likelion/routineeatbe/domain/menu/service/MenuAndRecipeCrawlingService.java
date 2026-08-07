@@ -1,11 +1,13 @@
 package com.likelion.routineeatbe.domain.menu.service;
 
 import com.likelion.routineeatbe.domain.menu.crawling.MenuAndRecipeCrawler;
+import com.likelion.routineeatbe.domain.menu.dto.MenuAndRecipeMetaDataDto;
 import com.likelion.routineeatbe.domain.menu.dto.response.FoodSafetyKoreaRecipeApiResponseDto;
 import com.likelion.routineeatbe.domain.menu.dto.response.MenuAndRecipeCrawlingDto;
 import com.likelion.routineeatbe.domain.menu.exception.MenuCrawlingErrorCode;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service;
 public class MenuAndRecipeCrawlingService {
 
     private final MenuAndRecipeCrawler menuAndRecipeCrawler;
+    private final MenuAndRecipeGeminiService menuAndRecipeGeminiService;
     private final MenuAndRecipePersistenceService menuAndRecipePersistenceService;
 
     /**
@@ -52,15 +55,35 @@ public class MenuAndRecipeCrawlingService {
                 ? crawlAll()
                 : crawlRange(startIdx, endIdx);
 
+        List<MenuAndRecipeCrawlingDto> newMenuDtos =
+                menuAndRecipePersistenceService.findNewMenuDtos(crawlingDtos);
+
+        if (newMenuDtos.isEmpty()) {
+            log.info(
+                    "[MenuAndRecipeCrawlingService] 신규 메뉴 없음 | crawlAndSave() - END | savedMenuCount: 0"
+            );
+            return;
+        }
+
         /*
-            3. 메뉴 및 레시피 저장
+            3. Gemini로 각 메뉴별 메타데이터를 생성한다.
+            - 각 메뉴별 메타 데이터는 MenuAndRecipeCrawlingDto 내부 데이터들(menuName, List<RecipeRow>)로 결정된다.
+            - 메타 데이터:
+                1. 메뉴 종류(Menu.MenuType)
+                2. 요리 소요 시간 (Menu.timeRequired)
+                3. 메뉴 추천 타입 (Menu.RecommendationType)
+         */
+        Map<String, MenuAndRecipeMetaDataDto> metaDataByMenuName =
+                menuAndRecipeGeminiService.generateMetaData(newMenuDtos);
+        /*
+            4. 메뉴 및 레시피 저장
             - 모든 외부 API 호출이 성공한 경우에만 저장 트랜잭션을 실행합니다.
          */
-        menuAndRecipePersistenceService.saveAll(crawlingDtos);
+        menuAndRecipePersistenceService.saveAll(newMenuDtos, metaDataByMenuName);
 
         log.info(
                 "[MenuAndRecipeCrawlingService] 메뉴 및 레시피 크롤링 저장 종료 | crawlAndSave() - END | savedMenuCount: {}",
-                crawlingDtos.size()
+                newMenuDtos.size()
         );
     }
 

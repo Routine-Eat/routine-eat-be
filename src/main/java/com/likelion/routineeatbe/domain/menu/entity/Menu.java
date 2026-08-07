@@ -13,7 +13,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AccessLevel;
@@ -30,8 +29,6 @@ import lombok.NoArgsConstructor;
 @Table(name = "menu")
 public class Menu extends BaseTimeEntity {
 
-    private static final int DEFAULT_TIME_REQUIRED = 60;
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -42,6 +39,11 @@ public class Menu extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private MenuType type;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private RecommendationType recommendationType = RecommendationType.DEFAULT;
 
     @Column(nullable = false)
     private Double calory;
@@ -62,17 +64,21 @@ public class Menu extends BaseTimeEntity {
     @OneToMany(mappedBy = "menu", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Recipe> recipes = new ArrayList<>();
 
-    public static Menu createFromFoodSafetyKorea(
+    public static Menu create(
             String name,
             Double calory,
-            String ingredientInfoOriginal
+            String ingredientInfoOriginal,
+            MenuType menuType,
+            RecommendationType recommendationType,
+            Integer timeRequired
     ) {
         return Menu.builder()
                 .name(name)
-                .type(MenuType.KOREAN)
+                .type(menuType)
+                .recommendationType(recommendationType)
                 .calory(calory)
                 .ingredient_info_original(ingredientInfoOriginal)
-                .timeRequired(DEFAULT_TIME_REQUIRED)
+                .timeRequired(timeRequired)
                 .difficultyLevel(DifficultyLevel.LEVEL_1)
                 .build();
     }

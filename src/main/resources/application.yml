@@ -27,3 +27,17 @@ springdoc:
     operations-sorter: method # 각 태그에 속한 오퍼레이션(API) 목록 정렬 기준 설정 => method: HTTP 메서드 순서(GET, POST, PUT, DELETE)로 정렬
   api-docs:
     path: /v3/api-docs # OpenAPI JSON 문서를 제공하는 엔드포인트. (기본값 /v3/api-docs임) => 외부툴/REST 클라이언트에서 사용할 API 스펙(JSON) 파일 경로 설정
+
+
+data:
+  crawling:
+    food-safety-korea:
+      max-request-count: ${FOOD_SAFETY_KOREA_MAX_REQUEST_COUNT:100}
+
+gemini:
+  batch-size: ${ROUTINE_EAT_GEMINI_BATCH_SIZE:10}
+  retry:
+    max-attempts: ${ROUTINE_EAT_GEMINI_RETRY_MAX_ATTEMPTS:4}
+    initial-delay: ${ROUTINE_EAT_GEMINI_RETRY_INITIAL_DELAY:1s}
+    max-delay: ${ROUTINE_EAT_GEMINI_RETRY_MAX_DELAY:8s}
+    jitter-ratio: ${ROUTINE_EAT_GEMINI_RETRY_JITTER_RATIO:0.25}

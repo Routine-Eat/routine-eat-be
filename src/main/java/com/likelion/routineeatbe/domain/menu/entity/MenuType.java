@@ -4,5 +4,6 @@ public enum MenuType {
     KOREAN,
     WESTERN,
     JAPANESE,
-    CHINESE
+    CHINESE,
+    OTHER
 }

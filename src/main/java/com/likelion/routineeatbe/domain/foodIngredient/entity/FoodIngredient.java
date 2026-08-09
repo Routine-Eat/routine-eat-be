@@ -22,5 +22,16 @@ public class FoodIngredient extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private FoodIngredientType type;
 
+    @Column(nullable = false, comment = "100g/100ml당 재료 가격")
+    private Long pricePerHundred;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private PrimaryUnit primaryUnit;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private SecondaryUnit secondaryUnit;
+
 
 }

@@ -12,24 +12,24 @@ import java.time.LocalDateTime;
 @Schema(title = "UserResponse: 사용자 응답 DTO")
 public record UserResponse(
         @Schema(description = "사용자 식별 id", example = "1")
-        Long id,
+        Long userId,
 
         @Schema(description = "사용자 로그인 번호",example = "1234")
-        String loginNumber,
+        String userLoginNumber,
 
         @Schema(description = "사용자 요리실력",example = "BEGGINER")
-        SkillLevel skillLevel,
+        SkillLevel userSkillLevel,
 
         @Schema(description = "사용자 생성날짜",example = "2026-00-00T00:00:00")
-        LocalDateTime createdAt
+        LocalDateTime userCreatedAt
 ){
     /* return값 UserResponse 포장 함수 */
     public static UserResponse fromUserEntity(User user){
         return UserResponse.builder()
-                .id(user.getId())
-                .loginNumber(user.getLoginNumber())
-                .skillLevel(user.getSkillLevel())
-                .createdAt(user.getCreatedAt())
+                .userId(user.getId())
+                .userLoginNumber(user.getLoginNumber())
+                .userSkillLevel(user.getSkillLevel())
+                .userCreatedAt(user.getCreatedAt())
                 .build();
     }
 }

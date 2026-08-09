@@ -12,32 +12,32 @@ import lombok.Builder;
 public record FoodIngredientResponse (
 
     @Schema(description = "식재료 id",example = "1")
-    Long id,
+    Long foodIngredientId,
 
     @Schema(description = "식재료 이름",example = "감자")
-    String name,
+    String foodIngredientName,
 
     @Schema(description = "식재료 종류",example = "POTATO_AND_STARCH")
-    FoodIngredientType type,
+    FoodIngredientType foodIngredientType,
 
     @Schema(description = "100g/ml 당 가격",example = "550")
-    Long pricePerHundred,
+    Long foodIngredientPricePerHundred,
 
     @Schema(description = "식재료 주단위",example = "G")
-    PrimaryUnit primaryUnit,
+    PrimaryUnit foodIngredientPrimaryUnit,
 
     @Schema(description = "식재료 보조 단위",example = "GAE")
-    SecondaryUnit secondaryUnit
+    SecondaryUnit foodIngredientSecondaryUnit
     ){
 
     public static FoodIngredientResponse from(FoodIngredient foodIngredient){
         return FoodIngredientResponse.builder()
-                .id(foodIngredient.getId())
-                .name(foodIngredient.getName())
-                .type(foodIngredient.getType())
-                .pricePerHundred(foodIngredient.getPricePerHundred())
-                .primaryUnit(foodIngredient.getPrimaryUnit())
-                .secondaryUnit(foodIngredient.getSecondaryUnit())
+                .foodIngredientId(foodIngredient.getId())
+                .foodIngredientName(foodIngredient.getName())
+                .foodIngredientType(foodIngredient.getType())
+                .foodIngredientPricePerHundred(foodIngredient.getPricePerHundred())
+                .foodIngredientPrimaryUnit(foodIngredient.getPrimaryUnit())
+                .foodIngredientSecondaryUnit(foodIngredient.getSecondaryUnit())
                 .build();
     }
 }

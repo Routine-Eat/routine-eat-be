@@ -1,5 +1,5 @@
 -- 재료 분류.txt를 기준으로 생성한 FoodIngredient 초기 데이터
--- 동일한 이름과 타입의 데이터가 이미 존재하면 다시 삽입하지 않는다.
+-- 동일한 이름과 타입의 데이터가 이미 존재하면 가격과 단위를 갱신한다.
 
 -- 기존 통합 수산물 타입을 신규 타입으로 안전하게 분리한다.
 ALTER TABLE `food_ingredient`
@@ -43,6 +43,26 @@ ALTER TABLE `food_ingredient`
         'SPICE',
         'PROCESSED_SEAFOOD',
         'BAKING_AND_CONFECTIONERY_INGREDIENT'
+    ) NOT NULL;
+
+-- SecondaryUnit enum에 추가된 보조 단위를 기존 DB 스키마에도 반영한다.
+ALTER TABLE `food_ingredient`
+    MODIFY COLUMN `secondary_unit` VARCHAR(255) NOT NULL;
+
+ALTER TABLE `food_ingredient`
+    MODIFY COLUMN `secondary_unit` ENUM(
+        'MO',
+        'MARI',
+        'GAE',
+        'JULGI',
+        'TSP',
+        'INBUN',
+        'CUP',
+        'AL',
+        'JANG',
+        'BONGJI',
+        'TBSP',
+        'PINCH'
     ) NOT NULL;
 
 START TRANSACTION;
@@ -94,32 +114,32 @@ FROM (
     UNION ALL SELECT '헤이즐넛' AS name, 'NUT_AND_SEED' AS type, 2400 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '호두' AS name, 'NUT_AND_SEED' AS type, 2400 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '호박씨' AS name, 'NUT_AND_SEED' AS type, 2400 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '귀리 (오트)' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '기장' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '단옥수수' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '메옥수수' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '찰옥수수' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '옥수수' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '콘샐러드' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '백미' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '현미' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '흑미' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '찹쌀' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '보리' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '메밀묵' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '수수' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '잡곡' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '조' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '퀴노아' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '호밀' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '통호밀' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '율무' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '강력밀가루' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '박력밀가루' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '중력밀가루' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '통밀가루' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '밀' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '흑밀' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
+    UNION ALL SELECT '귀리 (오트)' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '기장' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '단옥수수' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '메옥수수' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '찰옥수수' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '옥수수' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '콘샐러드' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '백미' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '현미' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '흑미' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '찹쌀' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '보리' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '메밀묵' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '수수' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '잡곡' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '조' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '퀴노아' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '호밀' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '통호밀' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '율무' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '강력밀가루' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '박력밀가루' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '중력밀가루' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '통밀가루' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '밀' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '흑밀' AS name, 'GRAIN' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
     UNION ALL SELECT '감' AS name, 'FRUIT' AS type, 950 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '단감' AS name, 'FRUIT' AS type, 950 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '대봉' AS name, 'FRUIT' AS type, 950 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
@@ -185,37 +205,37 @@ FROM (
     UNION ALL SELECT '대나무' AS name, 'OTHER' AS type, 3000 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '달팽이' AS name, 'OTHER' AS type, 3000 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '인삼(홍삼)' AS name, 'OTHER' AS type, 3000 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '달걀' AS name, 'EGG' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '메추리알' AS name, 'EGG' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '오리알' AS name, 'EGG' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '피단(송화단)' AS name, 'EGG' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '각설탕' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '백설탕' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '설탕' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '황설탕' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '흑설탕' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '빙설탕' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '꿀' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '당밀' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '분당(슈가파우더)' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '아가베 시럽' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '알룰로스' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '메이플 시럽' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '스테비아' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '강낭콩' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '검은콩' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '녹두' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '대두(백태)' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '렌틸콩' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '병아리콩' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '완두' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '팥' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
+    UNION ALL SELECT '달걀(계란)' AS name, 'EGG' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'AL' AS secondary_unit
+    UNION ALL SELECT '메추리알' AS name, 'EGG' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'AL' AS secondary_unit
+    UNION ALL SELECT '오리알' AS name, 'EGG' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'AL' AS secondary_unit
+    UNION ALL SELECT '피단(송화단)' AS name, 'EGG' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'AL' AS secondary_unit
+    UNION ALL SELECT '각설탕' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '백설탕' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '설탕' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '황설탕' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '흑설탕' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '빙설탕' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '꿀' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '당밀' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '분당(슈가파우더)' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '아가베 시럽' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '알룰로스' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '메이플 시럽' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '스테비아' AS name, 'SUGAR' AS type, 250 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '강낭콩' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '검은콩' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '녹두' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '대두(백태)' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '렌틸콩' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '병아리콩' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '완두' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '팥' AS name, 'LEGUME' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
     UNION ALL SELECT '건두부' AS name, 'PROCESSED_LEGUME' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '두부' AS name, 'PROCESSED_LEGUME' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '순두부' AS name, 'PROCESSED_LEGUME' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '연두부' AS name, 'PROCESSED_LEGUME' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '유부' AS name, 'PROCESSED_LEGUME' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '두유' AS name, 'PROCESSED_LEGUME' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
+    UNION ALL SELECT '두유' AS name, 'PROCESSED_LEGUME' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
     UNION ALL SELECT '녹두묵' AS name, 'PROCESSED_LEGUME' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '메주' AS name, 'PROCESSED_LEGUME' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '나또' AS name, 'PROCESSED_LEGUME' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
@@ -252,34 +272,34 @@ FROM (
     UNION ALL SELECT '팽이버섯' AS name, 'MUSHROOM' AS type, 1200 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '포르치니 버섯' AS name, 'MUSHROOM' AS type, 1200 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '트러플(송로버섯)' AS name, 'MUSHROOM' AS type, 1200 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '우유' AS name, 'MILK' AS type, 300 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '덕팻(오리기름)' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '닭기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '돼지기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '쇠기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '연어기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '면실유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '미강유(쌀겨기름)' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '팜유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '혼합식물성유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '들기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '참기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '콩기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '유채씨기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '잇꽃씨기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '포도씨유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '해바라기유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '옥수수기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '아몬드유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '아보카도유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '아마씨유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '올리브유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '코코넛유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '피스타치오유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '호두유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '땅콩기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '복숭아씨기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '트러플 오일' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
+    UNION ALL SELECT '우유' AS name, 'MILK' AS type, 300 AS price_per_hundred, 'ML' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '덕팻(오리기름)' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '닭기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '돼지기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '쇠기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '연어기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '면실유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '미강유(쌀겨기름)' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '팜유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '혼합식물성유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '들기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '참기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '콩기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '유채씨기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '잇꽃씨기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '포도씨유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '해바라기유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '옥수수기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '아몬드유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '아보카도유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '아마씨유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '올리브유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '코코넛유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '피스타치오유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '호두유' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '땅콩기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '복숭아씨기름' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '트러플 오일' AS name, 'FAT_AND_OIL' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
     UNION ALL SELECT '고래고기' AS name, 'MEAT' AS type, 3400 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '닭고기' AS name, 'MEAT' AS type, 3400 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '닭고기(간)' AS name, 'MEAT' AS type, 3400 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
@@ -324,9 +344,9 @@ FROM (
     UNION ALL SELECT '소고기(혀)' AS name, 'MEAT' AS type, 3400 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '양고기' AS name, 'MEAT' AS type, 3400 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '오리고기' AS name, 'MEAT' AS type, 3400 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '고춧가루' AS name, 'CONDIMENT' AS type, 500 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '소금' AS name, 'CONDIMENT' AS type, 500 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '후추' AS name, 'CONDIMENT' AS type, 500 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
+    UNION ALL SELECT '고춧가루' AS name, 'CONDIMENT' AS type, 500 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '소금' AS name, 'CONDIMENT' AS type, 500 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '후추' AS name, 'CONDIMENT' AS type, 500 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
     UNION ALL SELECT '갓' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '고들빼기' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '두릅' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
@@ -361,12 +381,12 @@ FROM (
     UNION ALL SELECT '도라지' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '우엉' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '연근' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '마늘' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
+    UNION ALL SELECT '마늘' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'AL' AS secondary_unit
     UNION ALL SELECT '다진마늘' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '마늘종' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '양파' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '대파' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '쪽파' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
+    UNION ALL SELECT '대파' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'JULGI' AS secondary_unit
+    UNION ALL SELECT '쪽파' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'JULGI' AS secondary_unit
     UNION ALL SELECT '파' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '샬롯' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '리크' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
@@ -380,8 +400,8 @@ FROM (
     UNION ALL SELECT '쌈무' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '단무지' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '락교' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '미나리' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '부추' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
+    UNION ALL SELECT '미나리' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'JULGI' AS secondary_unit
+    UNION ALL SELECT '부추' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'JULGI' AS secondary_unit
     UNION ALL SELECT '바질' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '루꼴라' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '고수' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
@@ -436,15 +456,15 @@ FROM (
     UNION ALL SELECT '방울토마토' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '가지' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '페넬(회향)' AS name, 'VEGETABLE' AS type, 750 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '가시파래(감태)' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '김' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '다시마' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '매생이' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '미역' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '바다포도' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '우뭇가사리(우무)' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '파래' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '톳' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
+    UNION ALL SELECT '가시파래(감태)' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '김' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '다시마' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '매생이' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '미역' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '바다포도' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '우뭇가사리(우무)' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '파래' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '톳' AS name, 'SEAWEED' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
     UNION ALL SELECT '가자미' AS name, 'FISH_AND_OTHER_SEAFOOD' AS type, 2800 AS price_per_hundred, 'G' AS primary_unit, 'MARI' AS secondary_unit
     UNION ALL SELECT '광어(넙치)' AS name, 'FISH_AND_OTHER_SEAFOOD' AS type, 2800 AS price_per_hundred, 'G' AS primary_unit, 'MARI' AS secondary_unit
     UNION ALL SELECT '도다리' AS name, 'FISH_AND_OTHER_SEAFOOD' AS type, 2800 AS price_per_hundred, 'G' AS primary_unit, 'MARI' AS secondary_unit
@@ -529,92 +549,92 @@ FROM (
     UNION ALL SELECT '오징어' AS name, 'CEPHALOPOD' AS type, 3000 AS price_per_hundred, 'G' AS primary_unit, 'MARI' AS secondary_unit
     UNION ALL SELECT '주꾸미' AS name, 'CEPHALOPOD' AS type, 3000 AS price_per_hundred, 'G' AS primary_unit, 'MARI' AS secondary_unit
     UNION ALL SELECT '한치' AS name, 'CEPHALOPOD' AS type, 3000 AS price_per_hundred, 'G' AS primary_unit, 'MARI' AS secondary_unit
-    UNION ALL SELECT '국간장' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '양조간장' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '진간장' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '반간장' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '고추장' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '된장' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '쌈장' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '까나리액젓' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '멸치액젓' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '액젓' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '참치액' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '새우젓' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '맛술' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '식초' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '매실청' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '물엿' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '올리고당' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '조청' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '멸치육수팩' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '사골육수' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '코인육수' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '조미료' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '쇠고기 조미료' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '갈릭 디핑 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '사워크림' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '나초 치즈 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '치즈 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '데리야끼소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '바비큐 소스 (BBQ 소스)' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '우스터 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '발사믹 글레이즈' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '마요네즈' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '케첩' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '머스터드' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '홀그레인 머스터드' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '허니 머스터드' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '스리라차' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '칠리소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '스위트 칠리소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '핫소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '살사 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '과카몰리' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '불닭 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '월남쌈 분짜 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '피쉬 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '카오팟 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '타르타르 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '굴소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '돈가스소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '스테이크소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '레몬즙' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '랜치 드레싱' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '바질페스토' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '발사믹식초' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '시저 드레싱' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '오리엔탈 드레싱' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '샐러드드레싱' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '천섬(싸우전드 아일랜드) 드레싱' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '치미추리 소스' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '토마토소스' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '크림소스' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '간장소스' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '쯔유' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '미소된장' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '폰즈 소스' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '고추기름' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '두반장' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '마라소스' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '춘장' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '해선장(호이신 소스)' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT 'XO 소스' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '삼발 소스' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '팟타이 소스' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '카레가루' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '밥' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '오트밀' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '시리얼' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '그래놀라' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '아몬드버터' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '타피오카 펄' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '트러플 페이스트' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TSP' AS secondary_unit
+    UNION ALL SELECT '국간장' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '양조간장' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '진간장' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '반간장' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '고추장' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '된장' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '쌈장' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '까나리액젓' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '멸치액젓' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '액젓' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '참치액' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '새우젓' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '맛술' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '식초' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '매실청' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '물엿' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '올리고당' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '조청' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '멸치육수팩' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '사골육수' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '코인육수' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '조미료' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '쇠고기 조미료' AS name, 'SEASONING' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '갈릭 디핑 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '사워크림' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '나초 치즈 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '치즈 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '데리야끼소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '바비큐 소스 (BBQ 소스)' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '우스터 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '발사믹 글레이즈' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '마요네즈' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '케첩' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '머스터드' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '홀그레인 머스터드' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '허니 머스터드' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '스리라차' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '칠리소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '스위트 칠리소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '핫소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '살사 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '과카몰리' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '불닭 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '월남쌈 분짜 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '피쉬 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '카오팟 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '타르타르 소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '굴소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '돈가스소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '스테이크소스' AS name, 'BASIC_SAUCE' AS type, 600 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '레몬즙' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '랜치 드레싱' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '바질페스토' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '발사믹식초' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '시저 드레싱' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '오리엔탈 드레싱' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '샐러드드레싱' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '천섬(싸우전드 아일랜드) 드레싱' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '치미추리 소스' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '토마토소스' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '크림소스' AS name, 'WESTERN_SAUCE' AS type, 850 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '간장소스' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '쯔유' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '미소된장' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '폰즈 소스' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '고추기름' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '두반장' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '마라소스' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '춘장' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '해선장(호이신 소스)' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT 'XO 소스' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '삼발 소스' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '팟타이 소스' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '카레가루' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '밥' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '오트밀' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '시리얼' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '그래놀라' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '아몬드버터' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '타피오카 펄' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '트러플 페이스트' AS name, 'ASIAN_TREND_SAUCE_AND_PROCESSED_GRAIN_SNACK' AS type, 900 AS price_per_hundred, 'ML' AS primary_unit, 'TBSP' AS secondary_unit
     UNION ALL SELECT '당면' AS name, 'NOODLE' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'INBUN' AS secondary_unit
     UNION ALL SELECT '중국당면' AS name, 'NOODLE' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'INBUN' AS secondary_unit
     UNION ALL SELECT '납작당면' AS name, 'NOODLE' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'INBUN' AS secondary_unit
     UNION ALL SELECT '분모자' AS name, 'NOODLE' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'INBUN' AS secondary_unit
-    UNION ALL SELECT '라면' AS name, 'NOODLE' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'INBUN' AS secondary_unit
+    UNION ALL SELECT '라면' AS name, 'NOODLE' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'BONGJI' AS secondary_unit
     UNION ALL SELECT '냉면' AS name, 'NOODLE' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'INBUN' AS secondary_unit
     UNION ALL SELECT '막국수면' AS name, 'NOODLE' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'INBUN' AS secondary_unit
     UNION ALL SELECT '메밀면' AS name, 'NOODLE' AS type, 450 AS price_per_hundred, 'G' AS primary_unit, 'INBUN' AS secondary_unit
@@ -646,47 +666,47 @@ FROM (
     UNION ALL SELECT '백설기' AS name, 'RICE_CAKE' AS type, 550 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '찹쌀떡' AS name, 'RICE_CAKE' AS type, 550 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '구슬떡' AS name, 'RICE_CAKE' AS type, 550 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '만두피' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '라이스페이퍼' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '또띠아' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '타코쉘' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '춘권피' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '크레페 피' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '퍼프 페이스트리 시트(파이피)' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '식빵' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '통밀빵' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '모닝빵' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '베이글' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '치아바타' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '바게트' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '호밀빵' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '포카치아' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '피타빵' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '잉글리시 머핀' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '사워도우' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '피자도우' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '빵가루' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '딸기잼' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '블루베리잼' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '라즈베리잼' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '사과잼' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '무화과잼' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '오렌지 마멀레이드' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '카야잼' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '땅콩버터' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '누텔라' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '로투스 스프레드' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '녹차 크림 스프레드' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '말차 크림 스프레드' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '크림치즈' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '리코타 치즈' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '에그마요' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '참치마요' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '와사비마요' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '갈릭마요' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '스리라차마요' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '딜마요' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '홀스래디시 소스' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
+    UNION ALL SELECT '만두피' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '라이스페이퍼' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '또띠아' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '타코쉘' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '춘권피' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '크레페 피' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '퍼프 페이스트리 시트(파이피)' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '식빵' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '통밀빵' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '모닝빵' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '베이글' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '치아바타' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '바게트' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '호밀빵' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '포카치아' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '피타빵' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '잉글리시 머핀' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '사워도우' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '피자도우' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '빵가루' AS name, 'BREAD_AND_WRAPPER' AS type, 900 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
+    UNION ALL SELECT '딸기잼' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '블루베리잼' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '라즈베리잼' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '사과잼' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '무화과잼' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '오렌지 마멀레이드' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '카야잼' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '땅콩버터' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '누텔라' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '로투스 스프레드' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '녹차 크림 스프레드' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '말차 크림 스프레드' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '크림치즈' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '리코타 치즈' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '에그마요' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '참치마요' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '와사비마요' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '갈릭마요' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '스리라차마요' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '딜마요' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '홀스래디시 소스' AS name, 'JAM_AND_SPREAD' AS type, 1300 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
     UNION ALL SELECT '고등어통조림' AS name, 'DRIED_SEAFOOD_ROE_AND_PROCESSED_FOOD' AS type, 2800 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '꽁치통조림' AS name, 'DRIED_SEAFOOD_ROE_AND_PROCESSED_FOOD' AS type, 2800 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '골뱅이통조림' AS name, 'DRIED_SEAFOOD_ROE_AND_PROCESSED_FOOD' AS type, 2800 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
@@ -706,31 +726,31 @@ FROM (
     UNION ALL SELECT '황태' AS name, 'DRIED_SEAFOOD_ROE_AND_PROCESSED_FOOD' AS type, 2800 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '황태채' AS name, 'DRIED_SEAFOOD_ROE_AND_PROCESSED_FOOD' AS type, 2800 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '진미채' AS name, 'DRIED_SEAFOOD_ROE_AND_PROCESSED_FOOD' AS type, 2800 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '깻잎김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '깍두기' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '동치미' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '총각김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '열무김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '배초향김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '배추김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '배추김치(신김치)' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '배추김치(묵은지)' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '부추김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '오이김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '파김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '단무지' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '피클' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '락교' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '장아찌' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '냉동다진마늘' AS name, 'FROZEN_PRODUCT' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '냉동만두' AS name, 'FROZEN_PRODUCT' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '냉동새우' AS name, 'FROZEN_PRODUCT' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '냉동채소' AS name, 'FROZEN_PRODUCT' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '옥수수통조림' AS name, 'FROZEN_PRODUCT' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
+    UNION ALL SELECT '깻잎김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '깍두기' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '동치미' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '총각김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '열무김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '배초향김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '배추김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '배추김치(신김치)' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '배추김치(묵은지)' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '부추김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '오이김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '파김치' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '단무지' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '피클' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '락교' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '장아찌' AS name, 'KIMCHI_PICKLE_AND_FERMENTED_FOOD' AS type, 650 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
+    UNION ALL SELECT '냉동다진마늘' AS name, 'FROZEN_PRODUCT' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'BONGJI' AS secondary_unit
+    UNION ALL SELECT '냉동만두' AS name, 'FROZEN_PRODUCT' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'BONGJI' AS secondary_unit
+    UNION ALL SELECT '냉동새우' AS name, 'FROZEN_PRODUCT' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'BONGJI' AS secondary_unit
+    UNION ALL SELECT '냉동채소' AS name, 'FROZEN_PRODUCT' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'BONGJI' AS secondary_unit
+    UNION ALL SELECT '옥수수통조림' AS name, 'FROZEN_PRODUCT' AS type, 1100 AS price_per_hundred, 'G' AS primary_unit, 'BONGJI' AS secondary_unit
     UNION ALL SELECT '기 (Ghee) 버터' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '무염버터' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '버터' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '생크림' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
+    UNION ALL SELECT '버터' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'TBSP' AS secondary_unit
+    UNION ALL SELECT '생크림' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'CUP' AS secondary_unit
     UNION ALL SELECT '휘핑크림' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '연유' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '무당연유(에바포레이트 밀크)' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
@@ -738,7 +758,7 @@ FROM (
     UNION ALL SELECT '그릭요거트' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '모차렐라치즈' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '부라타치즈' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '슬라이스 치즈' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
+    UNION ALL SELECT '슬라이스 치즈' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
     UNION ALL SELECT '체다치즈' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '크림치즈' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '파마산치즈' AS name, 'DAIRY_AND_CHEESE' AS type, 1600 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
@@ -767,35 +787,35 @@ FROM (
     UNION ALL SELECT '다진 돼지고기' AS name, 'PROCESSED_MEAT_AND_CONVENIENT_PROTEIN' AS type, 2100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '풀드포크' AS name, 'PROCESSED_MEAT_AND_CONVENIENT_PROTEIN' AS type, 2100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '미트볼' AS name, 'PROCESSED_MEAT_AND_CONVENIENT_PROTEIN' AS type, 2100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '베이컨' AS name, 'PROCESSED_MEAT_AND_CONVENIENT_PROTEIN' AS type, 2100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
+    UNION ALL SELECT '베이컨' AS name, 'PROCESSED_MEAT_AND_CONVENIENT_PROTEIN' AS type, 2100 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
     UNION ALL SELECT '소시지' AS name, 'PROCESSED_MEAT_AND_CONVENIENT_PROTEIN' AS type, 2100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '비엔나소시지' AS name, 'PROCESSED_MEAT_AND_CONVENIENT_PROTEIN' AS type, 2100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '햄' AS name, 'PROCESSED_MEAT_AND_CONVENIENT_PROTEIN' AS type, 2100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
+    UNION ALL SELECT '햄' AS name, 'PROCESSED_MEAT_AND_CONVENIENT_PROTEIN' AS type, 2100 AS price_per_hundred, 'G' AS primary_unit, 'JANG' AS secondary_unit
     UNION ALL SELECT '통조림 햄(스팸 등)' AS name, 'PROCESSED_MEAT_AND_CONVENIENT_PROTEIN' AS type, 2100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '런천미트' AS name, 'PROCESSED_MEAT_AND_CONVENIENT_PROTEIN' AS type, 2100 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
-    UNION ALL SELECT '강황(터머릭)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '큐민(츠란)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '팔각(팔각향)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '정향' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '산초(마라향신료)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '넛맥(육두구)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '카다멈' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '코리앤더 씨드(고수 씨)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '펜넬 씨드' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '페누그릭' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '메이스' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '계피' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '시나몬가루' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '건고추' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '페페론치노' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '케이프런(파프리카 가루)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '바질(드라이 바질)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '오레가노' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '파슬리 (파슬리가루)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '타임' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '로즈마리' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '월계수 잎' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
-    UNION ALL SELECT '케이퍼' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'TSP' AS secondary_unit
+    UNION ALL SELECT '강황(터머릭)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '큐민(츠란)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '팔각(팔각향)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '정향' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '산초(마라향신료)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '넛맥(육두구)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '카다멈' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '코리앤더 씨드(고수 씨)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '펜넬 씨드' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '페누그릭' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '메이스' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '계피' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '시나몬가루' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '건고추' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '페페론치노' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '케이프런(파프리카 가루)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '바질(드라이 바질)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '오레가노' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '파슬리 (파슬리가루)' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '타임' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '로즈마리' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '월계수 잎' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
+    UNION ALL SELECT '케이퍼' AS name, 'SPICE' AS type, 1800 AS price_per_hundred, 'G' AS primary_unit, 'PINCH' AS secondary_unit
     UNION ALL SELECT '앤초비(엔초비 페이스트 포함)' AS name, 'PROCESSED_SEAFOOD' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '고등어통조림' AS name, 'PROCESSED_SEAFOOD' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit
     UNION ALL SELECT '꽁치통조림' AS name, 'PROCESSED_SEAFOOD' AS type, 2500 AS price_per_hundred, 'G' AS primary_unit, 'GAE' AS secondary_unit

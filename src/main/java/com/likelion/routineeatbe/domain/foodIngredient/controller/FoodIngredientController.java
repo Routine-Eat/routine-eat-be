@@ -1,7 +1,6 @@
 package com.likelion.routineeatbe.domain.foodIngredient.controller;
 
 import com.likelion.routineeatbe.domain.foodIngredient.dto.response.FoodIngredientResponse;
-import com.likelion.routineeatbe.domain.foodIngredient.repository.FoodIngredientRepository;
 import com.likelion.routineeatbe.domain.foodIngredient.service.FoodIngredientService;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;

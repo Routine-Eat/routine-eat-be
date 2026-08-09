@@ -23,5 +23,11 @@ public class User extends BaseTimeEntity {
     @Column(nullable = true)
     private SkillLevel skillLevel;
 
+    public static User createUser(String loginNumber){
+        return User.builder()
+                .loginNumber(loginNumber)
+                .build();
+    }
+
 
 }

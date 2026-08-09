@@ -16,16 +16,6 @@ import org.springframework.stereotype.Service;
 public class UserService {
     private final UserRepository userRepository;
 
-    /* return값 UserResponse 포장 함수 */
-    private UserResponse toUseResponse(User user){
-        return UserResponse.builder()
-                .id(user.getId())
-                .loginNumber(user.getLoginNumber())
-                .skillLevel(user.getSkillLevel())
-                .createdAt(user.getCreatedAt())
-                .build();
-    }
-
     /**
      * User entity 생성 로직
      * - 식별자 id, 생성날짜는 자동 생성
@@ -34,14 +24,12 @@ public class UserService {
      * @return UserResponse를 거친 User Entity
      */
     public UserResponse createUser(CreateUserRequest createUserRequest){
-        if(userRepository.existsByLoginNumber(createUserRequest.getLoginNumber())){
+        String loginNumber= createUserRequest.loginNumber();
+        if(userRepository.existsByLoginNumber(loginNumber)){
             throw new CustomException(UserErrorCode.DUPLICATE_LOGIN_NUMBER);
         }
-
-        User user=User.builder()
-                .loginNumber(createUserRequest.getLoginNumber())
-                .build();
+        User user=User.createUser(loginNumber);
         User savedUser=userRepository.save(user);
-        return toUseResponse(savedUser);
+        return UserResponse.fromUserEntity(savedUser);
     }
 }

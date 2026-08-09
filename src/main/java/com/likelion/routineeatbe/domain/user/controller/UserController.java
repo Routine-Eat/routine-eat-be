@@ -5,18 +5,14 @@ import com.likelion.routineeatbe.domain.user.dto.response.UserResponse;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.domain.user.service.UserService;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("api/v1")
+@RequiredArgsConstructor
 public class UserController implements UserContorllerDocs{
     private final UserRepository userRepository;
     private final UserService userService;
-
-    public UserController(UserRepository userRepository, UserService userService){
-        this.userRepository=userRepository;
-        this.userService=userService;
-    }
 
     @Override
     public GlobalResponse<UserResponse> createUser(CreateUserRequest createUserRequest){

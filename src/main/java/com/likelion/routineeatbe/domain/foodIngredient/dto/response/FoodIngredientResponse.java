@@ -1,5 +1,6 @@
 package com.likelion.routineeatbe.domain.foodIngredient.dto.response;
 
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredientType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -17,6 +18,13 @@ public class FoodIngredientResponse {
     private String name;
 
     @Schema(description = "식재료 종류",example = "FRUIT")
-    private FoodIngredientType foodIngredientType;
+    private FoodIngredientType type;
 
+    public static FoodIngredientResponse from(FoodIngredient foodIngredient){
+        return FoodIngredientResponse.builder()
+                .id(foodIngredient.getId())
+                .name(foodIngredient.getName())
+                .type(foodIngredient.getType())
+                .build();
+    }
 }

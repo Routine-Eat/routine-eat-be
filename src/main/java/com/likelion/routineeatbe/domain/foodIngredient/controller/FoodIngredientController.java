@@ -15,8 +15,8 @@ public class FoodIngredientController implements FoodIngredientControllerDocs{
     private final FoodIngredientService foodIngredientService;
 
     @Override
-    public GlobalResponse<List<FoodIngredientResponse>> getFoodIngredient(String search){
-        List<FoodIngredientResponse> foodIngredientResponseList=foodIngredientService.getFoodIngredient(search);
+    public GlobalResponse<List<FoodIngredientResponse>> getFoodIngredients(String search){
+        List<FoodIngredientResponse> foodIngredientResponseList=foodIngredientService.getFoodIngredients(search);
         return GlobalResponse.success("식재료 조회가 성공했습니다.",foodIngredientResponseList);
     }
 }

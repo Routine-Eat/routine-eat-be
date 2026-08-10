@@ -9,6 +9,9 @@ import com.likelion.routineeatbe.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @Slf4j
@@ -23,6 +26,7 @@ public class UserService {
      * @param createUserRequest
      * @return UserResponse를 거친 User Entity
      */
+    @Transactional
     public UserResponse createUser(CreateUserRequest createUserRequest){
         String loginNumber= createUserRequest.loginNumber();
         if(userRepository.existsByLoginNumber(loginNumber)){
@@ -31,5 +35,13 @@ public class UserService {
         User user=User.createUser(loginNumber);
         User savedUser=userRepository.save(user);
         return UserResponse.fromUserEntity(savedUser);
+    }
+
+    @Transactional
+    public List<UserResponse> getAllUsers(){
+        List<User> users=userRepository.findAll();
+        return users.stream()
+                .map(UserResponse::fromUserEntity)
+                .toList();
     }
 }

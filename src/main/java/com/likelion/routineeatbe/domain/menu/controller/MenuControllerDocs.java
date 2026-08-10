@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Menu", description = "메뉴 관리 API")
-@RequestMapping("/api/v1/menu")
+@RequestMapping("/api/v1/menus")
 public interface MenuControllerDocs {
 
     @Operation(

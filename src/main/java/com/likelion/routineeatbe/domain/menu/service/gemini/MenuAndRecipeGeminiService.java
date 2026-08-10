@@ -124,6 +124,7 @@ public class MenuAndRecipeGeminiService {
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
                 MenuAndRecipeMetaDataBatchDto result = geminiUtil.callFunction(
+                        properties.menuAnalyzeModel(),
                         createBatchPrompt(batch),
                         MenuAndRecipeGeminiFunctionDeclarationDto.create(batch.size()),
                         MenuAndRecipeMetaDataBatchDto.class

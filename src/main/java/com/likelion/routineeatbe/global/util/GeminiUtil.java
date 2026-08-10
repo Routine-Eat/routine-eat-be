@@ -1,14 +1,17 @@
 package com.likelion.routineeatbe.global.util;
 
 import com.likelion.routineeatbe.global.config.GeminiProperties;
-import com.likelion.routineeatbe.domain.menu.dto.gemini.MenuAndRecipeGeminiFunctionDeclarationDto;
+import com.likelion.routineeatbe.global.dto.gemini.GeminiFunctionDeclaration;
 import com.likelion.routineeatbe.global.dto.gemini.GeminiInteractionReqDto;
 import com.likelion.routineeatbe.global.dto.gemini.GeminiInteractionResDto;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import com.likelion.routineeatbe.global.exception.GeminiErrorCode;
 import java.net.SocketTimeoutException;
 import java.net.URI;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -51,6 +54,7 @@ public class GeminiUtil {
     /**
      * Gemini Interactions API를 Function Calling 방식으로 호출합니다.
      *
+     * @param model 상황에 맞게 선택한 Gemini 모델명
      * @param prompt Gemini에 전달할 입력 프롬프트
      * @param functionDeclaration 호출을 강제할 함수 선언
      * @param responseType Function Call arguments를 변환할 타입
@@ -58,20 +62,52 @@ public class GeminiUtil {
      * @return Function Call arguments를 변환한 결과
      */
     public <T> T callFunction(
+            String model,
             String prompt,
-            MenuAndRecipeGeminiFunctionDeclarationDto functionDeclaration,
+            GeminiFunctionDeclaration functionDeclaration,
             Class<T> responseType
     ) {
+        return callFunction(
+                model,
+                prompt,
+                List.of(functionDeclaration),
+                functionDeclaration.name(),
+                responseType
+        );
+    }
+
+    /**
+     * 여러 Gemini Function Declaration을 전달하고 지정한 Function Call 응답을 변환합니다.
+     *
+     * @param model 상황에 맞게 선택한 Gemini 모델명
+     * @param prompt Gemini에 전달할 입력 프롬프트
+     * @param functionDeclarations Gemini에 제공할 Function Declaration 목록
+     * @param expectedFunctionName 응답으로 기대하는 Function 이름
+     * @param responseType Function Call arguments를 변환할 타입
+     * @param <T> Function Call 결과 타입
+     * @return Function Call arguments를 변환한 결과
+     */
+    public <T> T callFunction(
+            String model,
+            String prompt,
+            List<GeminiFunctionDeclaration> functionDeclarations,
+            String expectedFunctionName,
+            Class<T> responseType
+    ) {
+        validateModel(model);
+        validateFunctionDeclarations(functionDeclarations, expectedFunctionName);
+
         log.info(
                 "[GeminiUtil] Gemini Function Call 시작 | callFunction() - START | model: {}, functionName: {}",
-                properties.model(),
-                functionDeclaration.name()
+                model,
+                expectedFunctionName
         );
 
         GeminiInteractionReqDto request = GeminiInteractionReqDto.create(
-                properties.model(),
+                model,
                 prompt,
-                functionDeclaration
+                functionDeclarations,
+                functionDeclarations.stream().map(GeminiFunctionDeclaration::name).toList()
         );
         HttpEntity<GeminiInteractionReqDto> httpEntity = new HttpEntity<>(request, createHeaders());
 
@@ -82,11 +118,12 @@ public class GeminiUtil {
                     httpEntity,
                     GeminiInteractionResDto.class
             ).getBody();
-            T result = parseFunctionCall(response, functionDeclaration.name(), responseType);
+            T result = parseFunctionCall(response, expectedFunctionName, responseType);
 
             log.info(
-                    "[GeminiUtil] Gemini Function Call 종료 | callFunction() - END | functionName: {}",
-                    functionDeclaration.name()
+                    "[GeminiUtil] Gemini Function Call 종료 | callFunction() - END | model: {}, functionName: {}",
+                    model,
+                    expectedFunctionName
             );
             return result;
         } catch (CustomException exception) {
@@ -95,28 +132,59 @@ public class GeminiUtil {
             if (exception.getStatusCode().value() == HttpStatus.TOO_MANY_REQUESTS.value()) {
                 log.warn(
                         "[GeminiUtil] Gemini API 호출 한도 초과 | functionName: {}, errorLog: {}",
-                        functionDeclaration.name(),
+                        expectedFunctionName,
                         exception.getMessage()
                 );
                 throw new CustomException(GeminiErrorCode.RATE_LIMIT_EXCEEDED);
             }
             log.error(
                     "[GeminiUtil] Gemini API 호출 실패 | functionName: {}, status: {}, errorLog: {}",
-                    functionDeclaration.name(),
+                    expectedFunctionName,
                     exception.getStatusCode().value(),
                     exception.getMessage()
             );
             throw new CustomException(GeminiErrorCode.API_CALL_FAILED);
         } catch (ResourceAccessException exception) {
             if (hasTimeoutCause(exception)) {
-                log.error("[GeminiUtil] Gemini API 응답 시간 초과 | functionName: {}, errorLog: {}", functionDeclaration.name(), exception.getMessage());
+                log.error("[GeminiUtil] Gemini API 응답 시간 초과 | functionName: {}, errorLog: {}", expectedFunctionName, exception.getMessage());
                 throw new CustomException(GeminiErrorCode.API_TIMEOUT);
             }
-            log.error("[GeminiUtil] Gemini API 연결 실패 | functionName: {}, errorLog: {}", functionDeclaration.name(), exception.getMessage());
+            log.error("[GeminiUtil] Gemini API 연결 실패 | functionName: {}, errorLog: {}", expectedFunctionName, exception.getMessage());
             throw new CustomException(GeminiErrorCode.API_CALL_FAILED);
         } catch (RestClientException exception) {
-            log.error("[GeminiUtil] Gemini API 호출 실패 | functionName: {}, errorLog: {}", functionDeclaration.name(), exception.getMessage());
+            log.error("[GeminiUtil] Gemini API 호출 실패 | functionName: {}, errorLog: {}", expectedFunctionName, exception.getMessage());
             throw new CustomException(GeminiErrorCode.API_CALL_FAILED);
+        }
+    }
+
+    private void validateModel(String model) {
+        if (Objects.isNull(model) || model.isBlank()) {
+            throw new IllegalArgumentException("Gemini 모델명은 필수입니다.");
+        }
+    }
+
+    private void validateFunctionDeclarations(
+            List<GeminiFunctionDeclaration> functionDeclarations,
+            String expectedFunctionName
+    ) {
+        if (Objects.isNull(functionDeclarations) || functionDeclarations.isEmpty()) {
+            throw new IllegalArgumentException("Gemini Function Declaration은 하나 이상 필요합니다.");
+        }
+
+        Set<String> functionNames = new HashSet<>();
+        for (GeminiFunctionDeclaration functionDeclaration : functionDeclarations) {
+            if (Objects.isNull(functionDeclaration)
+                    || Objects.isNull(functionDeclaration.name())
+                    || functionDeclaration.name().isBlank()) {
+                throw new IllegalArgumentException("Gemini Function Declaration 이름은 필수입니다.");
+            }
+            if (!functionNames.add(functionDeclaration.name())) {
+                throw new IllegalArgumentException("Gemini Function Declaration 이름은 중복될 수 없습니다.");
+            }
+        }
+
+        if (!functionNames.contains(expectedFunctionName)) {
+            throw new IllegalArgumentException("기대하는 Gemini Function이 tools에 존재하지 않습니다.");
         }
     }
 

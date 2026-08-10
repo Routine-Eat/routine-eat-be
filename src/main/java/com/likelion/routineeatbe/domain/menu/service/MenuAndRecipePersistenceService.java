@@ -159,7 +159,8 @@ public class MenuAndRecipePersistenceService {
                             crawlingDto.ingredientDetails(),
                             metaData.menuType(),
                             metaData.recommendationType(),
-                            metaData.timeRequired()
+                            metaData.timeRequired(),
+                            metaData.thumbnailUrl()
                     );
                 })
                 .toList();

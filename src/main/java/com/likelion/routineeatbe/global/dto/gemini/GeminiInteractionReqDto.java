@@ -1,20 +1,22 @@
 package com.likelion.routineeatbe.global.dto.gemini;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.likelion.routineeatbe.domain.menu.dto.gemini.MenuAndRecipeGeminiFunctionDeclarationDto;
+
 import java.util.List;
 
 public record GeminiInteractionReqDto(
         String model,
         String input,
         Boolean store,
-        List<GeminiFunctionDeclarationDto> tools,
+        List<MenuAndRecipeGeminiFunctionDeclarationDto> tools,
         @JsonProperty("generation_config") GenerationConfig generationConfig
 ) {
 
     public static GeminiInteractionReqDto create(
             String model,
             String input,
-            GeminiFunctionDeclarationDto functionDeclaration
+            MenuAndRecipeGeminiFunctionDeclarationDto functionDeclaration
     ) {
         return new GeminiInteractionReqDto(
                 model,

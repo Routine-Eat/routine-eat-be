@@ -1,7 +1,7 @@
 package com.likelion.routineeatbe.global.util;
 
 import com.likelion.routineeatbe.global.config.GeminiProperties;
-import com.likelion.routineeatbe.global.dto.gemini.GeminiFunctionDeclarationDto;
+import com.likelion.routineeatbe.domain.menu.dto.gemini.MenuAndRecipeGeminiFunctionDeclarationDto;
 import com.likelion.routineeatbe.global.dto.gemini.GeminiInteractionReqDto;
 import com.likelion.routineeatbe.global.dto.gemini.GeminiInteractionResDto;
 import com.likelion.routineeatbe.global.exception.CustomException;
@@ -59,7 +59,7 @@ public class GeminiUtil {
      */
     public <T> T callFunction(
             String prompt,
-            GeminiFunctionDeclarationDto functionDeclaration,
+            MenuAndRecipeGeminiFunctionDeclarationDto functionDeclaration,
             Class<T> responseType
     ) {
         log.info(

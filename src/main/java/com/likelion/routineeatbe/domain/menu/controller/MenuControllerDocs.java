@@ -1,5 +1,6 @@
 package com.likelion.routineeatbe.domain.menu.controller;
 
+import com.likelion.routineeatbe.domain.menu.dto.response.InitMenuAndRecipeFoodIngredientResDto;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -8,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -45,4 +47,30 @@ public interface MenuControllerDocs {
             @Parameter(description = "조회 종료 위치", example = "1000", required = false)
             @RequestParam(required = false) Integer endIdx
     );
+
+    @Operation(
+            summary = "메뉴별 1인분 음식 재료 필요량 초기화",
+            description = """
+                    DB에 저장된 메뉴 정보와 음식 재료 데이터를 Gemini로 분석하여
+                    메뉴별 1인분 음식 재료 필요량을 초기화합니다.
+
+                    - 이미 음식 재료 필요량이 저장된 메뉴는 제외합니다.
+                    - 모든 Gemini 호출이 성공한 후 일괄 저장합니다.
+                    - initCount는 새로 저장된 메뉴 음식 재료 데이터 개수입니다.
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "메뉴별 음식 재료 필요량 초기화 성공",
+                    content = @Content(schema = @Schema(implementation = InitMenuAndRecipeFoodIngredientResDto.class))
+            ),
+            @ApiResponse(responseCode = "409", description = "음식 재료 기준 데이터 없음 또는 초기화 충돌", content = @Content),
+            @ApiResponse(responseCode = "502", description = "Gemini API 호출 또는 응답 오류", content = @Content),
+            @ApiResponse(responseCode = "503", description = "Gemini API 호출 한도 초과", content = @Content),
+            @ApiResponse(responseCode = "504", description = "Gemini API 응답 시간 초과", content = @Content)
+    })
+    @PostMapping("/food-ingredients/init")
+    ResponseEntity<GlobalResponse<InitMenuAndRecipeFoodIngredientResDto>>
+            initMenuAndRecipeFoodIngredients();
 }

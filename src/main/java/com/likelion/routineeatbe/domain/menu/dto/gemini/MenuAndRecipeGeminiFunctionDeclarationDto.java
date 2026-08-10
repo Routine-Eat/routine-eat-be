@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.likelion.routineeatbe.domain.menu.entity.MenuType;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
+import com.likelion.routineeatbe.global.dto.gemini.GeminiFunctionDeclaration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +14,7 @@ public record MenuAndRecipeGeminiFunctionDeclarationDto(
         String name,
         String description,
         Parameters parameters
-) {
+) implements GeminiFunctionDeclaration {
 
     public static final String FUNCTION_NAME = "create_menu_metadata_batch";
 

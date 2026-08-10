@@ -51,7 +51,8 @@ class MenuAndRecipeGeminiServiceTest {
         GeminiProperties properties = new GeminiProperties(
                 "https://example.com/interactions",
                 "test-key",
-                "test-model",
+                "menu-model",
+                "food-ingredient-model",
                 10,
                 new GeminiProperties.Retry(
                         4,
@@ -76,6 +77,7 @@ class MenuAndRecipeGeminiServiceTest {
                 createCrawlingDto("비빔밥")
         );
         given(geminiUtil.callFunction(
+                eq("menu-model"),
                 anyString(),
                 any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
                 eq(MenuAndRecipeMetaDataBatchDto.class)
@@ -90,6 +92,7 @@ class MenuAndRecipeGeminiServiceTest {
         assertThat(result.get("마파두부").thumbnailUrl())
                 .isEqualTo("https://example.com/main.jpg");
         then(geminiUtil).should().callFunction(
+                eq("menu-model"),
                 anyString(),
                 any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
                 eq(MenuAndRecipeMetaDataBatchDto.class)
@@ -97,6 +100,7 @@ class MenuAndRecipeGeminiServiceTest {
 
         ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
         then(geminiUtil).should().callFunction(
+                eq("menu-model"),
                 promptCaptor.capture(),
                 any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
                 eq(MenuAndRecipeMetaDataBatchDto.class)
@@ -115,6 +119,7 @@ class MenuAndRecipeGeminiServiceTest {
         // given
         MenuAndRecipeCrawlingDto crawlingDto = createCrawlingDto("새콤한연어샐러드");
         given(geminiUtil.callFunction(
+                eq("menu-model"),
                 anyString(),
                 any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
                 eq(MenuAndRecipeMetaDataBatchDto.class)
@@ -136,6 +141,7 @@ class MenuAndRecipeGeminiServiceTest {
                 .mapToObj(index -> createCrawlingDto("메뉴" + index))
                 .toList();
         given(geminiUtil.callFunction(
+                eq("menu-model"),
                 anyString(),
                 any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
                 eq(MenuAndRecipeMetaDataBatchDto.class)
@@ -153,6 +159,7 @@ class MenuAndRecipeGeminiServiceTest {
                 crawlingDtos.stream().map(MenuAndRecipeCrawlingDto::menuName).toList()
         );
         then(geminiUtil).should(times(2)).callFunction(
+                eq("menu-model"),
                 anyString(),
                 any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
                 eq(MenuAndRecipeMetaDataBatchDto.class)
@@ -178,6 +185,7 @@ class MenuAndRecipeGeminiServiceTest {
         // given
         MenuAndRecipeCrawlingDto crawlingDto = createCrawlingDto("마파두부");
         given(geminiUtil.callFunction(
+                eq("menu-model"),
                 anyString(),
                 any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
                 eq(MenuAndRecipeMetaDataBatchDto.class)
@@ -191,6 +199,7 @@ class MenuAndRecipeGeminiServiceTest {
         // then
         assertThat(result).containsKey("마파두부");
         then(geminiUtil).should(times(2)).callFunction(
+                eq("menu-model"),
                 anyString(),
                 any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
                 eq(MenuAndRecipeMetaDataBatchDto.class)
@@ -203,6 +212,7 @@ class MenuAndRecipeGeminiServiceTest {
     void Gemini_429_최대_시도_초과_실패() {
         // given
         given(geminiUtil.callFunction(
+                eq("menu-model"),
                 anyString(),
                 any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
                 eq(MenuAndRecipeMetaDataBatchDto.class)
@@ -215,6 +225,7 @@ class MenuAndRecipeGeminiServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(GeminiErrorCode.RATE_LIMIT_EXCEEDED);
         then(geminiUtil).should(times(4)).callFunction(
+                eq("menu-model"),
                 anyString(),
                 any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
                 eq(MenuAndRecipeMetaDataBatchDto.class)
@@ -229,6 +240,7 @@ class MenuAndRecipeGeminiServiceTest {
     void Gemini_일반_오류_재시도_없이_실패() {
         // given
         given(geminiUtil.callFunction(
+                eq("menu-model"),
                 anyString(),
                 any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
                 eq(MenuAndRecipeMetaDataBatchDto.class)
@@ -241,6 +253,7 @@ class MenuAndRecipeGeminiServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(GeminiErrorCode.API_CALL_FAILED);
         then(geminiUtil).should(times(1)).callFunction(
+                eq("menu-model"),
                 anyString(),
                 any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
                 eq(MenuAndRecipeMetaDataBatchDto.class)
@@ -253,6 +266,7 @@ class MenuAndRecipeGeminiServiceTest {
     void Gemini_배치_응답_순번_범위_초과_실패() {
         // given
         given(geminiUtil.callFunction(
+                eq("menu-model"),
                 anyString(),
                 any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
                 eq(MenuAndRecipeMetaDataBatchDto.class)
@@ -278,6 +292,7 @@ class MenuAndRecipeGeminiServiceTest {
     void Gemini_유효하지_않은_조리시간_실패() {
         // given
         given(geminiUtil.callFunction(
+                eq("menu-model"),
                 anyString(),
                 any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
                 eq(MenuAndRecipeMetaDataBatchDto.class)

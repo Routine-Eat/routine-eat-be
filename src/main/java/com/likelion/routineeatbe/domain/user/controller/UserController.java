@@ -10,11 +10,19 @@ import com.likelion.routineeatbe.global.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 public class UserController implements UserContorllerDocs{
     private final UserService userService;
     private final UserFoodIngredientService userFoodIngredientService;
+
+    @Override
+    public GlobalResponse<List<UserResponse>> getAllUsers(){
+        List<UserResponse> userResponseList=userService.getAllUsers();
+        return GlobalResponse.success("사용자 전체 조회에 성공했습니다.",userResponseList);
+    }
 
     @Override
     public GlobalResponse<UserResponse> createUser(CreateUserRequest createUserRequest){

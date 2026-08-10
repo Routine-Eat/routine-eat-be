@@ -12,14 +12,27 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Tag(name = "User", description = "사용자 관리 API")
 @RequestMapping("/api/v1/users")
 public interface UserContorllerDocs {
+
+
+    @Operation(
+            summary = "사용자 목록 조회",
+            description = "전체 사용자를 조회합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "사용자 리스트 조회 성공"
+            ),
+    })
+    @GetMapping
+    GlobalResponse<List<UserResponse>> getAllUsers();
 
     @Operation(
             summary = "사용자 생성",

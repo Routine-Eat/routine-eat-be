@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -33,5 +35,13 @@ public class UserService {
         User user=User.createUser(loginNumber);
         User savedUser=userRepository.save(user);
         return UserResponse.fromUserEntity(savedUser);
+    }
+
+    @Transactional
+    public List<UserResponse> getAllUsers(){
+        List<User> users=userRepository.findAll();
+        return users.stream()
+                .map(UserResponse::fromUserEntity)
+                .toList();
     }
 }

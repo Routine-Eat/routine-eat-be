@@ -1,0 +1,56 @@
+package com.likelion.routineeatbe.domain.user.dto.response;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
+import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
+import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
+
+import java.util.List;
+
+@Builder
+@Schema(title = "UserFoodIngredientResponse: 사용자-식재료 관계 응답 DTO")
+public record UserFoodIngredientResponse(
+        UserFoodIngredientType userFoodIngredientType,
+        List<UserFoodIngredientDto> foodIngredientList // JSON 키값과 동일하게 맞춤
+) {
+    // 전체 응답 DTO 포장 함수
+    // foodIngredientList는 UserFoodIngredientDto에서 포장
+    public static UserFoodIngredientResponse of(UserFoodIngredientType type, List<UserFoodIngredient> userFoodIngredients) {
+        List<UserFoodIngredientDto> dtos = userFoodIngredients.stream()
+                .map(UserFoodIngredientDto::from)
+                .toList();
+
+        return new UserFoodIngredientResponse(type, dtos);
+    }
+
+    // 내부 식재료 DTO
+    // userFoodIngredient에 있는 foodIngredient 데이터 뽑기
+    // 필요한 데이터로만 구성
+    // 보조 단위는 없는 경우 대비 예외처리
+    @JsonInclude(JsonInclude.Include.NON_NULL) //보유량 없어서 null 나오면 응답에서 제거
+    public record UserFoodIngredientDto(
+            Long foodIngredientId,
+            String foodIngredientName,
+            String foodIngredientType,
+            String foodIngredientPrimaryUnit,
+            String foodIngredientSecondaryUnit,
+            Double primaryAmountValue,
+            Double secondaryAmountValue
+    ) {
+        public static UserFoodIngredientDto from(UserFoodIngredient userFoodIngredient) {
+            FoodIngredient foodIngredient = userFoodIngredient.getFoodIngredient();
+
+            return new UserFoodIngredientDto(
+                    foodIngredient.getId(),
+                    foodIngredient.getName(),
+                    foodIngredient.getType().name(),
+                    foodIngredient.getPrimaryUnit().name(),
+                    foodIngredient.getSecondaryUnit() != null ? foodIngredient.getSecondaryUnit().name() : null,
+                    userFoodIngredient.getPrimaryAmountValue(),
+                    userFoodIngredient.getSecondaryAmountValue()
+            );
+        }
+    }
+}

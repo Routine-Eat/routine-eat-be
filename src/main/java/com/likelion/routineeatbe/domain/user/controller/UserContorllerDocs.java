@@ -1,6 +1,8 @@
 package com.likelion.routineeatbe.domain.user.controller;
 
+import com.likelion.routineeatbe.domain.user.dto.request.CreateUserFoodIngredientRequest;
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserRequest;
+import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
 import com.likelion.routineeatbe.domain.user.dto.response.UserResponse;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,5 +40,33 @@ public interface UserContorllerDocs {
     GlobalResponse<UserResponse> createUser(
             @Valid
             @RequestBody CreateUserRequest createUserRequest
+    );
+
+    @Operation(
+            summary = "사용자-식재료 관계 생성",
+            description = """
+                    relationType과 그에 해당하는 식재료 리스트를 전달하여 DB에 등록
+                    relationType : 
+                        1. 알러지 (ALLERGY)
+                        2. 비선호 (DISLIKE)
+                        3. 보유 (OWN)
+                        4. 예약 (RESERVATION)
+                    예약은 장보기에 저장 용도
+                    식재료 리스트는 OWN만 주/부 보유량 포함하여 날릴 수 있음, 나머지는 X
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "사용자-식재료 관계 생성 성공"
+            ),
+            @ApiResponse(responseCode = "4041", description = "잘못된 사용자 id 형식", content = @Content),
+            @ApiResponse(responseCode = "4042", description = "잘못된 식재료 id 포함", content = @Content),
+    })
+    @PostMapping("/{userId}/food-ingredients")
+    GlobalResponse<UserFoodIngredientResponse> createUserFoodIngredient(
+            @PathVariable("userId") Long userId,
+            @Valid
+            @RequestBody CreateUserFoodIngredientRequest createUserFoodIngredientRequest
     );
 }

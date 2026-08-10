@@ -2,12 +2,13 @@ package com.likelion.routineeatbe.global.dto.gemini;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.likelion.routineeatbe.domain.menu.dto.gemini.MenuAndRecipeGeminiFunctionDeclarationDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-class GeminiFunctionDeclarationDtoTest {
+class MenuAndRecipeGeminiFunctionDeclarationDtoTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -15,7 +16,7 @@ class GeminiFunctionDeclarationDtoTest {
     @DisplayName("배치 메뉴 배열과 메타데이터 스키마를 Gemini Function Declaration JSON으로 생성한다")
     void 배치_메뉴_배열_메타데이터_스키마_직렬화_성공() {
         // given
-        GeminiFunctionDeclarationDto functionDeclaration = GeminiFunctionDeclarationDto.create(10);
+        MenuAndRecipeGeminiFunctionDeclarationDto functionDeclaration = MenuAndRecipeGeminiFunctionDeclarationDto.create(10);
 
         // when
         JsonNode jsonNode = objectMapper.valueToTree(functionDeclaration);

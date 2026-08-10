@@ -1,11 +1,11 @@
-package com.likelion.routineeatbe.domain.menu.service;
+package com.likelion.routineeatbe.domain.menu.service.gemini;
 
 import com.likelion.routineeatbe.domain.menu.dto.MenuAndRecipeMetaDataBatchDto;
 import com.likelion.routineeatbe.domain.menu.dto.MenuAndRecipeMetaDataBatchDto.MenuMetaData;
 import com.likelion.routineeatbe.domain.menu.dto.MenuAndRecipeMetaDataDto;
 import com.likelion.routineeatbe.domain.menu.dto.response.MenuAndRecipeCrawlingDto;
 import com.likelion.routineeatbe.global.config.GeminiProperties;
-import com.likelion.routineeatbe.global.dto.gemini.GeminiFunctionDeclarationDto;
+import com.likelion.routineeatbe.domain.menu.dto.gemini.MenuAndRecipeGeminiFunctionDeclarationDto;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import com.likelion.routineeatbe.global.exception.GeminiErrorCode;
 import com.likelion.routineeatbe.global.util.GeminiRetryDelayStrategy;
@@ -54,10 +54,13 @@ public class MenuAndRecipeGeminiService {
                 crawlingDtos.size()
         );
 
+        // 1. 중복된 메뉴명이 있는지 검증한다. 이후 크롤링해온 데이터를 Batch 단위로 분할한다.
         validateUniqueMenuNames(crawlingDtos);
         Map<String, MenuAndRecipeMetaDataDto> result = new LinkedHashMap<>();
         List<List<MenuAndRecipeCrawlingDto>> batches = partition(crawlingDtos);
 
+        // 2. 배치 크롤링 데이터를 한번에 Gemini 요청을 보내고, 그 결과값을 각 메뉴별 sequence 값으로 검증하고 key: 메뉴명 / value: 메뉴별 메타데이터 형식으로 변환한다.
+        // 메뉴별 sequence 값은 메뉴명 앞에 붙어있는 메뉴 번호를 사용한다.
         for (int index = 0; index < batches.size(); index++) {
             List<MenuAndRecipeCrawlingDto> batch = batches.get(index);
             MenuAndRecipeMetaDataBatchDto response = callBatchWithRetry(batch, index + 1);
@@ -122,7 +125,7 @@ public class MenuAndRecipeGeminiService {
             try {
                 MenuAndRecipeMetaDataBatchDto result = geminiUtil.callFunction(
                         createBatchPrompt(batch),
-                        GeminiFunctionDeclarationDto.create(),
+                        MenuAndRecipeGeminiFunctionDeclarationDto.create(batch.size()),
                         MenuAndRecipeMetaDataBatchDto.class
                 );
                 log.debug(
@@ -162,7 +165,8 @@ public class MenuAndRecipeGeminiService {
 
         StringBuilder prompt = new StringBuilder("""
                 다음 메뉴 정보를 각각 분석하여 메뉴 메타데이터를 생성하세요.
-                입력 메뉴마다 결과를 정확히 하나씩 생성하고, 입력 순서와 menuName 원문을 변경하지 마세요.
+                입력 메뉴마다 결과를 정확히 하나씩 생성하세요.
+                각 결과의 sequence에는 메뉴 앞에 표시된 원본 순번을 그대로 사용하고, menuName은 응답에 포함하지 마세요.
 
                 메뉴 종류는 KOREAN, WESTERN, JAPANESE, CHINESE 중 하나로 분류하세요.
                 조리시간은 재료 준비부터 조리 완료까지 필요한 시간을 1분 이상 1440분 이하의 정수로 계산하세요.
@@ -253,15 +257,17 @@ public class MenuAndRecipeGeminiService {
                 batch.size()
         );
 
-        Map<String, MenuMetaData> metaDataByMenuName = validateBatchResponse(batch, response);
-        for (MenuAndRecipeCrawlingDto crawlingDto : batch) {
-            MenuMetaData metaData = metaDataByMenuName.get(crawlingDto.menuName());
+        Map<Integer, MenuMetaData> metaDataBySequence = validateBatchResponse(batch, response);
+        for (int index = 0; index < batch.size(); index++) {
+            MenuAndRecipeCrawlingDto crawlingDto = batch.get(index);
+            MenuMetaData metaData = metaDataBySequence.get(index + 1);
             result.put(
                     crawlingDto.menuName(),
                     MenuAndRecipeMetaDataDto.create(
                             metaData.menuType(),
                             metaData.recommendationType(),
-                            metaData.timeRequired()
+                            metaData.timeRequired(),
+                            crawlingDto.mainImageUrl()
                     )
             );
         }
@@ -273,13 +279,13 @@ public class MenuAndRecipeGeminiService {
     }
 
     /**
-     * Gemini 배치 응답의 개수, 메뉴명 및 메타데이터 유효성을 검증합니다.
+     * Gemini 배치 응답의 개수, 메뉴 순번 및 메타데이터 유효성을 검증합니다.
      *
      * @param batch 원본 메뉴 배치
      * @param response Gemini 배치 응답
-     * @return 메뉴명 기준으로 구성한 검증 완료 메타데이터 Map
+     * @return 메뉴 순번 기준으로 구성한 검증 완료 메타데이터 Map
      */
-    private Map<String, MenuMetaData> validateBatchResponse(
+    private Map<Integer, MenuMetaData> validateBatchResponse(
             List<MenuAndRecipeCrawlingDto> batch,
             MenuAndRecipeMetaDataBatchDto response
     ) {
@@ -304,42 +310,20 @@ public class MenuAndRecipeGeminiService {
             throw new CustomException(GeminiErrorCode.INVALID_METADATA);
         }
 
-        Set<String> expectedMenuNames = new HashSet<>();
-        batch.forEach(crawlingDto -> expectedMenuNames.add(crawlingDto.menuName()));
-        Map<String, MenuMetaData> result = new LinkedHashMap<>();
+        Map<Integer, MenuMetaData> result = new LinkedHashMap<>();
 
         for (int index = 0; index < response.menus().size(); index++) {
             MenuMetaData metaData = response.menus().get(index);
-            validateMetaData(metaData, index);
+            validateMetaData(metaData, index, batch.size());
 
-            if (!expectedMenuNames.contains(metaData.menuName())) {
+            if (result.putIfAbsent(metaData.sequence(), metaData) != null) {
                 log.warn(
-                        "[MenuAndRecipeGeminiService] Gemini 배치 응답 검증 실패 | reason: UNEXPECTED_MENU_NAME | responseIndex: {}, actualMenuName: {}, expectedMenuNames: {}",
+                        "[MenuAndRecipeGeminiService] Gemini 배치 응답 검증 실패 | reason: DUPLICATE_SEQUENCE | responseIndex: {}, duplicateSequence: {}",
                         index,
-                        metaData.menuName(),
-                        expectedMenuNames
+                        metaData.sequence()
                 );
                 throw new CustomException(GeminiErrorCode.INVALID_METADATA);
             }
-            if (result.putIfAbsent(metaData.menuName(), metaData) != null) {
-                log.warn(
-                        "[MenuAndRecipeGeminiService] Gemini 배치 응답 검증 실패 | reason: DUPLICATE_MENU_NAME | responseIndex: {}, duplicateMenuName: {}",
-                        index,
-                        metaData.menuName()
-                );
-                throw new CustomException(GeminiErrorCode.INVALID_METADATA);
-            }
-        }
-
-        if (!result.keySet().equals(expectedMenuNames)) {
-            Set<String> missingMenuNames = new HashSet<>(expectedMenuNames);
-            missingMenuNames.removeAll(result.keySet());
-            log.warn(
-                    "[MenuAndRecipeGeminiService] Gemini 배치 응답 검증 실패 | reason: MISSING_MENU_NAME | missingMenuNames: {}, actualMenuNames: {}",
-                    missingMenuNames,
-                    result.keySet()
-            );
-            throw new CustomException(GeminiErrorCode.INVALID_METADATA);
         }
 
         log.debug(
@@ -354,8 +338,9 @@ public class MenuAndRecipeGeminiService {
      *
      * @param metaData 검증할 메뉴 메타데이터
      * @param responseIndex 배치 응답 내부 순번
+     * @param batchSize 유효한 메뉴 순번의 최댓값
      */
-    private void validateMetaData(MenuMetaData metaData, int responseIndex) {
+    private void validateMetaData(MenuMetaData metaData, int responseIndex, int batchSize) {
         log.debug(
                 "[MenuAndRecipeGeminiService] 메뉴 메타데이터 검증 시작 | validateMetaData() - START | responseIndex: {}",
                 responseIndex
@@ -368,44 +353,47 @@ public class MenuAndRecipeGeminiService {
             );
             throw new CustomException(GeminiErrorCode.INVALID_METADATA);
         }
-        if (Objects.isNull(metaData.menuName()) || metaData.menuName().isBlank()) {
+        if (Objects.isNull(metaData.sequence())
+                || metaData.sequence() < 1
+                || metaData.sequence() > batchSize) {
             log.warn(
-                    "[MenuAndRecipeGeminiService] 메뉴 메타데이터 검증 실패 | reason: INVALID_MENU_NAME | responseIndex: {}, menuName: {}",
+                    "[MenuAndRecipeGeminiService] 메뉴 메타데이터 검증 실패 | reason: INVALID_SEQUENCE | responseIndex: {}, sequence: {}, batchSize: {}",
                     responseIndex,
-                    metaData.menuName()
+                    metaData.sequence(),
+                    batchSize
             );
             throw new CustomException(GeminiErrorCode.INVALID_METADATA);
         }
         if (Objects.isNull(metaData.menuType())) {
             log.warn(
-                    "[MenuAndRecipeGeminiService] 메뉴 메타데이터 검증 실패 | reason: MENU_TYPE_NULL | responseIndex: {}, menuName: {}",
+                    "[MenuAndRecipeGeminiService] 메뉴 메타데이터 검증 실패 | reason: MENU_TYPE_NULL | responseIndex: {}, sequence: {}",
                     responseIndex,
-                    metaData.menuName()
+                    metaData.sequence()
             );
             throw new CustomException(GeminiErrorCode.INVALID_METADATA);
         }
         if (Objects.isNull(metaData.recommendationType())) {
             log.warn(
-                    "[MenuAndRecipeGeminiService] 메뉴 메타데이터 검증 실패 | reason: RECOMMENDATION_TYPE_NULL | responseIndex: {}, menuName: {}",
+                    "[MenuAndRecipeGeminiService] 메뉴 메타데이터 검증 실패 | reason: RECOMMENDATION_TYPE_NULL | responseIndex: {}, sequence: {}",
                     responseIndex,
-                    metaData.menuName()
+                    metaData.sequence()
             );
             throw new CustomException(GeminiErrorCode.INVALID_METADATA);
         }
         if (Objects.isNull(metaData.timeRequired())) {
             log.warn(
-                    "[MenuAndRecipeGeminiService] 메뉴 메타데이터 검증 실패 | reason: TIME_REQUIRED_NULL | responseIndex: {}, menuName: {}",
+                    "[MenuAndRecipeGeminiService] 메뉴 메타데이터 검증 실패 | reason: TIME_REQUIRED_NULL | responseIndex: {}, sequence: {}",
                     responseIndex,
-                    metaData.menuName()
+                    metaData.sequence()
             );
             throw new CustomException(GeminiErrorCode.INVALID_METADATA);
         }
         if (metaData.timeRequired() < MIN_TIME_REQUIRED
                 || metaData.timeRequired() > MAX_TIME_REQUIRED) {
             log.warn(
-                    "[MenuAndRecipeGeminiService] 메뉴 메타데이터 검증 실패 | reason: TIME_REQUIRED_OUT_OF_RANGE | responseIndex: {}, menuName: {}, timeRequired: {}, min: {}, max: {}",
+                    "[MenuAndRecipeGeminiService] 메뉴 메타데이터 검증 실패 | reason: TIME_REQUIRED_OUT_OF_RANGE | responseIndex: {}, sequence: {}, timeRequired: {}, min: {}, max: {}",
                     responseIndex,
-                    metaData.menuName(),
+                    metaData.sequence(),
                     metaData.timeRequired(),
                     MIN_TIME_REQUIRED,
                     MAX_TIME_REQUIRED
@@ -414,9 +402,9 @@ public class MenuAndRecipeGeminiService {
         }
 
         log.debug(
-                "[MenuAndRecipeGeminiService] 메뉴 메타데이터 검증 종료 | validateMetaData() - END | responseIndex: {}, menuName: {}",
+                "[MenuAndRecipeGeminiService] 메뉴 메타데이터 검증 종료 | validateMetaData() - END | responseIndex: {}, sequence: {}",
                 responseIndex,
-                metaData.menuName()
+                metaData.sequence()
         );
     }
 

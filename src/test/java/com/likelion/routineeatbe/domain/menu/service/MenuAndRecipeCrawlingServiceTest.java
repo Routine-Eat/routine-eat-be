@@ -9,10 +9,10 @@ import static org.mockito.BDDMockito.then;
 import com.likelion.routineeatbe.domain.menu.crawling.MenuAndRecipeCrawler;
 import com.likelion.routineeatbe.domain.menu.dto.MenuAndRecipeMetaDataDto;
 import com.likelion.routineeatbe.domain.menu.dto.response.FoodSafetyKoreaRecipeApiResponseDto;
-import com.likelion.routineeatbe.domain.menu.dto.response.MenuAndRecipeCrawlingDto;
 import com.likelion.routineeatbe.domain.menu.entity.MenuType;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.menu.exception.MenuCrawlingErrorCode;
+import com.likelion.routineeatbe.domain.menu.service.gemini.MenuAndRecipeGeminiService;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import com.likelion.routineeatbe.global.exception.GeminiErrorCode;
 import java.util.List;
@@ -139,7 +139,8 @@ class MenuAndRecipeCrawlingServiceTest {
                 MenuAndRecipeMetaDataDto.create(
                         MenuType.KOREAN,
                         RecommendationType.DEFAULT,
-                        30
+                        30,
+                        "https://example.com/main.jpg"
                 )
         );
     }
@@ -150,6 +151,7 @@ class MenuAndRecipeCrawlingServiceTest {
                         .menuName(menuName)
                         .calories("100")
                         .ingredientDetails("테스트 재료")
+                        .mainImageUrl("https://example.com/main.jpg")
                         .manual01("테스트 조리 단계")
                         .build();
 

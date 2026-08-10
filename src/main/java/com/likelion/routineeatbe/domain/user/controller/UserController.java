@@ -4,6 +4,7 @@ import com.likelion.routineeatbe.domain.user.dto.request.CreateUserFoodIngredien
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserRequest;
 import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
 import com.likelion.routineeatbe.domain.user.dto.response.UserResponse;
+import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.domain.user.service.UserFoodIngredientService;
 import com.likelion.routineeatbe.domain.user.service.UserService;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
@@ -14,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-public class UserController implements UserContorllerDocs{
+public class UserController implements UserControllerDocs {
     private final UserService userService;
     private final UserFoodIngredientService userFoodIngredientService;
 
@@ -22,6 +23,14 @@ public class UserController implements UserContorllerDocs{
     public GlobalResponse<List<UserResponse>> getAllUsers(){
         List<UserResponse> userResponseList=userService.getAllUsers();
         return GlobalResponse.success("사용자 전체 조회에 성공했습니다.",userResponseList);
+    }
+
+    @Override
+    public GlobalResponse<UserFoodIngredientResponse> getUserFoodIngredients(
+            Long userId, UserFoodIngredientType relationType){
+        UserFoodIngredientResponse userFoodIngredientResponse=
+                userFoodIngredientService.getUserFoodIngredients(userId,relationType);
+        return GlobalResponse.success("사용자와 관련된 식재료가 성공적으로 조회되었습니다.",userFoodIngredientResponse);
     }
 
     @Override

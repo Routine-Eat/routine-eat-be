@@ -6,6 +6,7 @@ import com.likelion.routineeatbe.domain.user.dto.request.CreateUserFoodIngredien
 import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
 import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
+import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.domain.user.exception.UserFoodIngredientErrorCode;
 import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
@@ -75,5 +76,25 @@ public class UserFoodIngredientService {
         List<UserFoodIngredient> savedUserFoodIngredients = userFoodIngredientRepository.saveAll(userFoodIngredients);
         /* 5. 저장한 객체 리스트 UserFoodIngredientResponse.of로 포장 */
         return UserFoodIngredientResponse.of(request.relationType(),savedUserFoodIngredients);
+    }
+
+    @Transactional(readOnly = true)
+    public UserFoodIngredientResponse getUserFoodIngredients(Long userId, UserFoodIngredientType relationType){
+
+        // 1. 사용자 존재 유무 확인
+        if (!userRepository.existsById(userId)) {
+            throw new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER);
+        }
+
+        // 2. relationType 전달 여부에 따른 조건 조회
+        List<UserFoodIngredient> userFoodIngredients;
+        if (relationType != null) {
+            userFoodIngredients = userFoodIngredientRepository.findByUserIdAndRelationType(userId, relationType);
+        } else {
+            userFoodIngredients = userFoodIngredientRepository.findByUserId(userId);
+        }
+
+        // 3. DTO 변환 및 반환 (relationType이 null이면 DTO의 type 필드도 null로 나옴)
+        return UserFoodIngredientResponse.of(relationType, userFoodIngredients);
     }
 }

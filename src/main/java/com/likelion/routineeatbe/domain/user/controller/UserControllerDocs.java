@@ -4,22 +4,23 @@ import com.likelion.routineeatbe.domain.user.dto.request.CreateUserFoodIngredien
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserRequest;
 import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
 import com.likelion.routineeatbe.domain.user.dto.response.UserResponse;
+import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @Tag(name = "User", description = "사용자 관리 API")
 @RequestMapping("/api/v1/users")
-public interface UserContorllerDocs {
-
+public interface UserControllerDocs {
 
     @Operation(
             summary = "사용자 목록 조회",
@@ -33,6 +34,32 @@ public interface UserContorllerDocs {
     })
     @GetMapping
     GlobalResponse<List<UserResponse>> getAllUsers();
+
+    @Operation(
+            summary = "사용자-식재료 목록 조회",
+            description = """
+                    사용자와 관련된 식재료를 조회합니다.
+                    relationType : 
+                        1. 알러지 (ALLERGY)
+                        2. 비선호 (DISLIKE)
+                        3. 보유 (OWN)
+                        4. 예약 (RESERVATION)
+                    관계를 전달하지 않을 시 관련된 식재료 전체 조회
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "사용자-식재료 관계 리스트 조회 성공"
+            ),
+    })
+    @GetMapping("/{userId}/food-ingredients")
+    GlobalResponse<UserFoodIngredientResponse> getUserFoodIngredients(
+            @NotNull @PathVariable("userId") Long userId,
+            @RequestParam(name = "type", required = false)
+            @Parameter(description = "관계 타입 (선택)")
+            UserFoodIngredientType relationType
+    );
 
     @Operation(
             summary = "사용자 생성",

@@ -11,15 +11,19 @@ import java.util.List;
 
 @Builder
 @Schema(title = "UserFoodIngredientResponse: 사용자-식재료 관계 응답 DTO")
+@JsonInclude(JsonInclude.Include.NON_NULL) // null인 필드는 JSON 응답에서 자동 제외
 public record UserFoodIngredientResponse(
         UserFoodIngredientType userFoodIngredientType,
-        List<UserFoodIngredientDto> foodIngredientList // JSON 키값과 동일하게 맞춤
+        List<UserFoodIngredientDto> foodIngredientList
 ) {
     // 전체 응답 DTO 포장 함수
     // foodIngredientList는 UserFoodIngredientDto에서 포장
     public static UserFoodIngredientResponse of(UserFoodIngredientType type, List<UserFoodIngredient> userFoodIngredients) {
+        // type이 null(전체 조회)일 때만 항목별 relationType을 포함하도록 flag 설정
+        boolean includeRelationTypeInItems = (type == null);
+
         List<UserFoodIngredientDto> dtos = userFoodIngredients.stream()
-                .map(UserFoodIngredientDto::from)
+                .map(entity -> UserFoodIngredientDto.from(entity, includeRelationTypeInItems))
                 .toList();
 
         return new UserFoodIngredientResponse(type, dtos);
@@ -34,18 +38,20 @@ public record UserFoodIngredientResponse(
             Long foodIngredientId,
             String foodIngredientName,
             String foodIngredientType,
+            UserFoodIngredientType relationType,
             String foodIngredientPrimaryUnit,
             String foodIngredientSecondaryUnit,
             Double primaryAmountValue,
             Double secondaryAmountValue
     ) {
-        public static UserFoodIngredientDto from(UserFoodIngredient userFoodIngredient) {
+        public static UserFoodIngredientDto from(UserFoodIngredient userFoodIngredient,boolean includeRelationType) {
             FoodIngredient foodIngredient = userFoodIngredient.getFoodIngredient();
 
             return new UserFoodIngredientDto(
                     foodIngredient.getId(),
                     foodIngredient.getName(),
                     foodIngredient.getType().name(),
+                    includeRelationType ? userFoodIngredient.getRelationType() : null,
                     foodIngredient.getPrimaryUnit().name(),
                     foodIngredient.getSecondaryUnit() != null ? foodIngredient.getSecondaryUnit().name() : null,
                     userFoodIngredient.getPrimaryAmountValue(),

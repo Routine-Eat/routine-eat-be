@@ -38,12 +38,12 @@ public interface UserControllerDocs {
     @Operation(
             summary = "사용자-식재료 목록 조회",
             description = """
-                    사용자와 관련된 식재료를 조회합니다.
-                    relationType : 
-                        1. 알러지 (ALLERGY)
-                        2. 비선호 (DISLIKE)
-                        3. 보유 (OWN)
-                        4. 예약 (RESERVATION)
+                    사용자와 관련된 식재료를 조회합니다. \n
+                    relationType : \n
+                        1. 알러지 (ALLERGY) \n
+                        2. 비선호 (DISLIKE) \n
+                        3. 보유 (OWN) \n
+                        4. 예약 (RESERVATION) \n
                     관계를 전달하지 않을 시 관련된 식재료 전체 조회
                     """
     )
@@ -64,7 +64,7 @@ public interface UserControllerDocs {
     @Operation(
             summary = "사용자 생성",
             description = """
-                    loginNumber을 입력하면 자동으로 중복 검사 후 실행됩니다
+                    loginNumber을 입력하면 자동으로 중복 검사 후 실행됩니다. \n
                     DB에 중복된 값이 없다면 사용자가 생성됩니다
                     """
     )
@@ -85,13 +85,13 @@ public interface UserControllerDocs {
     @Operation(
             summary = "사용자-식재료 관계 생성",
             description = """
-                    relationType과 그에 해당하는 식재료 리스트를 전달하여 DB에 등록
-                    relationType : 
-                        1. 알러지 (ALLERGY)
-                        2. 비선호 (DISLIKE)
-                        3. 보유 (OWN)
-                        4. 예약 (RESERVATION)
-                    예약은 장보기에 저장 용도
+                    relationType과 그에 해당하는 식재료 리스트를 전달하여 DB에 등록 \n
+                    relationType : \n
+                        1. 알러지 (ALLERGY) \n
+                        2. 비선호 (DISLIKE) \n
+                        3. 보유 (OWN) \n
+                        4. 예약 (RESERVATION) \n
+                    예약은 장보기에 저장 용도 \n
                     식재료 리스트는 OWN만 주/부 보유량 포함하여 날릴 수 있음, 나머지는 X
                     """
     )

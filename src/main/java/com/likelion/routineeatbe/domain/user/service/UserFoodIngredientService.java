@@ -78,6 +78,13 @@ public class UserFoodIngredientService {
         return UserFoodIngredientResponse.of(request.relationType(),savedUserFoodIngredients);
     }
 
+    /**
+     * - 사용자 id 기반 관계 테이블 조회
+     * - 관계 타입 필터링, 없으면 전체 조회
+     * @param userId
+     * @param relationType
+     * @return
+     */
     @Transactional(readOnly = true)
     public UserFoodIngredientResponse getUserFoodIngredients(Long userId, UserFoodIngredientType relationType){
 

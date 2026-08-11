@@ -50,4 +50,12 @@ public class UserFoodIngredient extends BaseTimeEntity {
                 .build();
     }
 
+    public void updateAmountValue(Double primaryAmountValue,Double secondaryAmountValue){
+        this.primaryAmountValue=primaryAmountValue;
+        // secondaryAmountValue가 입력되었을 때만 덮어쓰기 (null이면 기존 값 유지)
+        if (secondaryAmountValue != null) {
+            this.secondaryAmountValue = secondaryAmountValue;
+        }
+    }
+
 }

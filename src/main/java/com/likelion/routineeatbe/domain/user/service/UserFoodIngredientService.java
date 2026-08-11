@@ -4,6 +4,7 @@ import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.foodIngredient.repository.FoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserFoodIngredientRequest;
 import com.likelion.routineeatbe.domain.user.dto.request.DeleteUserFoodIngredientRequest;
+import com.likelion.routineeatbe.domain.user.dto.request.UpdateOwnFoodIngredientAmountRequest;
 import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
 import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
@@ -31,6 +32,7 @@ public class UserFoodIngredientService {
     private final UserFoodIngredientRepository userFoodIngredientRepository;
 
     /**
+     * - 사용자-식재료 관계 생성
      * 1. userId로 유저 데이터 조회
      * 2. request에서 받은 foodIngredientList로 식재료 id 리스트 뽑기
      *  2-1. id 리스트로 식재료 데이터 가져오기
@@ -118,5 +120,57 @@ public class UserFoodIngredientService {
                 request.relationType(),
                 request.foodIngredientList()
         );
+    }
+
+    /**
+     * - 사용자 식재료 보유량 수정
+     * 1. userId로 유저 데이터 조회
+     *  1-1. request에서 받은 foodIngredientList로 식재료 id 리스트 뽑기
+     * 2. 해당 사용자의 OWN 관계 엔티티 조회
+     * 3. 요청 수와 조회 결과 수가 다를 경우 검증 예외 처리
+     * 4. 빠른 탐색을 위한 Map화
+     * 5. Dirty Checking을 이용한 값 업데이트
+     * @param userId
+     * @param request
+     * @return
+     */
+    @Transactional
+    public UserFoodIngredientResponse updateOwnFoodIngredientAmount(Long userId, UpdateOwnFoodIngredientAmountRequest request){
+        User user=userRepository.findById(userId) /* 1. userId로 유저 데이터 조회 */
+                .orElseThrow(() -> new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER));
+
+        /* 1-1. request에서 받은 foodIngredientList로 식재료 id 리스트 뽑기 */
+        List<Long> requestedIds = request.foodIngredientList().stream()
+                .map(UpdateOwnFoodIngredientAmountRequest.FoodIngredientDto::foodIngredientId)
+                .toList();
+
+        // 2. 해당 사용자의 OWN 관계 엔티티 조회
+        List<UserFoodIngredient> userFoodIngredients = userFoodIngredientRepository
+                .findByUserIdAndRelationTypeAndFoodIngredient_IdIn(
+                        userId,
+                        UserFoodIngredientType.OWN,
+                        requestedIds
+                );
+        // 3. 요청 수와 조회 결과 수가 다를 경우 검증 예외 처리
+        if (userFoodIngredients.size() != request.foodIngredientList().size()) {
+            throw new IllegalArgumentException("보유 중이지 않거나 존재하지 않는 식재료가 포함되어 있습니다.");
+        }
+        // 4. 빠른 탐색을 위한 Map화
+        Map<Long, UpdateOwnFoodIngredientAmountRequest.FoodIngredientDto> dtoMap = request.foodIngredientList().stream()
+                .collect(Collectors.toMap(
+                        UpdateOwnFoodIngredientAmountRequest.FoodIngredientDto::foodIngredientId,
+                        dto -> dto,
+                        (existing, replacement) -> replacement // 중복 ID 들어올 경우 마지막 값 우선
+                ));
+
+        // 5. Dirty Checking을 이용한 값 업데이트
+        userFoodIngredients.forEach(entity -> {
+            var dto = dtoMap.get(entity.getFoodIngredient().getId());
+            if (dto != null) {
+                entity.updateAmountValue(dto.primaryAmountValue(), dto.secondaryAmountValue());
+            }
+        });
+
+        return UserFoodIngredientResponse.of(UserFoodIngredientType.OWN,userFoodIngredients);
     }
 }

@@ -3,6 +3,7 @@ package com.likelion.routineeatbe.domain.user.controller;
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserFoodIngredientRequest;
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserRequest;
 import com.likelion.routineeatbe.domain.user.dto.request.DeleteUserFoodIngredientRequest;
+import com.likelion.routineeatbe.domain.user.dto.request.UpdateOwnFoodIngredientAmountRequest;
 import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
 import com.likelion.routineeatbe.domain.user.dto.response.UserResponse;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
@@ -110,6 +111,29 @@ public interface UserControllerDocs {
             @PathVariable("userId") Long userId,
             @Valid
             @RequestBody CreateUserFoodIngredientRequest createUserFoodIngredientRequest
+    );
+
+    @Operation(
+            summary = "사용자-식재료 보유 관계 보유량 수정",
+            description = """
+                    1. 사용자가 보유(OWN)하고 있는 식재료 id와 수정할 보유량 값 전달 \n
+                    2. 주 보유량 값 필수, 부 보유량 값은 선택
+                    3. 부 보유량은 안 보내면 기존 값 유지, 보내야 덮어씌워짐
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "203",
+                    description = "사용자-식재료 보유 관계 보유량 수정 성공"
+            ),
+            @ApiResponse(responseCode = "4041", description = "잘못된 사용자 id 형식", content = @Content),
+            @ApiResponse(responseCode = "4042", description = "잘못된 식재료 id 포함", content = @Content),
+    })
+    @PatchMapping("/{userId}/food-ingredients/amount")
+    GlobalResponse<UserFoodIngredientResponse> updateOwnFoodIngredientAmount(
+            @PathVariable("userId") Long userId,
+            @Valid
+            @RequestBody UpdateOwnFoodIngredientAmountRequest request
     );
 
     @Operation(

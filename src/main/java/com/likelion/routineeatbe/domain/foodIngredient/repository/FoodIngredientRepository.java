@@ -21,4 +21,8 @@ public interface FoodIngredientRepository extends JpaRepository<FoodIngredient,L
      */
     List<FoodIngredient> findAllByOrderByTypeAscIdAsc();
 
+    List<FoodIngredient> findByAllergyTrue();
+
+    List<FoodIngredient> findByDislikeTrue();
+
 }

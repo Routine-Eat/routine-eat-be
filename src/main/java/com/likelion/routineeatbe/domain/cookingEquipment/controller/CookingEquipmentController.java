@@ -1,6 +1,7 @@
 package com.likelion.routineeatbe.domain.cookingEquipment.controller;
 
 import com.likelion.routineeatbe.domain.cookingEquipment.dto.response.CookingEquipmentResponse;
+import com.likelion.routineeatbe.domain.cookingEquipment.entity.CookingEquipmentSymbol;
 import com.likelion.routineeatbe.domain.cookingEquipment.service.CookingEquipmentService;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +21,8 @@ public class CookingEquipmentController implements CookingEquipmentControllerDoc
     private final JdbcTemplate jdbcTemplate;
 
     @Override
-    public GlobalResponse<List<CookingEquipmentResponse>> getCookingEquipments(String search){
-        List<CookingEquipmentResponse> cookingEquipmentResponseList = cookingEquipmentService.getCookingEquipments(search);
+    public GlobalResponse<List<CookingEquipmentResponse>> getCookingEquipments(String search, CookingEquipmentSymbol symbol){
+        List<CookingEquipmentResponse> cookingEquipmentResponseList = cookingEquipmentService.getCookingEquipments(search,symbol);
         return GlobalResponse.success("조리도구 조회가 성공했습니다.",cookingEquipmentResponseList);
     }
 

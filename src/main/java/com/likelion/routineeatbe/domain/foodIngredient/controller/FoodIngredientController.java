@@ -26,6 +26,18 @@ public class FoodIngredientController implements FoodIngredientControllerDocs{
         return GlobalResponse.success("식재료 조회가 성공했습니다.",foodIngredientResponseList);
     }
 
+    @Override
+    public GlobalResponse<List<FoodIngredientResponse>> getAllergyFoodIngredients(){
+        List<FoodIngredientResponse> foodIngredientResponseList=foodIngredientService.getAllergyFoodIngredients();
+        return GlobalResponse.success("알레르기 유발 식재료 조회가 성공했습니다.",foodIngredientResponseList);
+    }
+
+    @Override
+    public GlobalResponse<List<FoodIngredientResponse>> getDislikeFoodIngredients(){
+        List<FoodIngredientResponse> foodIngredientResponseList=foodIngredientService.getDislikeFoodIngredients();
+        return GlobalResponse.success("비선호 대표 식재료 조회가 성공했습니다.",foodIngredientResponseList);
+    }
+
     // 식재료 초기 세팅 API
     @Override
     public GlobalResponse<Integer> insertFoodIngredient(){

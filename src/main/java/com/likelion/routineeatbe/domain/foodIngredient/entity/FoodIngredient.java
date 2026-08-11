@@ -33,5 +33,12 @@ public class FoodIngredient extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private SecondaryUnit secondaryUnit;
 
+    @Column(nullable = false)
+    private Boolean allergy;
 
+    @Column(nullable = false)
+    private Boolean dislike;
+
+    @Column(nullable = false)
+    private Boolean own;
 }

@@ -92,8 +92,9 @@ public interface UserControllerDocs {
                         2. 비선호 (DISLIKE) \n
                         3. 보유 (OWN) \n
                         4. 예약 (RESERVATION) \n
-                    예약은 장보기에 저장 용도 \n
-                    식재료 리스트는 OWN만 주/부 보유량 포함하여 날릴 수 있음, 나머지는 X
+                    - 예약은 장보기에 저장 용도 \n
+                    - 식재료 리스트는 OWN만 주/부 보유량 포함하여 날릴 수 있음, 나머지는 X
+                    - 주/부 보유량은 선택사항
                     """
     )
     @ApiResponses(value = {

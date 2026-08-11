@@ -35,6 +35,19 @@ public interface FoodIngredientControllerDocs {
     );
 
     @Operation(
+            summary = "알레르기 유발 식재료 조회 API",
+            description = "알레르기 유발 식품 리스트 조회"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "알레르기 유발 식재료 품목 조회 성공"
+            ),
+    })
+    @GetMapping("/allergy")
+    GlobalResponse<List<FoodIngredientResponse>> getAllergyFoodIngredients();
+
+    @Operation(
             summary = "식재료 세팅 API",
             description = "서버 DB에 식재료 데이터 초기세팅"
     )

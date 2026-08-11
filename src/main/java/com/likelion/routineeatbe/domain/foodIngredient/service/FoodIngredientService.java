@@ -42,4 +42,13 @@ public class FoodIngredientService {
                 .map(FoodIngredientResponse::from)
                 .toList();
     }
+
+    @Transactional(readOnly = true)
+    public List<FoodIngredientResponse> getAllergyFoodIngredients(){
+        List<FoodIngredient> foodIngredients=foodIngredientRepository.findByAllergyTrue();
+
+        return foodIngredients.stream()
+                .map(FoodIngredientResponse::from)
+                .toList();
+    }
 }

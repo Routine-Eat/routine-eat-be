@@ -1,6 +1,7 @@
 package com.likelion.routineeatbe.domain.cookingEquipment.controller;
 
 import com.likelion.routineeatbe.domain.cookingEquipment.dto.response.CookingEquipmentResponse;
+import com.likelion.routineeatbe.domain.cookingEquipment.entity.CookingEquipmentSymbol;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,7 +20,12 @@ import java.util.List;
 public interface CookingEquipmentControllerDocs {
     @Operation(
             summary = "조리도구 조회 API",
-            description = "검색어를 이용하여 조리도구 조회, 검색어가 없다면 조리도구 전체 조회"
+            description = """
+                    검색어를 이용하여 조리도구 조회, 검색어가 없다면 조리도구 전체 조회 \n
+                    symbol : 도구 속성 \n
+                        ESSENTIAL - 요리에 필수적인 \n
+                        RECOMMEND - 요리에 추천 \n
+                    """
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -30,8 +36,10 @@ public interface CookingEquipmentControllerDocs {
     @GetMapping
     GlobalResponse<List<CookingEquipmentResponse>> getCookingEquipments(
             @Parameter(description = "검색어 (선택)")
-            @RequestParam(name = "search", required = false) String search
-    );
+            @RequestParam(name = "search", required = false) String search,
+            @Parameter(description = "대표 분야 (선택)")
+            @RequestParam(name = "smybol",required = false)CookingEquipmentSymbol symbol
+            );
 
     @Operation(
             summary = "조리도구 세팅 API",

@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum CookingEquipmentSymbol {
-    EESSENTIAL("필수적"),
+    ESSENTIAL("필수적"),
     RECOMMEND("추천");
 
     private final String value;

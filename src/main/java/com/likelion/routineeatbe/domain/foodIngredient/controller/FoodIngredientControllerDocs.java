@@ -35,8 +35,21 @@ public interface FoodIngredientControllerDocs {
     );
 
     @Operation(
+            summary = "비선호 대표 식재료 조회 API",
+            description = "비선호 대표 식재료 리스트 조회"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "비선호 대표 식재료 품목 조회 성공"
+            ),
+    })
+    @GetMapping("/dislike")
+    GlobalResponse<List<FoodIngredientResponse>> getDislikeFoodIngredients();
+
+    @Operation(
             summary = "알레르기 유발 식재료 조회 API",
-            description = "알레르기 유발 식품 리스트 조회"
+            description = "알레르기 유발 식재료 리스트 조회"
     )
     @ApiResponses(value = {
             @ApiResponse(

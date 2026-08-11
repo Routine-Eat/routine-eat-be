@@ -38,7 +38,4 @@ public class FoodIngredient extends BaseTimeEntity {
 
     @Column(nullable = false)
     private Boolean dislike;
-
-    @Column(nullable = false)
-    private Boolean own;
 }

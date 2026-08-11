@@ -16,7 +16,9 @@ class GeminiRetryDelayStrategyTest {
         GeminiProperties properties = new GeminiProperties(
                 "https://example.com/interactions",
                 "test-key",
-                "test-model",
+                "menu-model",
+                "food-ingredient-model",
+                "cooking-equipment-model",
                 10,
                 new GeminiProperties.Retry(
                         4,

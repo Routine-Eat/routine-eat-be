@@ -1,28 +1,30 @@
-package com.likelion.routineeatbe.global.dto.gemini;
+package com.likelion.routineeatbe.domain.menu.dto.gemini;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.likelion.routineeatbe.domain.menu.entity.MenuType;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
+import com.likelion.routineeatbe.global.dto.gemini.GeminiFunctionDeclaration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-public record GeminiFunctionDeclarationDto(
+public record MenuAndRecipeGeminiFunctionDeclarationDto(
         String type,
         String name,
         String description,
         Parameters parameters
-) {
+) implements GeminiFunctionDeclaration {
 
     public static final String FUNCTION_NAME = "create_menu_metadata_batch";
 
     /**
      * 메뉴 메타데이터 생성을 위한 Gemini Function Declaration을 생성합니다.
      *
+     * @param batchSize Function 응답에서 허용할 메뉴 순번의 최댓값
      * @return 메뉴 종류와 예상 조리시간 스키마가 정의된 Function Declaration
      */
-    public static GeminiFunctionDeclarationDto create() {
+    public static MenuAndRecipeGeminiFunctionDeclarationDto create(int batchSize) {
         List<String> menuTypes = Arrays.stream(MenuType.values())
                 .map(Enum::name)
                 .toList();
@@ -30,11 +32,11 @@ public record GeminiFunctionDeclarationDto(
                 .map(Enum::name)
                 .toList();
 
-        return new GeminiFunctionDeclarationDto(
+        return new MenuAndRecipeGeminiFunctionDeclarationDto(
                 "function",
                 FUNCTION_NAME,
                 "여러 메뉴의 정보와 조리 단계를 분석하여 메뉴별 종류, 추천 유형, 예상 조리시간을 생성합니다.",
-                Parameters.create(menuTypes, recommendationTypes)
+                Parameters.create(menuTypes, recommendationTypes, batchSize)
         );
     }
 
@@ -46,7 +48,8 @@ public record GeminiFunctionDeclarationDto(
 
         public static Parameters create(
                 List<String> menuTypes,
-                List<String> recommendationTypes
+                List<String> recommendationTypes,
+                int batchSize
         ) {
             return new Parameters(
                     "object",
@@ -57,8 +60,12 @@ public record GeminiFunctionDeclarationDto(
                                     Property.createObject(
                                             "단일 메뉴의 메타데이터",
                                             Map.of(
-                                                    "menuName",
-                                                    Property.createString("입력에 제공된 원본 메뉴명"),
+                                                    "sequence",
+                                                    Property.createInteger(
+                                                            "입력 메뉴 앞에 표시된 1부터 시작하는 순번",
+                                                            1,
+                                                            batchSize
+                                                    ),
                                                     "menuType",
                                                     Property.createString("메뉴 종류", menuTypes),
                                                     "recommendationType",
@@ -71,7 +78,7 @@ public record GeminiFunctionDeclarationDto(
                                                     )
                                             ),
                                             List.of(
-                                                    "menuName",
+                                                    "sequence",
                                                     "menuType",
                                                     "recommendationType",
                                                     "timeRequired"

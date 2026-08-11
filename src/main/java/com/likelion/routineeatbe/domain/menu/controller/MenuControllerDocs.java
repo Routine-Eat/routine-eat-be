@@ -1,5 +1,6 @@
 package com.likelion.routineeatbe.domain.menu.controller;
 
+import com.likelion.routineeatbe.domain.menu.dto.response.InitMenuAndRecipeCookingEquipmentResDto;
 import com.likelion.routineeatbe.domain.menu.dto.response.InitMenuAndRecipeFoodIngredientResDto;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -73,4 +74,36 @@ public interface MenuControllerDocs {
     @PostMapping("/food-ingredients/init")
     ResponseEntity<GlobalResponse<InitMenuAndRecipeFoodIngredientResDto>>
             initMenuAndRecipeFoodIngredients();
+
+    @Operation(
+            summary = "레시피별 필요 조리 도구 초기화",
+            description = """
+                    DB에 저장된 기본 레시피의 메뉴 정보와 조리 단계를 Gemini로 분석하여
+                    레시피별 필요한 조리 도구 연결 데이터를 초기화합니다.
+
+                    - 이미 조리 도구가 저장된 레시피는 제외합니다.
+                    - RecipeType.BASIC 레시피만 초기화합니다.
+                    - 모든 Gemini 호출이 성공한 후 일괄 저장합니다.
+                    - initCount는 새로 저장된 레시피 조리 도구 연결 데이터 개수입니다.
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "레시피별 조리 도구 초기화 성공",
+                    content = @Content(
+                            schema = @Schema(
+                                    implementation = InitMenuAndRecipeCookingEquipmentResDto.class
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "404", description = "레시피 또는 조리 도구 없음", content = @Content),
+            @ApiResponse(responseCode = "409", description = "조리 도구 기준 데이터 없음 또는 초기화 충돌", content = @Content),
+            @ApiResponse(responseCode = "502", description = "Gemini API 호출 또는 응답 오류", content = @Content),
+            @ApiResponse(responseCode = "503", description = "Gemini API 호출 한도 초과", content = @Content),
+            @ApiResponse(responseCode = "504", description = "Gemini API 응답 시간 초과", content = @Content)
+    })
+    @PostMapping("/cooking-equipments/init")
+    ResponseEntity<GlobalResponse<InitMenuAndRecipeCookingEquipmentResDto>>
+            initMenuAndRecipeCookingEquipments();
 }

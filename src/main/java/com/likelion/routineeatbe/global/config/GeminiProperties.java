@@ -16,6 +16,8 @@ import org.springframework.validation.annotation.Validated;
  * @param baseUrl Gemini Interactions API 주소
  * @param apiKey Gemini API 인증 키
  * @param menuAnalyzeModel 메뉴 호출할 Gemini 모델명
+ * @param foodIngredientAnalyzeModel 음식 재료 분석에 사용할 Gemini 모델명
+ * @param cookingEquipmentAnalyzeModel 조리 도구 분석에 사용할 Gemini 모델명
  */
 @Validated
 @ConfigurationProperties(prefix = "gemini")
@@ -24,6 +26,7 @@ public record GeminiProperties(
         @NotBlank String apiKey,
         @NotBlank String menuAnalyzeModel,
         @NotBlank String foodIngredientAnalyzeModel,
+        @NotBlank String cookingEquipmentAnalyzeModel,
         @Min(1) int batchSize,
         @Valid @NotNull Retry retry
 ) {

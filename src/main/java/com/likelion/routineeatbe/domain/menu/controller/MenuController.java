@@ -2,8 +2,10 @@ package com.likelion.routineeatbe.domain.menu.controller;
 
 import com.likelion.routineeatbe.domain.menu.dto.response.InitMenuAndRecipeCookingEquipmentResDto;
 import com.likelion.routineeatbe.domain.menu.dto.response.InitMenuAndRecipeFoodIngredientResDto;
+import com.likelion.routineeatbe.domain.menu.dto.response.InitMenuDifficultyLevelResDto;
 import com.likelion.routineeatbe.domain.menu.service.InitMenuAndRecipeCookingEquipmentService;
 import com.likelion.routineeatbe.domain.menu.service.InitMenuAndRecipeFoodIngredientService;
+import com.likelion.routineeatbe.domain.menu.service.InitMenuDifficultyLevelService;
 import com.likelion.routineeatbe.domain.menu.service.MenuAndRecipeCrawlingService;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ public class MenuController implements MenuControllerDocs {
     private final MenuAndRecipeCrawlingService menuAndRecipeCrawlingService;
     private final InitMenuAndRecipeFoodIngredientService initMenuAndRecipeFoodIngredientService;
     private final InitMenuAndRecipeCookingEquipmentService initMenuAndRecipeCookingEquipmentService;
+    private final InitMenuDifficultyLevelService initMenuDifficultyLevelService;
 
     @Override
     public GlobalResponse<Void> crawlFoodSafetyKorea(Integer startIdx, Integer endIdx) {
@@ -48,6 +51,19 @@ public class MenuController implements MenuControllerDocs {
                 .body(GlobalResponse.success(
                         HttpStatus.CREATED.value(),
                         "메뉴/레시피별 필요 조리 도구 데이터 초기화를 성공했습니다.",
+                        result
+                ));
+    }
+
+    @Override
+    public ResponseEntity<GlobalResponse<InitMenuDifficultyLevelResDto>>
+            initMenuDifficultyLevels() {
+        InitMenuDifficultyLevelResDto result = initMenuDifficultyLevelService.initialize();
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(GlobalResponse.success(
+                        HttpStatus.CREATED.value(),
+                        "메뉴/레시피의 난이도 전체 초기화를 성공했습니다.",
                         result
                 ));
     }

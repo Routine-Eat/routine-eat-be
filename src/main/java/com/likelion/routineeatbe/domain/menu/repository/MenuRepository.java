@@ -1,5 +1,6 @@
 package com.likelion.routineeatbe.domain.menu.repository;
 
+import com.likelion.routineeatbe.domain.menu.dto.MenuDifficultyCalculationDto;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import java.util.Collection;
 import java.util.List;
@@ -35,4 +36,26 @@ public interface MenuRepository extends JpaRepository<Menu, Long> {
             order by menu.id
             """)
     List<Menu> findAllForFoodIngredientInitialization();
+
+    /**
+     * 전체 메뉴의 난이도 계산에 필요한 기본 레시피 단계 수와 음식 재료 수를 조회합니다.
+     *
+     * @return 메뉴별 난이도 계산 데이터 목록
+     */
+    @Query("""
+            select new com.likelion.routineeatbe.domain.menu.dto.MenuDifficultyCalculationDto(
+                menu,
+                count(distinct recipeStep.id),
+                count(distinct recipeFoodIngredient.id)
+            )
+            from Menu menu
+            left join menu.recipes recipe
+                on recipe.type = com.likelion.routineeatbe.domain.recipe.enums.RecipeType.BASIC
+            left join recipe.recipeSteps recipeStep
+            left join RecipeFoodIngredient recipeFoodIngredient
+                on recipeFoodIngredient.menu = menu
+            group by menu
+            order by menu.id
+            """)
+    List<MenuDifficultyCalculationDto> findAllForDifficultyLevelInitialization();
 }

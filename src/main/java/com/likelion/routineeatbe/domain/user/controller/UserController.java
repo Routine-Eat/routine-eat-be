@@ -2,6 +2,8 @@ package com.likelion.routineeatbe.domain.user.controller;
 
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserFoodIngredientRequest;
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserRequest;
+import com.likelion.routineeatbe.domain.user.dto.request.DeleteUserFoodIngredientRequest;
+import com.likelion.routineeatbe.domain.user.dto.request.UpdateOwnFoodIngredientAmountRequest;
 import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
 import com.likelion.routineeatbe.domain.user.dto.response.UserResponse;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
@@ -45,5 +47,17 @@ public class UserController implements UserControllerDocs {
             CreateUserFoodIngredientRequest createUserFoodIngredientRequest){
         UserFoodIngredientResponse userFoodIngredientResponse=userFoodIngredientService.createUserFoodIngredient(userId,createUserFoodIngredientRequest);
         return GlobalResponse.success("사용자-식재료 관게 추가에 성공했습니다.",userFoodIngredientResponse);
+    }
+
+    @Override
+    public GlobalResponse<UserFoodIngredientResponse> updateOwnFoodIngredientAmount(Long userId, UpdateOwnFoodIngredientAmountRequest request){
+        UserFoodIngredientResponse userFoodIngredientResponse=userFoodIngredientService.updateOwnFoodIngredientAmount(userId,request);
+        return GlobalResponse.success("식재료 보유량이 성공적으로 수정되었습니다.",userFoodIngredientResponse);
+    }
+
+    @Override
+    public GlobalResponse deleteUserFoodIngredient(Long userId, DeleteUserFoodIngredientRequest request){
+        userFoodIngredientService.deleteUserFoodIngredient(userId,request);
+        return GlobalResponse.success("사용자-식재료 관계가 성공적으로 삭제되었습니다.");
     }
 }

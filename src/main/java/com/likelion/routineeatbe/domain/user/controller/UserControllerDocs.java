@@ -2,6 +2,7 @@ package com.likelion.routineeatbe.domain.user.controller;
 
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserFoodIngredientRequest;
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserRequest;
+import com.likelion.routineeatbe.domain.user.dto.request.DeleteUserFoodIngredientRequest;
 import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
 import com.likelion.routineeatbe.domain.user.dto.response.UserResponse;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
@@ -109,4 +110,31 @@ public interface UserControllerDocs {
             @Valid
             @RequestBody CreateUserFoodIngredientRequest createUserFoodIngredientRequest
     );
+
+    @Operation(
+            summary = "사용자-식재료 관계 삭제",
+            description = """
+                    relationType과 그에 해당하는 식재료 리스트를 전달하여 DB에서 삭제 \n
+                    relationType : \n
+                        1. 알러지 (ALLERGY) \n
+                        2. 비선호 (DISLIKE) \n
+                        3. 보유 (OWN) \n
+                        4. 예약 (RESERVATION) \n
+                    예약은 장보기에 저장 용도 \n
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "사용자-식재료 관계 삭제 성공"
+            ),
+            @ApiResponse(responseCode = "4041", description = "잘못된 사용자 id 형식", content = @Content),
+            @ApiResponse(responseCode = "4042", description = "잘못된 식재료 id 포함", content = @Content),
+    })
+    @DeleteMapping("/{userId}/food-ingredients")
+    GlobalResponse deleteUserFoodIngredient(
+            @PathVariable("userId") Long userId,
+            @Valid
+            @RequestBody DeleteUserFoodIngredientRequest request
+            );
 }

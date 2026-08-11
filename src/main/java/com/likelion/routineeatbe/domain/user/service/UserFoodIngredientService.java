@@ -3,6 +3,7 @@ package com.likelion.routineeatbe.domain.user.service;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.foodIngredient.repository.FoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserFoodIngredientRequest;
+import com.likelion.routineeatbe.domain.user.dto.request.DeleteUserFoodIngredientRequest;
 import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
 import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
@@ -103,5 +104,19 @@ public class UserFoodIngredientService {
 
         // 3. DTO 변환 및 반환 (relationType이 null이면 DTO의 type 필드도 null로 나옴)
         return UserFoodIngredientResponse.of(relationType, userFoodIngredients);
+    }
+
+    /**
+     * - 사용자 아이디, 관계 타입, 관계에 해당하는 식재료 id 리스트로 찾아서 삭제
+     * @param userId
+     * @param request
+     */
+    @Transactional
+    public void deleteUserFoodIngredient(Long userId,DeleteUserFoodIngredientRequest request){
+        userFoodIngredientRepository.deleteByUserIdAndTypeAndIngredientIds(
+                userId,
+                request.relationType(),
+                request.foodIngredientList()
+        );
     }
 }

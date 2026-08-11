@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -32,4 +33,17 @@ public interface FoodIngredientControllerDocs {
             @Parameter(description = "검색어 (선택)")
             @RequestParam(name = "search", required = false) String search
     );
+
+    @Operation(
+            summary = "식재료 세팅 API",
+            description = "서버 DB에 식재료 데이터 초기세팅"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "식재료 세팅 성공"
+            ),
+    })
+    @PostMapping("/init")
+    GlobalResponse insertFoodIngredient();
 }

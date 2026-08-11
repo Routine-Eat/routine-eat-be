@@ -35,9 +35,9 @@ public class CookingEquipmentService {
         } else { /* 3. 검색어 없으니 findALl() */
             cookingEquipments=cookingEquipmentRepository.findAll();
         }
-        /* 4. (CookingEquipmentResponse::fromCookingEquipmentEntity)로 각각을 포장한 리스트 반환 */
+        /* 4. (CookingEquipmentResponse::from)로 각각을 포장한 리스트 반환 */
         return cookingEquipments.stream()
-                .map(CookingEquipmentResponse::fromCookingEquipmentEntity)
+                .map(CookingEquipmentResponse::from)
                 .toList();
     }
 }

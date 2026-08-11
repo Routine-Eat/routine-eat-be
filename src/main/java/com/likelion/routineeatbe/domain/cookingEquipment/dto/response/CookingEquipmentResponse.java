@@ -1,6 +1,7 @@
 package com.likelion.routineeatbe.domain.cookingEquipment.dto.response;
 
 import com.likelion.routineeatbe.domain.cookingEquipment.entity.CookingEquipment;
+import com.likelion.routineeatbe.domain.cookingEquipment.entity.CookingEquipmentSymbol;
 import com.likelion.routineeatbe.domain.cookingEquipment.entity.CookingEquipmentType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -15,13 +16,17 @@ public record CookingEquipmentResponse(
         String cookingEquipmentName,
 
         @Schema(description = "조리도구 종류",example = "PREP_TOOL")
-        CookingEquipmentType cookingEquipmentType
+        CookingEquipmentType cookingEquipmentType,
+
+        @Schema(description = "대표 분야",example = "ESSENTIAL")
+        CookingEquipmentSymbol cookingEquipmentSymbol
 ) {
-    public static CookingEquipmentResponse fromCookingEquipmentEntity(CookingEquipment cookingEquipment){
+    public static CookingEquipmentResponse from(CookingEquipment cookingEquipment){
         return CookingEquipmentResponse.builder()
                 .cookingEquipmentId(cookingEquipment.getId())
                 .cookingEquipmentName(cookingEquipment.getName())
                 .cookingEquipmentType(cookingEquipment.getType())
+                .cookingEquipmentSymbol(cookingEquipment.getSymbol())
                 .build();
     }
 }

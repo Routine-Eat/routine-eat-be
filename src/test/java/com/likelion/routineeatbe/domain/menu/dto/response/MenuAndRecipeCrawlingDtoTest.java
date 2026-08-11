@@ -90,6 +90,7 @@ class MenuAndRecipeCrawlingDtoTest {
                 .menuName("첫 번째 메뉴")
                 .calories("100")
                 .ingredientDetails("첫 번째 재료")
+                .mainImageUrl("https://example.com/main-1.jpg")
                 .manual01("첫 번째 조리법")
                 .build();
         FoodSafetyKoreaRecipeApiResponseDto.RecipeRow secondRow = FoodSafetyKoreaRecipeApiResponseDto.RecipeRow.builder()
@@ -111,7 +112,9 @@ class MenuAndRecipeCrawlingDtoTest {
         // then
         assertThat(result).hasSize(2);
         assertThat(result.get(0).menuName()).isEqualTo("첫 번째 메뉴");
+        assertThat(result.get(0).mainImageUrl()).isEqualTo("https://example.com/main-1.jpg");
         assertThat(result.get(0).recipes()).hasSize(1);
         assertThat(result.get(1).calories()).isEqualTo(200);
+        assertThat(result.get(1).mainImageUrl()).isNull();
     }
 }

@@ -57,7 +57,8 @@ class MenuAndRecipePersistenceServiceTest {
         MenuAndRecipeMetaDataDto metaData = MenuAndRecipeMetaDataDto.create(
                 MenuType.CHINESE,
                 RecommendationType.GLUTEN_FREE,
-                35
+                35,
+                "https://example.com/main.jpg"
         );
 
         // when
@@ -82,6 +83,7 @@ class MenuAndRecipePersistenceServiceTest {
         assertThat(menu.getRecommendationType()).isEqualTo(RecommendationType.GLUTEN_FREE);
         assertThat(menu.getTimeRequired()).isEqualTo(35);
         assertThat(menu.getDifficultyLevel()).isEqualTo(DifficultyLevel.LEVEL_1);
+        assertThat(menu.getThumbnailUrl()).isEqualTo("https://example.com/main.jpg");
         assertThat(recipe.getType()).isEqualTo(RecipeType.BASIC);
         assertThat(recipe.getMenu()).isSameAs(menu);
         assertThat(recipeStep.getType()).isEqualTo(RecipeStepType.NORMAL);
@@ -155,6 +157,7 @@ class MenuAndRecipePersistenceServiceTest {
                 menuName,
                 100.0,
                 "테스트 재료",
+                "https://example.com/main.jpg",
                 List.of(MenuAndRecipeCrawlingDto.RecipeRow.create("조리 단계", null))
         );
     }

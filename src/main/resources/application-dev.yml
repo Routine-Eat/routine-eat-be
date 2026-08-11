@@ -47,4 +47,6 @@ data:
 gemini:
   base-url: https://generativelanguage.googleapis.com/v1beta/interactions
   api-key: ${ROUTINE_EAT_GEMINI_API_KEY}
-  model: ${ROUTINE_EAT_GEMINI_MODEL}
+  menu-analyze-model: ${ROUTINE_EAT_MENU_ANALYZE_GEMINI_MODEL}
+  food-ingredient-analyze-model: ${ROUTINE_EAT_FOOD_INGREDIENT_ANALYZE_GEMINI_MODEL}
+  cooking-equipment-analyze-model: ${ROUTINE_EAT_COOKING_EQUIPMENT_ANALYZE_GEMINI_MODEL}

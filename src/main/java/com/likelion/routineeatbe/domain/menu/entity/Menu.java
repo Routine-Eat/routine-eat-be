@@ -15,6 +15,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -70,7 +71,8 @@ public class Menu extends BaseTimeEntity {
             String ingredientInfoOriginal,
             MenuType menuType,
             RecommendationType recommendationType,
-            Integer timeRequired
+            Integer timeRequired,
+            String thumbnailUrl
     ) {
         return Menu.builder()
                 .name(name)
@@ -80,6 +82,11 @@ public class Menu extends BaseTimeEntity {
                 .ingredient_info_original(ingredientInfoOriginal)
                 .timeRequired(timeRequired)
                 .difficultyLevel(DifficultyLevel.LEVEL_1)
+                .thumbnailUrl(thumbnailUrl)
                 .build();
+    }
+
+    public void updateDifficultyLevel(DifficultyLevel difficultyLevel) {
+        this.difficultyLevel = Objects.requireNonNull(difficultyLevel);
     }
 }

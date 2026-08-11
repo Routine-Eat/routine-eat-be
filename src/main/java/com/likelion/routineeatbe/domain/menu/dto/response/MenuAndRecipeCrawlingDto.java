@@ -13,6 +13,7 @@ public record MenuAndRecipeCrawlingDto(
         String menuName,
         Double calories,
         String ingredientDetails,
+        String mainImageUrl,
         List<RecipeRow> recipes
 ) {
     /**
@@ -31,6 +32,7 @@ public record MenuAndRecipeCrawlingDto(
                 .menuName(row.menuName())
                 .calories(Double.parseDouble(row.calories()))
                 .ingredientDetails(row.ingredientDetails())
+                .mainImageUrl(row.mainImageUrl())
                 .recipes(MenuAndRecipeCrawlingDto.createRecipeRowList(row))
                 .build();
     }
@@ -68,12 +70,14 @@ public record MenuAndRecipeCrawlingDto(
             String menuName,
             Double calories,
             String ingredientDetails,
+            String mainImageUrl,
             List<RecipeRow> recipes
     ) {
         return MenuAndRecipeCrawlingDto.builder()
                 .menuName(menuName)
                 .calories(calories)
                 .ingredientDetails(ingredientDetails)
+                .mainImageUrl(mainImageUrl)
                 .recipes(recipes)
                 .build();
     }

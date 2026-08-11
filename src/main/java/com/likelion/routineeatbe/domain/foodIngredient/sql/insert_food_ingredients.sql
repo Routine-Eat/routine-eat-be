@@ -854,7 +854,9 @@ SET
     existing.`price_per_hundred` = source.price_per_hundred,
     existing.`primary_unit` = source.primary_unit,
     existing.`secondary_unit` = source.secondary_unit,
-    existing.`updated_at` = CURRENT_TIMESTAMP;
+    existing.`updated_at` = CURRENT_TIMESTAMP
+WHERE existing.name = source.name
+  AND existing.type = source.type;
 
 INSERT INTO `food_ingredient` (
     `name`,

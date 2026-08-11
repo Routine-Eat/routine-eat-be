@@ -15,20 +15,20 @@ public record MenuAndRecipeMetaDataBatchDto(
     @Builder
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record MenuMetaData(
-            String menuName,
+            Integer sequence,
             MenuType menuType,
             RecommendationType recommendationType,
             Integer timeRequired
     ) {
 
         public static MenuMetaData create(
-                String menuName,
+                Integer sequence,
                 MenuType menuType,
                 RecommendationType recommendationType,
                 Integer timeRequired
         ) {
             return MenuMetaData.builder()
-                    .menuName(menuName)
+                    .sequence(sequence)
                     .menuType(menuType)
                     .recommendationType(recommendationType)
                     .timeRequired(timeRequired)

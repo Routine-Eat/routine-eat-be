@@ -5,6 +5,7 @@ import com.likelion.routineeatbe.domain.menu.dto.MenuAndRecipeMetaDataDto;
 import com.likelion.routineeatbe.domain.menu.dto.response.FoodSafetyKoreaRecipeApiResponseDto;
 import com.likelion.routineeatbe.domain.menu.dto.response.MenuAndRecipeCrawlingDto;
 import com.likelion.routineeatbe.domain.menu.exception.MenuCrawlingErrorCode;
+import com.likelion.routineeatbe.domain.menu.service.gemini.MenuAndRecipeGeminiService;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import java.util.List;
 import java.util.Map;

@@ -28,10 +28,12 @@ public interface MenuRepository extends JpaRepository<Menu, Long> {
     @Query("""
             select menu
             from Menu menu
+            join menu.recipes recipe
+                on recipe.type = com.likelion.routineeatbe.domain.recipe.enums.RecipeType.BASIC
             where not exists (
                 select recipeFoodIngredient.id
                 from RecipeFoodIngredient recipeFoodIngredient
-                where recipeFoodIngredient.menu = menu
+                where recipeFoodIngredient.recipe = recipe
             )
             order by menu.id
             """)
@@ -53,7 +55,7 @@ public interface MenuRepository extends JpaRepository<Menu, Long> {
                 on recipe.type = com.likelion.routineeatbe.domain.recipe.enums.RecipeType.BASIC
             left join recipe.recipeSteps recipeStep
             left join RecipeFoodIngredient recipeFoodIngredient
-                on recipeFoodIngredient.menu = menu
+                on recipeFoodIngredient.recipe = recipe
             group by menu
             order by menu.id
             """)

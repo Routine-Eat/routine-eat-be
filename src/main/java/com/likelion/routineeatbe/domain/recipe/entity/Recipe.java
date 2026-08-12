@@ -2,6 +2,7 @@ package com.likelion.routineeatbe.domain.recipe.entity;
 
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import com.likelion.routineeatbe.domain.recipe.enums.RecipeType;
+import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.global.common.BaseTimeEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -45,13 +46,25 @@ public class Recipe extends BaseTimeEntity {
     private Menu menu;
 
     @Builder.Default
+    @Column(nullable = false, columnDefinition = "bigint default 0")
+    private Long cookingCount = 0L;
+
+    @Builder.Default
     @OneToMany(mappedBy = "recipe", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RecipeStep> recipeSteps = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "recipe", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RecipeFoodIngredient> recipeFoodIngredients = new ArrayList<>();
 
     public static Recipe createBasic(Menu menu) {
         return Recipe.builder()
                 .type(RecipeType.BASIC)
                 .menu(menu)
                 .build();
+    }
+
+    public void increaseCookingCount() {
+        this.cookingCount++;
     }
 }

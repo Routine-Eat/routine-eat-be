@@ -1,7 +1,7 @@
 package com.likelion.routineeatbe.domain.recipeFoodIngredient.entity;
 
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
-import com.likelion.routineeatbe.domain.menu.entity.Menu;
+import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.global.common.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -27,8 +27,8 @@ import lombok.NoArgsConstructor;
 @Table(
         name = "recipe_food_ingredient",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_recipe_food_ingredient_menu_food_ingredient",
-                columnNames = {"menu_id", "food_ingredient_id"}
+                name = "uk_recipe_food_ingredient_recipe_food_ingredient",
+                columnNames = {"recipe_id", "food_ingredient_id"}
         )
 )
 public class RecipeFoodIngredient extends BaseTimeEntity {
@@ -49,17 +49,17 @@ public class RecipeFoodIngredient extends BaseTimeEntity {
     private FoodIngredient foodIngredient;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "menu_id", nullable = false)
-    private Menu menu;
+    @JoinColumn(name = "recipe_id", nullable = false)
+    private Recipe recipe;
 
     public static RecipeFoodIngredient create(
-            Menu menu,
+            Recipe recipe,
             FoodIngredient foodIngredient,
             Double primaryNeedAmountValue,
             Double secondaryNeedAmountValue
     ) {
         return RecipeFoodIngredient.builder()
-                .menu(menu)
+                .recipe(recipe)
                 .foodIngredient(foodIngredient)
                 .primaryNeedAmountValue(primaryNeedAmountValue)
                 .secondaryNeedAmountValue(secondaryNeedAmountValue)

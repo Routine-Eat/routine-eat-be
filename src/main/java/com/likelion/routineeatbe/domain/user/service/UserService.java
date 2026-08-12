@@ -3,7 +3,6 @@ package com.likelion.routineeatbe.domain.user.service;
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserRequest;
 import com.likelion.routineeatbe.domain.user.dto.request.UpdateUserRequest;
 import com.likelion.routineeatbe.domain.user.dto.response.UserResponse;
-import com.likelion.routineeatbe.domain.user.entity.SkillLevel;
 import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.exception.UserErrorCode;
 import com.likelion.routineeatbe.domain.user.exception.UserFoodIngredientErrorCode;
@@ -64,8 +63,6 @@ public class UserService {
     public UserResponse updateUser(Long userId, UpdateUserRequest request){
         User user=userRepository.findById(userId)
                 .orElseThrow(()-> new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER));
-
-
 
         user.updateSkillLevel(request.skillLevel());
 

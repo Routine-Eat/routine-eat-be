@@ -3,10 +3,12 @@ package com.likelion.routineeatbe.domain.user.controller;
 import com.likelion.routineeatbe.domain.cookingEquipment.dto.response.CookingEquipmentResponse;
 import com.likelion.routineeatbe.domain.user.dto.request.*;
 import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
+import com.likelion.routineeatbe.domain.user.dto.response.UserOnboardingResponse;
 import com.likelion.routineeatbe.domain.user.dto.response.UserResponse;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.domain.user.service.UserCookingEquipmentService;
 import com.likelion.routineeatbe.domain.user.service.UserFoodIngredientService;
+import com.likelion.routineeatbe.domain.user.service.UserOnboardingService;
 import com.likelion.routineeatbe.domain.user.service.UserService;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ public class UserController implements UserControllerDocs {
     private final UserService userService;
     private final UserFoodIngredientService userFoodIngredientService;
     private final UserCookingEquipmentService userCookingEquipmentService;
+    private final UserOnboardingService userOnboardingService;
 
     @Override
     public GlobalResponse<List<UserResponse>> getAllUsers(){
@@ -85,5 +88,12 @@ public class UserController implements UserControllerDocs {
         UserResponse userResponse= userService.updateUser(userId,request);
 
         return GlobalResponse.success("사용자 정보 변경에 성공했습니다.",userResponse);
+    }
+
+    @Override
+    public GlobalResponse<UserOnboardingResponse> saveOnboardingData(Long userId,UserOnboardingRequest request){
+        UserOnboardingResponse userOnboardingResponse=userOnboardingService.saveOnboardingData(userId,request);
+
+        return GlobalResponse.success("사용자 온보딩 데이터 저장에 성공했습니다.",userOnboardingResponse);
     }
 }

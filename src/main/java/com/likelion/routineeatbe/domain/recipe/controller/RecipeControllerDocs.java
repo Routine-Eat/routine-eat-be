@@ -1,12 +1,15 @@
 package com.likelion.routineeatbe.domain.recipe.controller;
 
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeDetailReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
 import com.likelion.routineeatbe.global.response.CursorSliceResponse;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -16,11 +19,41 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 @Tag(name = "Recipe", description = "레시피 조회 API")
 @RequestMapping("/api/v1/recipes")
 public interface RecipeControllerDocs {
+
+    @Operation(
+            summary = "레시피 상세 조회",
+            description = """
+                    레시피 기본 정보와 인분별 필요 재료, 사용자 보유량을 제외한 추가 재료 및 유사 레시피를 조회합니다.
+
+                    [Path Variable]
+                    - recipeId: 레시피 PK
+
+                    [Query Parameter]
+                    - userNumber: 사용자 고유 식별번호
+                    - servings: 인분 수, 기본값 1
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "레시피 상세 조회 성공",
+                    content = @Content(schema = @Schema(implementation = RecipeDetailResDto.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "잘못된 조회 조건", content = @Content),
+            @ApiResponse(responseCode = "404", description = "사용자 또는 레시피를 찾을 수 없음", content = @Content)
+    })
+    @GetMapping("/{recipeId}")
+    ResponseEntity<GlobalResponse<RecipeDetailResDto>> getRecipeDetail(
+            @Parameter(description = "레시피 PK", required = true)
+            @PathVariable Long recipeId,
+            @Valid @ModelAttribute RecipeDetailReqDto request
+    );
 
     @Operation(
             summary = "전체 레시피 목록 조회",

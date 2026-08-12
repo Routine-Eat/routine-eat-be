@@ -1,7 +1,9 @@
 package com.likelion.routineeatbe.domain.recipe.controller;
 
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeDetailReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
 import com.likelion.routineeatbe.domain.recipe.service.RecipeService;
@@ -17,6 +19,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class RecipeController implements RecipeControllerDocs {
 
     private final RecipeService recipeService;
+
+    @Override
+    public ResponseEntity<GlobalResponse<RecipeDetailResDto>> getRecipeDetail(
+            Long recipeId,
+            RecipeDetailReqDto request
+    ) {
+        RecipeDetailResDto result = recipeService.getRecipeDetail(recipeId, request);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(GlobalResponse.success(
+                        HttpStatus.CREATED.value(),
+                        "레시피 상세 조회에 성공했습니다.",
+                        result
+                ));
+    }
 
     @Override
     public ResponseEntity<GlobalResponse<RecipeSearchResponseDto>> getRecipes(

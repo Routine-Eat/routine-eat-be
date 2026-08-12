@@ -5,18 +5,34 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredientType;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
+import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
+import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
+import com.likelion.routineeatbe.domain.recipe.dto.RecipeWithSimilarRecipes;
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeDetailReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.SimilarRecipeResDto;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.enums.RecipeSortType;
 import com.likelion.routineeatbe.domain.recipe.mapper.RecipeMapper;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
+import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
+import com.likelion.routineeatbe.domain.recipeFoodIngredient.repository.RecipeFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.entity.User;
+import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
+import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
+import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import com.likelion.routineeatbe.global.response.CursorSliceResponse;
@@ -42,10 +58,137 @@ class RecipeServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private UserFoodIngredientRepository userFoodIngredientRepository;
+
+    @Mock
     private RecipeRepository recipeRepository;
 
     @Mock
+    private RecipeFoodIngredientRepository recipeFoodIngredientRepository;
+
+    @Mock
     private RecipeMapper recipeMapper;
+
+    @Mock
+    private FindSimilarRecipeService findSimilarRecipeService;
+
+    @Test
+    @DisplayName("인분과 사용자 보유량을 반영한 레시피 상세 조회 성공")
+    void 인분과_사용자_보유량을_반영한_레시피_상세_조회_성공() {
+        // given
+        RecipeDetailReqDto request = new RecipeDetailReqDto("1234", 2);
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        Menu targetMenu = Menu.builder()
+                .id(10L)
+                .name("볶음밥")
+                .thumbnailUrl("thumbnail")
+                .timeRequired(15)
+                .difficultyLevel(DifficultyLevel.LEVEL_1)
+                .build();
+        Recipe targetRecipe = Recipe.builder().id(100L).menu(targetMenu).build();
+        Menu similarMenu = Menu.builder().id(20L).name("김치 볶음밥").build();
+        Recipe similarRecipe = Recipe.builder().id(200L).menu(similarMenu).build();
+
+        FoodIngredient carrot = FoodIngredient.builder()
+                .id(1000L)
+                .name("당근")
+                .type(FoodIngredientType.VEGETABLE)
+                .pricePerHundred(1000L)
+                .primaryUnit(PrimaryUnit.G)
+                .secondaryUnit(SecondaryUnit.GAE)
+                .build();
+        FoodIngredient egg = FoodIngredient.builder()
+                .id(2000L)
+                .name("달걀")
+                .type(FoodIngredientType.EGG)
+                .pricePerHundred(500L)
+                .primaryUnit(PrimaryUnit.G)
+                .secondaryUnit(SecondaryUnit.AL)
+                .build();
+        RecipeFoodIngredient targetCarrot = RecipeFoodIngredient.create(
+                targetRecipe, carrot, 100.0, 1.0
+        );
+        RecipeFoodIngredient targetEgg = RecipeFoodIngredient.create(
+                targetRecipe, egg, 50.0, 1.0
+        );
+        RecipeFoodIngredient similarCarrot = RecipeFoodIngredient.create(
+                similarRecipe, carrot, 100.0, 1.0
+        );
+        UserFoodIngredient ownedCarrot = UserFoodIngredient.builder()
+                .user(user)
+                .foodIngredient(carrot)
+                .relationType(UserFoodIngredientType.OWN)
+                .primaryAmountValue(50.0)
+                .build();
+        UserFoodIngredient ownedEgg = UserFoodIngredient.builder()
+                .user(user)
+                .foodIngredient(egg)
+                .relationType(UserFoodIngredientType.OWN)
+                .primaryAmountValue(100.0)
+                .build();
+
+        RecipeIngredientResDto fullCarrot = RecipeIngredientResDto.builder()
+                .id(1000L).primaryNeedAmountValue(200.0).secondaryNeedAmountValue(2.0).build();
+        RecipeIngredientResDto additionalCarrot = RecipeIngredientResDto.builder()
+                .id(1000L).primaryNeedAmountValue(150.0).secondaryNeedAmountValue(1.5).build();
+        RecipeIngredientResDto fullEgg = RecipeIngredientResDto.builder()
+                .id(2000L).primaryNeedAmountValue(100.0).secondaryNeedAmountValue(2.0).build();
+        SimilarRecipeResDto similarRecipeResDto = SimilarRecipeResDto.builder()
+                .id(200L).name("김치 볶음밥").additionalFoodIngredientCount(1L).build();
+        RecipeDetailResDto expectedResponse = RecipeDetailResDto.builder()
+                .recipeId(100L)
+                .additionalFoodIngredientCount(1L)
+                .additionalFoodIngredientCost(1500L)
+                .servings(2)
+                .foodIngredients(List.of(fullCarrot, fullEgg))
+                .additionalFoodIngredients(List.of(additionalCarrot))
+                .similarRecipes(List.of(similarRecipeResDto))
+                .build();
+
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(findSimilarRecipeService.findRecipeWithSimilarRecipes(100L))
+                .willReturn(RecipeWithSimilarRecipes.create(
+                        targetRecipe,
+                        List.of(similarRecipe)
+                ));
+        given(recipeFoodIngredientRepository.findAllByRecipeIdInWithFoodIngredient(
+                java.util.Set.of(100L, 200L)
+        )).willReturn(List.of(targetCarrot, targetEgg, similarCarrot));
+        given(userFoodIngredientRepository.findAllWithFoodIngredientByUserIdAndRelationType(
+                1L,
+                UserFoodIngredientType.OWN
+        )).willReturn(List.of(ownedCarrot, ownedEgg));
+        given(recipeMapper.toRecipeIngredientResDto(targetCarrot, 200.0, 2.0))
+                .willReturn(fullCarrot);
+        given(recipeMapper.toRecipeIngredientResDto(targetCarrot, 150.0, 1.5))
+                .willReturn(additionalCarrot);
+        given(recipeMapper.toRecipeIngredientResDto(targetEgg, 100.0, 2.0))
+                .willReturn(fullEgg);
+        given(recipeMapper.toSimilarRecipeResDto(similarRecipe, 1L))
+                .willReturn(similarRecipeResDto);
+        given(recipeMapper.toRecipeDetailResDto(
+                targetRecipe,
+                1L,
+                1500L,
+                2,
+                List.of(fullCarrot, fullEgg),
+                List.of(additionalCarrot),
+                List.of(similarRecipeResDto)
+        )).willReturn(expectedResponse);
+
+        // when
+        RecipeDetailResDto result = recipeService.getRecipeDetail(100L, request);
+
+        // then
+        assertThat(result).isEqualTo(expectedResponse);
+        assertThat(result.additionalFoodIngredientCount()).isEqualTo(1L);
+        assertThat(result.additionalFoodIngredientCost()).isEqualTo(1500L);
+        assertThat(result.additionalFoodIngredients().getFirst().primaryNeedAmountValue())
+                .isEqualTo(150.0);
+        assertThat(result.similarRecipes().getFirst().additionalFoodIngredientCount())
+                .isEqualTo(1L);
+        verify(findSimilarRecipeService).findRecipeWithSimilarRecipes(100L);
+    }
 
     @Test
     @DisplayName("전체 및 추천 유형별 레시피 목록 조회 성공")

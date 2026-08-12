@@ -3,8 +3,10 @@ package com.likelion.routineeatbe.domain.recipe.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeDetailReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
@@ -29,6 +31,35 @@ class RecipeControllerTest {
 
     @Mock
     private RecipeService recipeService;
+
+    @Test
+    @DisplayName("레시피 상세 조회 API 201 응답 성공")
+    void 레시피_상세_조회_API_201_응답_성공() {
+        // given
+        RecipeDetailReqDto request = new RecipeDetailReqDto("1234", null);
+        RecipeDetailResDto serviceResult = RecipeDetailResDto.builder()
+                .recipeId(1L)
+                .recipeName("계란 야채 볶음밥")
+                .servings(1)
+                .foodIngredients(List.of())
+                .additionalFoodIngredients(List.of())
+                .similarRecipes(List.of())
+                .build();
+        given(recipeService.getRecipeDetail(1L, request)).willReturn(serviceResult);
+
+        // when
+        ResponseEntity<GlobalResponse<RecipeDetailResDto>> response =
+                recipeController.getRecipeDetail(1L, request);
+
+        // then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().isSuccess()).isTrue();
+        assertThat(response.getBody().getCode()).isEqualTo(201);
+        assertThat(response.getBody().getMessage()).isEqualTo("레시피 상세 조회에 성공했습니다.");
+        assertThat(response.getBody().getData()).isEqualTo(serviceResult);
+        assertThat(response.getBody().getData().servings()).isEqualTo(1);
+    }
 
     @Test
     @DisplayName("전체 레시피 목록 조회 API 201 응답 성공")

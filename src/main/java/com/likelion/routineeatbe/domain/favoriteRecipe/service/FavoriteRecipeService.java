@@ -1,9 +1,13 @@
 package com.likelion.routineeatbe.domain.favoriteRecipe.service;
 
 import com.likelion.routineeatbe.domain.favoriteRecipe.entity.FavoriteRecipe;
+import com.likelion.routineeatbe.domain.favoriteRecipe.dto.request.FavoriteRecipeSearchReqDto;
+import com.likelion.routineeatbe.domain.favoriteRecipe.dto.response.FavoriteRecipeListResDto;
 import com.likelion.routineeatbe.domain.favoriteRecipe.exception.FavoriteRecipeErrorCode;
+import com.likelion.routineeatbe.domain.favoriteRecipe.mapper.FavoriteRecipeMapper;
 import com.likelion.routineeatbe.domain.favoriteRecipe.repository.FavoriteRecipeRepository;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
+import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
 import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
@@ -11,6 +15,7 @@ import com.likelion.routineeatbe.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +27,7 @@ public class FavoriteRecipeService {
     private final UserRepository userRepository;
     private final RecipeRepository recipeRepository;
     private final FavoriteRecipeRepository favoriteRecipeRepository;
+    private final FavoriteRecipeMapper favoriteRecipeMapper;
 
     /**
      * (1) 작업 목적
@@ -152,5 +158,67 @@ public class FavoriteRecipeService {
                 "[FavoriteRecipeService] 레시피 찜 해제 | removeFavorite() - END | favoriteRecipeId: {}",
                 favoriteRecipe.getId()
         );
+    }
+
+    /**
+     * (1) 작업 목적
+     * 사용자가 찜한 레시피를 최신 찜순으로 조회합니다.
+     *
+     * (2) 세부 작업 내용
+     * - 사용자 고유 식별번호로 조회 대상을 확인합니다.
+     * - 위치 커서와 조회 크기로 찜 레시피 Slice를 조회합니다.
+     * - 다음 위치 커서를 계산하고 찜 레시피 목록 응답으로 변환합니다.
+     *
+     * @param request 사용자 식별번호와 커서 조회 조건
+     * @return 찜한 레시피 목록과 다음 커서 정보
+     */
+    @Transactional(readOnly = true)
+    public FavoriteRecipeListResDto getFavoriteRecipes(
+            FavoriteRecipeSearchReqDto request
+    ) {
+        log.info(
+                "[FavoriteRecipeService] 찜한 레시피 조회 | getFavoriteRecipes() - START | userNumber: {}, cursor: {}, size: {}",
+                request.userNumber(),
+                request.cursor(),
+                request.size()
+        );
+
+        /*
+            1. 사용자 조회
+            - 사용자 고유 식별번호가 존재하지 않으면 USER_NOT_FOUND 예외를 발생시킵니다.
+         */
+        User user = userRepository.findByLoginNumber(request.userNumber())
+                .orElseThrow(() -> new CustomException(
+                        FavoriteRecipeErrorCode.USER_NOT_FOUND
+                ));
+
+        /*
+            2. 찜한 레시피 조회
+            - 최신 찜순으로 레시피 기본 정보와 재료 통계를 위치 커서 기반 조회합니다.
+         */
+        Slice<RecipeSearchResult> favoriteRecipeSlice = recipeRepository.searchFavoriteRecipes(
+                user.getId(),
+                request.cursor(),
+                request.size()
+        );
+
+        /*
+            3. 찜한 레시피 응답 변환
+            - 다음 데이터가 존재하면 다음 조회 위치를 계산하고 Mapper로 응답을 생성합니다.
+         */
+        Long nextCursor = favoriteRecipeSlice.hasNext()
+                ? request.cursor() + request.size()
+                : null;
+        FavoriteRecipeListResDto result = favoriteRecipeMapper.toFavoriteRecipeListResDto(
+                favoriteRecipeSlice,
+                nextCursor
+        );
+
+        log.info(
+                "[FavoriteRecipeService] 찜한 레시피 조회 | getFavoriteRecipes() - END | resultSize: {}, nextCursor: {}",
+                result.content().size(),
+                result.nextCursor()
+        );
+        return result;
     }
 }

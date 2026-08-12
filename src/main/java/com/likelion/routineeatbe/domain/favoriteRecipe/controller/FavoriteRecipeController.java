@@ -1,5 +1,7 @@
 package com.likelion.routineeatbe.domain.favoriteRecipe.controller;
 
+import com.likelion.routineeatbe.domain.favoriteRecipe.dto.request.FavoriteRecipeSearchReqDto;
+import com.likelion.routineeatbe.domain.favoriteRecipe.dto.response.FavoriteRecipeListResDto;
 import com.likelion.routineeatbe.domain.favoriteRecipe.service.FavoriteRecipeService;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
@@ -43,5 +45,16 @@ public class FavoriteRecipeController implements FavoriteRecipeControllerDocs {
                         "레시피 찜 해제에 성공했습니다.",
                         null
                 ));
+    }
+
+    @Override
+    public ResponseEntity<GlobalResponse<FavoriteRecipeListResDto>> getFavoriteRecipes(
+            FavoriteRecipeSearchReqDto request
+    ) {
+        FavoriteRecipeListResDto result = favoriteRecipeService.getFavoriteRecipes(request);
+        return ResponseEntity.ok(GlobalResponse.success(
+                "찜한 레시피 조회에 성공했습니다.",
+                result
+        ));
     }
 }

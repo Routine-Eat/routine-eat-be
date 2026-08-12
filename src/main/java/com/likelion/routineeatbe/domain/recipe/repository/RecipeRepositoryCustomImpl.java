@@ -62,6 +62,65 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
     }
 
     /**
+     * 사용자가 찜한 레시피를 최신 찜순으로 위치 커서 기반 조회합니다.
+     * - size + 1건을 조회하여 다음 데이터 존재 여부를 판별합니다.
+     * - 사용자 보유량을 반영하여 부족 재료 개수와 구매 비용을 계산합니다.
+     *
+     * @param userId 재료 일치도와 부족 재료 정보를 계산할 사용자 ID
+     * @param cursor 1부터 시작하는 조회 위치
+     * @param size 한 번에 조회할 찜 레시피 개수
+     * @return 찜한 레시피 조회 결과 Slice
+     */
+    @Override
+    public Slice<RecipeSearchResult> searchFavoriteRecipes(
+            Long userId,
+            Long cursor,
+            Integer size
+    ) {
+        List<RecipeSearchResult> content = new ArrayList<>(entityManager.createQuery("""
+                        select new com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult(
+                            recipe.id,
+                            menu.id,
+                            menu.name,
+                            menu.thumbnailUrl,
+                            menu.calory,
+                            menu.timeRequired,
+                            menu.difficultyLevel,
+                            menu.type,
+                            recipe.cookingCount,
+                            count(distinct userFoodIngredient.foodIngredient.id),
+                            count(distinct recipeFoodIngredient.id),
+                            0L
+                        )
+                        from FavoriteRecipe favoriteRecipe
+                        join favoriteRecipe.recipe recipe
+                        join recipe.menu menu
+                        left join RecipeFoodIngredient recipeFoodIngredient
+                            on recipeFoodIngredient.recipe = recipe
+                        left join UserFoodIngredient userFoodIngredient
+                            on userFoodIngredient.foodIngredient = recipeFoodIngredient.foodIngredient
+                            and userFoodIngredient.user.id = :userId
+                            and userFoodIngredient.relationType = :ownType
+                        where favoriteRecipe.user.id = :userId
+                        group by favoriteRecipe.id, favoriteRecipe.createdAt, recipe, menu
+                        order by favoriteRecipe.createdAt desc, favoriteRecipe.id desc
+                        """, RecipeSearchResult.class)
+                .setParameter("userId", userId)
+                .setParameter("ownType", UserFoodIngredientType.OWN)
+                .setFirstResult(Math.toIntExact(cursor - 1L))
+                .setMaxResults(size + 1)
+                .getResultList());
+
+        boolean hasNext = content.size() > size;
+        if (hasNext) {
+            content.remove(content.size() - 1);
+        }
+
+        List<RecipeSearchResult> result = appendFavoriteIngredientAvailability(userId, content);
+        return new SliceImpl<>(result, PageRequest.of(0, size), hasNext);
+    }
+
+    /**
      * 메뉴명에 검색어가 포함된 기본 레시피를 일치도 및 인기순으로 조회합니다.
      * - 완전 일치, 접두어 일치, 부분 일치 순으로 정렬합니다.
      * - 같은 일치도에서는 짧은 메뉴명, 요리 횟수, 레시피 PK 순으로 정렬합니다.
@@ -353,6 +412,70 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
         return content.stream()
                 .map(result -> result.withRequiredIngredientCost(
                         (long) Math.ceil(costByRecipe.getOrDefault(result.recipeId(), 0.0))
+                ))
+                .toList();
+    }
+
+    /**
+     * 찜한 레시피의 부족 재료 개수와 구매 비용을 계산합니다.
+     * - 사용자의 OWN 기본 수량을 재료별로 합산합니다.
+     * - 필요량보다 보유량이 적은 재료만 부족 재료로 집계합니다.
+     *
+     * @param userId 사용자 ID
+     * @param content 현재 페이지의 찜 레시피 조회 결과
+     * @return 부족 재료 개수와 비용이 반영된 조회 결과
+     */
+    private List<RecipeSearchResult> appendFavoriteIngredientAvailability(
+            Long userId,
+            List<RecipeSearchResult> content
+    ) {
+        if (content.isEmpty()) {
+            return content;
+        }
+
+        Set<Long> recipeIds = content.stream()
+                .map(RecipeSearchResult::recipeId)
+                .collect(Collectors.toSet());
+        List<RecipeFoodIngredient> requiredIngredients = entityManager.createQuery("""
+                        select recipeFoodIngredient
+                        from RecipeFoodIngredient recipeFoodIngredient
+                        join fetch recipeFoodIngredient.foodIngredient
+                        where recipeFoodIngredient.recipe.id in :recipeIds
+                        """, RecipeFoodIngredient.class)
+                .setParameter("recipeIds", recipeIds)
+                .getResultList();
+
+        Map<Long, Double> ownedAmountByIngredient = findOwnedAmountByIngredient(
+                userId,
+                requiredIngredients
+        );
+        Map<Long, Long> shortageCountByRecipe = new HashMap<>();
+        Map<Long, Double> shortageCostByRecipe = new HashMap<>();
+
+        for (RecipeFoodIngredient requiredIngredient : requiredIngredients) {
+            Long foodIngredientId = requiredIngredient.getFoodIngredient().getId();
+            double requiredAmount = requiredIngredient.getPrimaryNeedAmountValue();
+            double ownedAmount = ownedAmountByIngredient.getOrDefault(foodIngredientId, 0.0);
+            double shortageAmount = Math.max(requiredAmount - ownedAmount, 0.0);
+            if (shortageAmount <= 0.0) {
+                continue;
+            }
+
+            Long recipeId = requiredIngredient.getRecipe().getId();
+            shortageCountByRecipe.merge(recipeId, 1L, Long::sum);
+            double ingredientCost = shortageAmount
+                    * requiredIngredient.getFoodIngredient().getPricePerHundred()
+                    / 100.0;
+            shortageCostByRecipe.merge(recipeId, ingredientCost, Double::sum);
+        }
+
+        return content.stream()
+                .map(result -> result.withRequiredIngredientAvailability(
+                        shortageCountByRecipe.getOrDefault(result.recipeId(), 0L),
+                        (long) Math.ceil(shortageCostByRecipe.getOrDefault(
+                                result.recipeId(),
+                                0.0
+                        ))
                 ))
                 .toList();
     }

@@ -24,6 +24,20 @@ public interface RecipeRepositoryCustom {
     );
 
     /**
+     * 사용자가 찜한 레시피를 최신 찜순으로 위치 커서 기반 조회합니다.
+     *
+     * @param userId 재료 일치도와 부족 재료 정보를 계산할 사용자 ID
+     * @param cursor 1부터 시작하는 조회 위치
+     * @param size 한 번에 조회할 찜 레시피 개수
+     * @return 찜한 레시피 조회 결과 Slice
+     */
+    Slice<RecipeSearchResult> searchFavoriteRecipes(
+            Long userId,
+            Long cursor,
+            Integer size
+    );
+
+    /**
      * 메뉴명에 검색어가 포함된 기본 레시피를 일치도 및 인기순으로 조회합니다.
      * @param searchWord 메뉴/레시피명 검색어
      * @param cursor 1부터 시작하는 조회 위치

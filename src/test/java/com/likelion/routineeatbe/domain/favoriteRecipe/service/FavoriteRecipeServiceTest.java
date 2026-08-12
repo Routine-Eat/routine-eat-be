@@ -7,14 +7,19 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
 
+import com.likelion.routineeatbe.domain.favoriteRecipe.dto.request.FavoriteRecipeSearchReqDto;
+import com.likelion.routineeatbe.domain.favoriteRecipe.dto.response.FavoriteRecipeListResDto;
 import com.likelion.routineeatbe.domain.favoriteRecipe.entity.FavoriteRecipe;
 import com.likelion.routineeatbe.domain.favoriteRecipe.exception.FavoriteRecipeErrorCode;
+import com.likelion.routineeatbe.domain.favoriteRecipe.mapper.FavoriteRecipeMapper;
 import com.likelion.routineeatbe.domain.favoriteRecipe.repository.FavoriteRecipeRepository;
+import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
 import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,6 +29,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 
 @ExtendWith(MockitoExtension.class)
 class FavoriteRecipeServiceTest {
@@ -39,6 +47,9 @@ class FavoriteRecipeServiceTest {
 
     @Mock
     private FavoriteRecipeRepository favoriteRecipeRepository;
+
+    @Mock
+    private FavoriteRecipeMapper favoriteRecipeMapper;
 
     @Test
     @DisplayName("사용자와 레시피를 조회하여 레시피 찜 등록 성공")
@@ -210,5 +221,84 @@ class FavoriteRecipeServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(FavoriteRecipeErrorCode.FAVORITE_RECIPE_NOT_FOUND);
         then(favoriteRecipeRepository).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
+    @DisplayName("찜한 레시피 조회 성공 - 다음 페이지 존재")
+    void 찜한_레시피_조회_성공_다음_페이지_존재() {
+        // given
+        FavoriteRecipeSearchReqDto request = new FavoriteRecipeSearchReqDto("1234", 1L, 10);
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        RecipeSearchResult recipeSearchResult = new RecipeSearchResult(
+                10L, 100L, "감자미역국", "thumbnail", 35.4, 20,
+                null, null, 0L, 1L, 4L, 10_000L
+        );
+        Slice<RecipeSearchResult> slice = new SliceImpl<>(
+                List.of(recipeSearchResult),
+                PageRequest.of(0, request.size()),
+                true
+        );
+        FavoriteRecipeListResDto expected = FavoriteRecipeListResDto.create(
+                List.of(),
+                true,
+                11L
+        );
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(recipeRepository.searchFavoriteRecipes(1L, 1L, 10)).willReturn(slice);
+        given(favoriteRecipeMapper.toFavoriteRecipeListResDto(slice, 11L))
+                .willReturn(expected);
+
+        // when
+        FavoriteRecipeListResDto result = favoriteRecipeService.getFavoriteRecipes(request);
+
+        // then
+        assertThat(result).isSameAs(expected);
+        then(recipeRepository).should().searchFavoriteRecipes(1L, 1L, 10);
+        then(favoriteRecipeMapper).should().toFavoriteRecipeListResDto(slice, 11L);
+    }
+
+    @Test
+    @DisplayName("찜한 레시피 조회 성공 - 빈 마지막 페이지")
+    void 찜한_레시피_조회_성공_빈_마지막_페이지() {
+        // given
+        FavoriteRecipeSearchReqDto request = new FavoriteRecipeSearchReqDto("1234", null, null);
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        Slice<RecipeSearchResult> slice = new SliceImpl<>(
+                List.of(),
+                PageRequest.of(0, request.size()),
+                false
+        );
+        FavoriteRecipeListResDto expected = FavoriteRecipeListResDto.create(
+                List.of(),
+                false,
+                null
+        );
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(recipeRepository.searchFavoriteRecipes(1L, 1L, 10)).willReturn(slice);
+        given(favoriteRecipeMapper.toFavoriteRecipeListResDto(slice, null))
+                .willReturn(expected);
+
+        // when
+        FavoriteRecipeListResDto result = favoriteRecipeService.getFavoriteRecipes(request);
+
+        // then
+        assertThat(result).isSameAs(expected);
+        assertThat(result.nextCursor()).isNull();
+    }
+
+    @Test
+    @DisplayName("찜한 레시피 조회 실패 - 존재하지 않는 사용자")
+    void 찜한_레시피_조회_실패_존재하지_않는_사용자() {
+        // given
+        FavoriteRecipeSearchReqDto request = new FavoriteRecipeSearchReqDto("9999", 1L, 10);
+        given(userRepository.findByLoginNumber("9999")).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> favoriteRecipeService.getFavoriteRecipes(request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(FavoriteRecipeErrorCode.USER_NOT_FOUND);
+        then(recipeRepository).shouldHaveNoInteractions();
+        then(favoriteRecipeMapper).shouldHaveNoInteractions();
     }
 }

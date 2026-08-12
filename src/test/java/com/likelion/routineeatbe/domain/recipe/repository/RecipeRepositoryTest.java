@@ -6,6 +6,8 @@ import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredientType;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
+import com.likelion.routineeatbe.domain.favoriteRecipe.entity.FavoriteRecipe;
+import com.likelion.routineeatbe.domain.favoriteRecipe.repository.FavoriteRecipeRepository;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import com.likelion.routineeatbe.domain.menu.entity.MenuType;
@@ -39,6 +41,9 @@ class RecipeRepositoryTest {
 
     @Autowired
     private RecipeRepository recipeRepository;
+
+    @Autowired
+    private FavoriteRecipeRepository favoriteRecipeRepository;
 
     @Autowired
     private TestEntityManager entityManager;
@@ -240,6 +245,55 @@ class RecipeRepositoryTest {
         assertThat(result.getContent()).extracting(Recipe::getId)
                 .containsExactly(percentRecipe.getId());
         assertThat(result.hasNext()).isFalse();
+    }
+
+    @Test
+    @DisplayName("찜한 레시피를 최신 찜순으로 조회하고 부족 재료 통계 계산 성공")
+    void 찜한_레시피를_최신_찜순으로_조회하고_부족_재료_통계_계산_성공() {
+        // given
+        User targetUser = entityManager.persist(User.builder().loginNumber("3333").build());
+        User otherUser = entityManager.persist(User.builder().loginNumber("4444").build());
+        FoodIngredient potato = persistFoodIngredient("찜 조회 감자", 1000L);
+        FoodIngredient carrot = persistFoodIngredient("찜 조회 당근", 2000L);
+        Recipe firstRecipe = persistRecipe("첫 번째 찜 레시피", 10L, RecommendationType.DEFAULT);
+        Recipe latestRecipe = persistRecipe("최근 찜 레시피", 20L, RecommendationType.DEFAULT);
+        persistRequiredIngredient(latestRecipe, potato, 100.0);
+        persistRequiredIngredient(latestRecipe, carrot, 100.0);
+        entityManager.persist(UserFoodIngredient.builder()
+                .user(targetUser)
+                .foodIngredient(potato)
+                .relationType(UserFoodIngredientType.OWN)
+                .primaryAmountValue(50.0)
+                .build());
+        entityManager.persist(UserFoodIngredient.builder()
+                .user(targetUser)
+                .foodIngredient(carrot)
+                .relationType(UserFoodIngredientType.OWN)
+                .primaryAmountValue(100.0)
+                .build());
+        favoriteRecipeRepository.saveAndFlush(FavoriteRecipe.create(targetUser, firstRecipe));
+        favoriteRecipeRepository.saveAndFlush(FavoriteRecipe.create(targetUser, latestRecipe));
+        favoriteRecipeRepository.saveAndFlush(FavoriteRecipe.create(otherUser, latestRecipe));
+        entityManager.clear();
+
+        // when
+        Slice<RecipeSearchResult> firstPage = recipeRepository.searchFavoriteRecipes(
+                targetUser.getId(), 1L, 1
+        );
+        Slice<RecipeSearchResult> secondPage = recipeRepository.searchFavoriteRecipes(
+                targetUser.getId(), 2L, 1
+        );
+
+        // then
+        assertThat(firstPage.getContent()).hasSize(1);
+        assertThat(firstPage.getContent().getFirst().recipeId()).isEqualTo(latestRecipe.getId());
+        assertThat(firstPage.getContent().getFirst().matchedIngredientCount()).isEqualTo(2L);
+        assertThat(firstPage.getContent().getFirst().requiredIngredientCount()).isEqualTo(1L);
+        assertThat(firstPage.getContent().getFirst().requiredIngredientCost()).isEqualTo(500L);
+        assertThat(firstPage.hasNext()).isTrue();
+        assertThat(secondPage.getContent()).extracting(RecipeSearchResult::recipeId)
+                .containsExactly(firstRecipe.getId());
+        assertThat(secondPage.hasNext()).isFalse();
     }
 
     private RecipeSearchRequestDto createRequest(Long cursor, int size, RecipeSortType sortType) {

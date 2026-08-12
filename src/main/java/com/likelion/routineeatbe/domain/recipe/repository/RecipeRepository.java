@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
-public interface RecipeRepository extends JpaRepository<Recipe, Long> {
+public interface RecipeRepository extends JpaRepository<Recipe, Long>, RecipeRepositoryCustom {
 
     /**
      * 조리 도구가 아직 초기화되지 않은 기본 레시피를 메뉴 및 조리 단계와 함께 조회합니다.

@@ -19,6 +19,8 @@ import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIn
 import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +42,103 @@ class RecipeRepositoryTest {
 
     @Autowired
     private TestEntityManager entityManager;
+
+    @Test
+    @DisplayName("재료 추가 제거 교체 기준 차이별 레시피 후보 조회 성공")
+    void 재료_추가_제거_교체_기준_차이별_레시피_후보_조회_성공() {
+        // given
+        FoodIngredient ingredientA = persistFoodIngredient("재료A", 100L);
+        FoodIngredient ingredientB = persistFoodIngredient("재료B", 100L);
+        FoodIngredient ingredientC = persistFoodIngredient("재료C", 100L);
+        FoodIngredient ingredientD = persistFoodIngredient("재료D", 100L);
+        Recipe targetRecipe = persistRecipe("대상 요리", 0L, RecommendationType.DEFAULT);
+        Recipe exactRecipe = persistRecipe("동일 재료 요리", 30L, RecommendationType.DEFAULT);
+        Recipe oneRemovedRecipe = persistRecipe("한 개 제거 요리", 30L, RecommendationType.DEFAULT);
+        Recipe oneReplacedRecipe = persistRecipe("한 개 교체 요리", 20L, RecommendationType.DEFAULT);
+        Recipe twoReplacedRecipe = persistRecipe(
+                "두 개 교체 요리", 10L, RecommendationType.DEFAULT
+        );
+
+        persistRequiredIngredient(targetRecipe, ingredientA, 100.0);
+        persistRequiredIngredient(targetRecipe, ingredientB, 100.0);
+        persistRequiredIngredient(exactRecipe, ingredientA, 100.0);
+        persistRequiredIngredient(exactRecipe, ingredientB, 100.0);
+        persistRequiredIngredient(oneRemovedRecipe, ingredientA, 100.0);
+        persistRequiredIngredient(oneReplacedRecipe, ingredientA, 100.0);
+        persistRequiredIngredient(oneReplacedRecipe, ingredientC, 100.0);
+        persistRequiredIngredient(twoReplacedRecipe, ingredientC, 100.0);
+        persistRequiredIngredient(twoReplacedRecipe, ingredientD, 100.0);
+        entityManager.flush();
+        entityManager.clear();
+
+        Set<Long> targetFoodIngredientIds = Set.of(ingredientA.getId(), ingredientB.getId());
+
+        // when
+        List<Recipe> differenceZero =
+                recipeRepository.findRecipeCandidatesByExactIngredientDifference(
+                        targetRecipe.getId(),
+                        targetFoodIngredientIds,
+                        0,
+                        3
+                );
+        List<Recipe> differenceOne =
+                recipeRepository.findRecipeCandidatesByExactIngredientDifference(
+                        targetRecipe.getId(),
+                        targetFoodIngredientIds,
+                        1,
+                        3
+                );
+        List<Recipe> differenceTwo =
+                recipeRepository.findRecipeCandidatesByExactIngredientDifference(
+                        targetRecipe.getId(),
+                        targetFoodIngredientIds,
+                        2,
+                        3
+                );
+
+        // then
+        assertThat(differenceZero).extracting(Recipe::getId)
+                .containsExactly(exactRecipe.getId());
+        assertThat(differenceOne).extracting(Recipe::getId)
+                .containsExactly(oneRemovedRecipe.getId(), oneReplacedRecipe.getId());
+        assertThat(differenceTwo).extracting(Recipe::getId)
+                .containsExactly(twoReplacedRecipe.getId());
+    }
+
+    @Test
+    @DisplayName("대상 레시피에 재료가 없는 경우 재료 차이별 후보 조회 성공")
+    void 대상_레시피에_재료가_없는_경우_재료_차이별_후보_조회_성공() {
+        // given
+        FoodIngredient ingredient = persistFoodIngredient("단일 재료", 100L);
+        Recipe targetRecipe = persistRecipe("재료 없는 대상", 0L, RecommendationType.DEFAULT);
+        Recipe emptyRecipe = persistRecipe("재료 없는 후보", 10L, RecommendationType.DEFAULT);
+        Recipe oneIngredientRecipe = persistRecipe("재료 한 개 후보", 20L, RecommendationType.DEFAULT);
+        persistRequiredIngredient(oneIngredientRecipe, ingredient, 100.0);
+        entityManager.flush();
+        entityManager.clear();
+
+        // when
+        List<Recipe> differenceZero =
+                recipeRepository.findRecipeCandidatesByExactIngredientDifference(
+                        targetRecipe.getId(),
+                        Set.of(),
+                        0,
+                        3
+                );
+        List<Recipe> differenceOne =
+                recipeRepository.findRecipeCandidatesByExactIngredientDifference(
+                        targetRecipe.getId(),
+                        Set.of(),
+                        1,
+                        3
+                );
+
+        // then
+        assertThat(differenceZero).extracting(Recipe::getId)
+                .containsExactly(emptyRecipe.getId());
+        assertThat(differenceOne).extracting(Recipe::getId)
+                .containsExactly(oneIngredientRecipe.getId());
+    }
 
     @Test
     @DisplayName("추천 유형별 레시피 조회 및 부족 재료비 계산 성공")

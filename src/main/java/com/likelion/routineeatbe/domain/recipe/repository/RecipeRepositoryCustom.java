@@ -4,6 +4,8 @@ import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
+import java.util.List;
+import java.util.Set;
 import org.springframework.data.domain.Slice;
 
 public interface RecipeRepositoryCustom {
@@ -29,4 +31,22 @@ public interface RecipeRepositoryCustom {
      * @return 검색된 기본 레시피 Slice
      */
     Slice<Recipe> searchRecipesByMenuName(String searchWord, Long cursor, Integer size);
+
+    /**
+     * 대상 레시피와 음식 재료 구성 차이가 정확히 일치하는 기본 레시피 후보를 조회합니다.
+     * - 음식 재료의 추가, 제거, 교체를 각각 차이 1로 계산합니다.
+     * - 차이값의 단계적 확장과 최종 후보 선정은 FindSimilarRecipeService에서 담당합니다.
+     *
+     * @param targetRecipeId 제외할 대상 레시피 PK
+     * @param targetFoodIngredientIds 대상 레시피의 음식 재료 PK 집합
+     * @param ingredientDifference 조회할 정확한 재료 차이 개수
+     * @param limit 최대 조회 개수
+     * @return 재료 차이 조건을 만족하는 레시피 후보 목록
+     */
+    List<Recipe> findRecipeCandidatesByExactIngredientDifference(
+            Long targetRecipeId,
+            Set<Long> targetFoodIngredientIds,
+            int ingredientDifference,
+            int limit
+    );
 }

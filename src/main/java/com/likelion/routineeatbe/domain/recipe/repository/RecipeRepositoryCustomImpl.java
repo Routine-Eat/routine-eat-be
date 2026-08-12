@@ -109,6 +109,69 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
     }
 
     /**
+     * 대상 레시피와 음식 재료 구성 차이가 정확히 일치하는 기본 레시피 후보를 조회합니다.
+     * - max(대상 재료 수, 후보 재료 수) - 공통 재료 수로 차이를 계산합니다.
+     * - 음식 재료의 추가, 제거, 교체를 각각 차이 1로 계산하고 대상 레시피는 제외합니다.
+     *
+     * @param targetRecipeId 제외할 대상 레시피 PK
+     * @param targetFoodIngredientIds 대상 레시피의 음식 재료 PK 집합
+     * @param ingredientDifference 조회할 정확한 재료 차이 개수
+     * @param limit 최대 조회 개수
+     * @return 재료 차이 조건을 만족하는 레시피 후보 목록
+     */
+    @Override
+    public List<Recipe> findRecipeCandidatesByExactIngredientDifference(
+            Long targetRecipeId,
+            Set<Long> targetFoodIngredientIds,
+            int ingredientDifference,
+            int limit
+    ) {
+        String candidateIngredientCountJpql = """
+                (select count(candidateIngredient.id)
+                 from RecipeFoodIngredient candidateIngredient
+                 where candidateIngredient.recipe = recipe)
+                """;
+        String commonIngredientCountJpql = targetFoodIngredientIds.isEmpty()
+                ? "0"
+                : """
+                        (select count(commonIngredient.id)
+                         from RecipeFoodIngredient commonIngredient
+                         where commonIngredient.recipe = recipe
+                           and commonIngredient.foodIngredient.id in :targetFoodIngredientIds)
+                        """;
+        String jpql = """
+                select recipe
+                from Recipe recipe
+                join fetch recipe.menu menu
+                where recipe.type = com.likelion.routineeatbe.domain.recipe.enums.RecipeType.BASIC
+                  and recipe.id <> :targetRecipeId
+                  and (
+                      case
+                          when :targetFoodIngredientCount >= %s
+                              then :targetFoodIngredientCount
+                          else %s
+                      end
+                      - %s
+                  ) = :ingredientDifference
+                order by recipe.cookingCount desc, recipe.id desc
+                """.formatted(
+                candidateIngredientCountJpql,
+                candidateIngredientCountJpql,
+                commonIngredientCountJpql
+        );
+
+        TypedQuery<Recipe> query = entityManager.createQuery(jpql, Recipe.class)
+                .setParameter("targetRecipeId", targetRecipeId)
+                .setParameter("targetFoodIngredientCount", (long) targetFoodIngredientIds.size())
+                .setParameter("ingredientDifference", (long) ingredientDifference)
+                .setMaxResults(limit);
+        if (!targetFoodIngredientIds.isEmpty()) {
+            query.setParameter("targetFoodIngredientIds", targetFoodIngredientIds);
+        }
+        return query.getResultList();
+    }
+
+    /**
      * LIKE 검색에서 특수문자가 와일드카드로 해석되지 않도록 이스케이프합니다.
      * @param searchWord 정규화된 검색어
      * @return LIKE 검색용 이스케이프 문자열

@@ -1,5 +1,6 @@
 package com.likelion.routineeatbe.domain.user.controller;
 
+import com.likelion.routineeatbe.domain.cookingEquipment.dto.response.CookingEquipmentResponse;
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserFoodIngredientRequest;
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserRequest;
 import com.likelion.routineeatbe.domain.user.dto.request.DeleteUserFoodIngredientRequest;
@@ -11,6 +12,7 @@ import com.likelion.routineeatbe.global.response.GlobalResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -162,4 +164,27 @@ public interface UserControllerDocs {
             @Valid
             @RequestBody DeleteUserFoodIngredientRequest request
             );
+
+    @Operation(
+            summary = "사용자-조리도구 관계 생성",
+            description = """
+                    userId : 사용자 id \n
+                    equipmentIdList : 조리도구 식별자 id 리스트
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "사용자-조리도구 관계 생성 성공"
+            ),
+            @ApiResponse(responseCode = "4041", description = "잘못된 사용자 id 형식", content = @Content),
+            @ApiResponse(responseCode = "4042", description = "잘못된 조리도구 id 포함", content = @Content),
+    })
+    @PostMapping("/{userId}/cooking-equipments")
+    GlobalResponse<List<CookingEquipmentResponse>> createUserCookingEquipment(
+            @PathVariable("userId") Long userId,
+            @Valid
+            @Schema(description = "조리도구 아이디 리스트",example = "[1,2,3]")
+            @RequestBody List<Long> equipmentIdList
+    );
 }

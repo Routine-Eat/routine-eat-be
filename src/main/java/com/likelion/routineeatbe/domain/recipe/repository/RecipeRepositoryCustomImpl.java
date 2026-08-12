@@ -90,7 +90,7 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
                             recipe.cookingCount,
                             count(distinct userFoodIngredient.foodIngredient.id),
                             count(distinct recipeFoodIngredient.id),
-                            0L
+                            cast(0 as long)
                         )
                         from FavoriteRecipe favoriteRecipe
                         join favoriteRecipe.recipe recipe

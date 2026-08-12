@@ -3,6 +3,7 @@ package com.likelion.routineeatbe.domain.recipe.repository;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
+import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import org.springframework.data.domain.Slice;
 
 public interface RecipeRepositoryCustom {
@@ -19,4 +20,13 @@ public interface RecipeRepositoryCustom {
             RecipeSearchRequestDto request,
             RecommendationType recommendationType
     );
+
+    /**
+     * 메뉴명에 검색어가 포함된 기본 레시피를 일치도 및 인기순으로 조회합니다.
+     * @param searchWord 메뉴/레시피명 검색어
+     * @param cursor 1부터 시작하는 조회 위치
+     * @param size 한 번에 조회할 레시피 개수
+     * @return 검색된 기본 레시피 Slice
+     */
+    Slice<Recipe> searchRecipesByMenuName(String searchWord, Long cursor, Integer size);
 }

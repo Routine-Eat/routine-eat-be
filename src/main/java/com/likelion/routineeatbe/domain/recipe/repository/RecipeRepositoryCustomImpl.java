@@ -3,6 +3,7 @@ package com.likelion.routineeatbe.domain.recipe.repository;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
+import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.enums.RecipeSortType;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
@@ -11,6 +12,7 @@ import jakarta.persistence.TypedQuery;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -57,6 +59,65 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
 
         List<RecipeSearchResult> contentWithCost = appendRequiredIngredientCosts(userId, content);
         return new SliceImpl<>(contentWithCost, PageRequest.of(0, request.size()), hasNext);
+    }
+
+    /**
+     * 메뉴명에 검색어가 포함된 기본 레시피를 일치도 및 인기순으로 조회합니다.
+     * - 완전 일치, 접두어 일치, 부분 일치 순으로 정렬합니다.
+     * - 같은 일치도에서는 짧은 메뉴명, 요리 횟수, 레시피 PK 순으로 정렬합니다.
+     * - size + 1건을 조회하여 다음 데이터 존재 여부를 판별합니다.
+     *
+     * @param searchWord 메뉴/레시피명 검색어
+     * @param cursor 1부터 시작하는 조회 위치
+     * @param size 한 번에 조회할 레시피 개수
+     * @return 검색된 기본 레시피 Slice
+     */
+    @Override
+    public Slice<Recipe> searchRecipesByMenuName(String searchWord, Long cursor, Integer size) {
+        String normalizedSearchWord = searchWord.toLowerCase(Locale.ROOT);
+        String escapedSearchWord = escapeLikePattern(normalizedSearchWord);
+
+        List<Recipe> content = new ArrayList<>(entityManager.createQuery("""
+                        select recipe
+                        from Recipe recipe
+                        join fetch recipe.menu menu
+                        where recipe.type = com.likelion.routineeatbe.domain.recipe.enums.RecipeType.BASIC
+                          and lower(menu.name) like :containsPattern escape '!'
+                        order by
+                            case
+                                when lower(menu.name) = :normalizedSearchWord then 0
+                                when lower(menu.name) like :prefixPattern escape '!' then 1
+                                else 2
+                            end asc,
+                            length(menu.name) asc,
+                            recipe.cookingCount desc,
+                            recipe.id desc
+                        """, Recipe.class)
+                .setParameter("normalizedSearchWord", normalizedSearchWord)
+                .setParameter("prefixPattern", escapedSearchWord + "%")
+                .setParameter("containsPattern", "%" + escapedSearchWord + "%")
+                .setFirstResult(Math.toIntExact(cursor - 1L))
+                .setMaxResults(size + 1)
+                .getResultList());
+
+        boolean hasNext = content.size() > size;
+        if (hasNext) {
+            content.remove(content.size() - 1);
+        }
+
+        return new SliceImpl<>(content, PageRequest.of(0, size), hasNext);
+    }
+
+    /**
+     * LIKE 검색에서 특수문자가 와일드카드로 해석되지 않도록 이스케이프합니다.
+     * @param searchWord 정규화된 검색어
+     * @return LIKE 검색용 이스케이프 문자열
+     */
+    private String escapeLikePattern(String searchWord) {
+        return searchWord
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
     }
 
     /**

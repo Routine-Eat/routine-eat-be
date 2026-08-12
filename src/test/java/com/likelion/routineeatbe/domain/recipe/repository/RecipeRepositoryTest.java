@@ -100,6 +100,49 @@ class RecipeRepositoryTest {
         assertThat(result.hasNext()).isFalse();
     }
 
+    @Test
+    @DisplayName("메뉴명 검색어 일치도 및 위치 커서 레시피 조회 성공")
+    void 메뉴명_검색어_일치도_및_위치_커서_레시피_조회_성공() {
+        // given
+        Recipe exactMatch = persistRecipe("감자", 1L, RecommendationType.DEFAULT);
+        Recipe shortPrefixMatch = persistRecipe("감자국", 1L, RecommendationType.DEFAULT);
+        Recipe longPrefixMatch = persistRecipe("감자볶음", 100L, RecommendationType.DEFAULT);
+        Recipe containsMatch = persistRecipe("매운감자국", 200L, RecommendationType.DEFAULT);
+        persistRecipe("고구마국", 300L, RecommendationType.DEFAULT);
+        entityManager.flush();
+        entityManager.clear();
+
+        // when
+        Slice<Recipe> firstPage = recipeRepository.searchRecipesByMenuName("감자", 1L, 2);
+        Slice<Recipe> secondPage = recipeRepository.searchRecipesByMenuName("감자", 3L, 2);
+
+        // then
+        assertThat(firstPage.getContent()).extracting(Recipe::getId)
+                .containsExactly(exactMatch.getId(), shortPrefixMatch.getId());
+        assertThat(firstPage.hasNext()).isTrue();
+        assertThat(secondPage.getContent()).extracting(Recipe::getId)
+                .containsExactly(longPrefixMatch.getId(), containsMatch.getId());
+        assertThat(secondPage.hasNext()).isFalse();
+    }
+
+    @Test
+    @DisplayName("LIKE 특수문자를 일반 문자로 처리한 메뉴명 검색 성공")
+    void LIKE_특수문자를_일반_문자로_처리한_메뉴명_검색_성공() {
+        // given
+        Recipe percentRecipe = persistRecipe("100% 감자", 1L, RecommendationType.DEFAULT);
+        persistRecipe("감자국", 2L, RecommendationType.DEFAULT);
+        entityManager.flush();
+        entityManager.clear();
+
+        // when
+        Slice<Recipe> result = recipeRepository.searchRecipesByMenuName("%", 1L, 10);
+
+        // then
+        assertThat(result.getContent()).extracting(Recipe::getId)
+                .containsExactly(percentRecipe.getId());
+        assertThat(result.hasNext()).isFalse();
+    }
+
     private RecipeSearchRequestDto createRequest(Long cursor, int size, RecipeSortType sortType) {
         return new RecipeSearchRequestDto(
                 "1234", cursor, size, null, null, MenuType.KOREAN, sortType

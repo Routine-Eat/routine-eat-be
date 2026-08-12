@@ -13,6 +13,7 @@ import com.likelion.routineeatbe.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -31,6 +32,7 @@ public class UserCookingEquipmentService {
      * @param equipmentIdList 조리도구 id 리스트
      * @return 조리도구 반환 dto 리스트
      */
+    @Transactional
     public List<CookingEquipmentResponse> createUserCookingEquipment(Long userId,List<Long> equipmentIdList){
         User user=userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER));
@@ -58,6 +60,7 @@ public class UserCookingEquipmentService {
      * @param userId 사용자 id
      * @return 조리도구 반환 dto 리스트
      */
+    @Transactional(readOnly = true)
     public List<CookingEquipmentResponse> getUserCookingEquipment(Long userId){
         List<UserCookingEquipment> userCookingEquipments=userCookingEquipmentRepository.findAllByUserId(userId);
 
@@ -65,5 +68,20 @@ public class UserCookingEquipmentService {
                 .map(UserCookingEquipment::getCookingEquipment)
                 .map(CookingEquipmentResponse::from)
                 .toList();
+    }
+
+    /**
+     * - 사용자-조리도구 관계 삭제
+     * @param userId 사용자 id
+     * @param equipmentIdList 조리도구 id 리스트
+     */
+    @Transactional
+    public void deleteUserCookEquipment(Long userId,List<Long> equipmentIdList){
+        userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER));
+        if (equipmentIdList == null || equipmentIdList.isEmpty()) {
+            throw new CustomException(UserCookingEquipmentErrorCode.BLANK_LIST);
+        }
+        userCookingEquipmentRepository.deleteByUserIdAndEquipmentsIds(userId,equipmentIdList);
     }
 }

@@ -76,4 +76,10 @@ public class UserController implements UserControllerDocs {
         List<CookingEquipmentResponse> cookingEquipmentResponseList=userCookingEquipmentService.getUserCookingEquipment(userId);
         return GlobalResponse.success("사용자-조리도구 관계 조회가 성공했습니다.",cookingEquipmentResponseList);
     }
+
+    @Override
+    public GlobalResponse deleteUserCookingEquipment(Long userId,List<Long> equipmentIdList){
+        userCookingEquipmentService.deleteUserCookEquipment(userId,equipmentIdList);
+        return GlobalResponse.success("사용자-조리도구 관계 삭제에 성공했습니다.");
+    }
 }

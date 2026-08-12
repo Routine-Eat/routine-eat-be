@@ -159,7 +159,7 @@ public interface UserControllerDocs {
             @ApiResponse(responseCode = "4042", description = "잘못된 식재료 id 포함", content = @Content),
     })
     @DeleteMapping("/{userId}/food-ingredients")
-    GlobalResponse deleteUserFoodIngredient(
+    GlobalResponse<Void> deleteUserFoodIngredient(
             @PathVariable("userId") Long userId,
             @Valid
             @RequestBody DeleteUserFoodIngredientRequest request
@@ -183,7 +183,6 @@ public interface UserControllerDocs {
     @PostMapping("/{userId}/cooking-equipments")
     GlobalResponse<List<CookingEquipmentResponse>> createUserCookingEquipment(
             @PathVariable("userId") Long userId,
-            @Valid
             @Schema(description = "조리도구 아이디 리스트",example = "[1,2,3]")
             @RequestBody List<Long> equipmentIdList
     );
@@ -203,6 +202,27 @@ public interface UserControllerDocs {
     })
     @GetMapping("/{userId}/cooking-equipments")
     GlobalResponse<List<CookingEquipmentResponse>> getUserCookingEquipment(
-            @NotNull @PathVariable("userId") Long userId
+            @PathVariable("userId") Long userId
+    );
+
+    @Operation(
+            summary = "사용자-조리도구 관계 삭제",
+            description = """
+                    userId에 해당하는 사용자의 보유 조리도구 목록 중 equipmentIdList 삭제 \n
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "사용자-조리도구 관계 삭제 성공"
+            ),
+            @ApiResponse(responseCode = "4041", description = "잘못된 사용자 id 형식", content = @Content),
+            @ApiResponse(responseCode = "4042", description = "잘못된 조리도구 id 형식", content = @Content),
+    })
+    @DeleteMapping("/{userId}/cooking-equipments")
+    GlobalResponse<Void> deleteUserCookingEquipment(
+            @PathVariable("userId") Long userId,
+            @Schema(description = "조리도구 아이디 리스트",example = "[1,2,3]")
+            @RequestBody List<Long> equipmentIdList
     );
 }

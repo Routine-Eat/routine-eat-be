@@ -1,7 +1,9 @@
 package com.likelion.routineeatbe.domain.recipe.mapper;
 
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
+import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeListResponseDto;
+import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -25,6 +27,23 @@ public class RecipeMapper {
                 result.matchedIngredientCount(),
                 result.requiredIngredientCount(),
                 result.requiredIngredientCost()
+        );
+    }
+
+    /**
+     * Recipe Entity를 검색 결과 응답 DTO로 변환합니다.
+     * @param recipe 변환할 기본 레시피 Entity
+     * @return 검색 결과 응답 DTO
+     */
+    public RecipeKeywordSearchResDto toRecipeKeywordSearchResDto(Recipe recipe) {
+        return RecipeKeywordSearchResDto.create(
+                recipe.getId(),
+                recipe.getMenu().getName(),
+                recipe.getMenu().getThumbnailUrl(),
+                recipe.getMenu().getCalory(),
+                recipe.getMenu().getTimeRequired(),
+                recipe.getMenu().getDifficultyLevel(),
+                recipe.getMenu().getType()
         );
     }
 }

@@ -7,15 +7,19 @@ import static org.mockito.Mockito.verify;
 
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
+import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.enums.RecipeSortType;
 import com.likelion.routineeatbe.domain.recipe.mapper.RecipeMapper;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
 import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
+import com.likelion.routineeatbe.global.response.CursorSliceResponse;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -91,6 +95,77 @@ class RecipeServiceTest {
         // when & then
         assertThatThrownBy(() -> recipeService.getRecipes(request))
                 .isInstanceOf(CustomException.class);
+    }
+
+    @Test
+    @DisplayName("검색어 기반 레시피 검색 성공")
+    void 검색어_기반_레시피_검색_성공() {
+        // given
+        RecipeKeywordSearchReqDto request = new RecipeKeywordSearchReqDto(
+                "1234", " 감자 ", 1L, 10
+        );
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        Recipe recipe = Recipe.builder().id(10L).build();
+        RecipeKeywordSearchResDto responseDto = RecipeKeywordSearchResDto.builder()
+                .recipeId(10L)
+                .menuName("감자미역국")
+                .build();
+        Slice<Recipe> slice = new SliceImpl<>(
+                List.of(recipe), PageRequest.of(0, 10), true
+        );
+
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(recipeRepository.searchRecipesByMenuName("감자", 1L, 10)).willReturn(slice);
+        given(recipeMapper.toRecipeKeywordSearchResDto(recipe)).willReturn(responseDto);
+
+        // when
+        CursorSliceResponse<RecipeKeywordSearchResDto> result =
+                recipeService.searchRecipesByMenuName(request);
+
+        // then
+        assertThat(result.content()).containsExactly(responseDto);
+        assertThat(result.hasNext()).isTrue();
+        assertThat(result.nextCursor()).isEqualTo(11L);
+        verify(recipeRepository).searchRecipesByMenuName("감자", 1L, 10);
+        verify(recipeMapper).toRecipeKeywordSearchResDto(recipe);
+    }
+
+    @Test
+    @DisplayName("검색어 기반 레시피 검색 마지막 페이지 성공")
+    void 검색어_기반_레시피_검색_마지막_페이지_성공() {
+        // given
+        RecipeKeywordSearchReqDto request = new RecipeKeywordSearchReqDto(
+                "1234", "감자", 11L, 10
+        );
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        Slice<Recipe> slice = new SliceImpl<>(List.of(), PageRequest.of(0, 10), false);
+
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(recipeRepository.searchRecipesByMenuName("감자", 11L, 10)).willReturn(slice);
+
+        // when
+        CursorSliceResponse<RecipeKeywordSearchResDto> result =
+                recipeService.searchRecipesByMenuName(request);
+
+        // then
+        assertThat(result.content()).isEmpty();
+        assertThat(result.hasNext()).isFalse();
+        assertThat(result.nextCursor()).isNull();
+    }
+
+    @Test
+    @DisplayName("검색어 기반 레시피 검색 실패 - 존재하지 않는 사용자")
+    void 검색어_기반_레시피_검색_실패_존재하지_않는_사용자() {
+        // given
+        RecipeKeywordSearchReqDto request = new RecipeKeywordSearchReqDto(
+                "9999", "감자", 1L, 10
+        );
+        given(userRepository.findByLoginNumber("9999")).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> recipeService.searchRecipesByMenuName(request))
+                .isInstanceOf(CustomException.class);
+        verify(userRepository).findByLoginNumber("9999");
     }
 
     private RecipeSearchRequestDto createRequest(String userNumber) {

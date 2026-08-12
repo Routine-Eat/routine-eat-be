@@ -2,9 +2,12 @@ package com.likelion.routineeatbe.domain.recipe.service;
 
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
+import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.exception.RecipeErrorCode;
 import com.likelion.routineeatbe.domain.recipe.mapper.RecipeMapper;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
@@ -84,6 +87,63 @@ public class RecipeService {
                 simpleRecipe.content().size(),
                 dietRecipe.content().size(),
                 glutenFreeRecipe.content().size()
+        );
+        return result;
+    }
+
+    /**
+     * 사용자와 메뉴/레시피명 검색어를 기준으로 레시피 목록을 조회합니다.
+     * - 사용자 고유 식별번호의 존재 여부를 확인합니다.
+     * - 메뉴명 일치도 순으로 조회한 결과를 커서 기반 응답으로 변환합니다.
+     *
+     * @param request 사용자 식별번호, 검색어 및 커서 조회 조건
+     * @return 검색어와 일치하는 레시피 커서 목록
+     */
+    @Transactional(readOnly = true)
+    public CursorSliceResponse<RecipeKeywordSearchResDto> searchRecipesByMenuName(
+            RecipeKeywordSearchReqDto request
+    ) {
+        log.info(
+                "[RecipeService] 검색어 기반 레시피 검색 | searchRecipesByMenuName() - START | userNumber: {}, searchWord: {}, cursor: {}",
+                request.userNumber(),
+                request.searchWord(),
+                request.cursor()
+        );
+
+        /*
+            1. 사용자 존재 여부 확인
+            - 사용자 고유 식별번호가 존재하지 않으면 USER_NOT_FOUND 예외를 발생시킵니다.
+         */
+        userRepository.findByLoginNumber(request.userNumber())
+                .orElseThrow(() -> new CustomException(RecipeErrorCode.USER_NOT_FOUND));
+
+        /*
+            2. 검색어 기반 레시피 조회
+            - 검색어 앞뒤 공백을 제거하고 메뉴명 일치도 순으로 기본 레시피를 조회합니다.
+         */
+        Slice<Recipe> recipeSlice = recipeRepository.searchRecipesByMenuName(
+                        request.searchWord().strip(),
+                        request.cursor(),
+                        request.size()
+                );
+
+        /*
+            3. 커서 기반 응답 변환
+            - 다음 데이터가 존재하면 다음 조회 위치를 계산하고 Mapper로 응답 DTO를 생성합니다.
+         */
+        Long nextCursor = recipeSlice.hasNext()
+                ? request.cursor() + request.size()
+                : null;
+        CursorSliceResponse<RecipeKeywordSearchResDto> result = CursorSliceResponse.of(
+                recipeSlice,
+                recipeMapper::toRecipeKeywordSearchResDto,
+                nextCursor
+        );
+
+        log.info(
+                "[RecipeService] 검색어 기반 레시피 검색 | searchRecipesByMenuName() - END | resultSize: {}, nextCursor: {}",
+                result.content().size(),
+                result.nextCursor()
         );
         return result;
     }

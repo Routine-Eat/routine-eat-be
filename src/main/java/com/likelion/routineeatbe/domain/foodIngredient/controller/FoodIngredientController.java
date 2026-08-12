@@ -23,19 +23,19 @@ public class FoodIngredientController implements FoodIngredientControllerDocs{
     @Override
     public GlobalResponse<List<FoodIngredientResponse>> getFoodIngredients(String search){
         List<FoodIngredientResponse> foodIngredientResponseList=foodIngredientService.getFoodIngredients(search);
-        return GlobalResponse.success("식재료 조회가 성공했습니다.",foodIngredientResponseList);
+        return GlobalResponse.success(200,"식재료 조회가 성공했습니다.",foodIngredientResponseList);
     }
 
     @Override
     public GlobalResponse<List<FoodIngredientResponse>> getAllergyFoodIngredients(){
         List<FoodIngredientResponse> foodIngredientResponseList=foodIngredientService.getAllergyFoodIngredients();
-        return GlobalResponse.success("알레르기 유발 식재료 조회가 성공했습니다.",foodIngredientResponseList);
+        return GlobalResponse.success(200,"알레르기 유발 식재료 조회가 성공했습니다.",foodIngredientResponseList);
     }
 
     @Override
     public GlobalResponse<List<FoodIngredientResponse>> getDislikeFoodIngredients(){
         List<FoodIngredientResponse> foodIngredientResponseList=foodIngredientService.getDislikeFoodIngredients();
-        return GlobalResponse.success("비선호 대표 식재료 조회가 성공했습니다.",foodIngredientResponseList);
+        return GlobalResponse.success(200,"비선호 대표 식재료 조회가 성공했습니다.",foodIngredientResponseList);
     }
 
     // 식재료 초기 세팅 API
@@ -66,6 +66,6 @@ public class FoodIngredientController implements FoodIngredientControllerDocs{
         // 3. 추가된 개수 계산
         int insertedCount = (afterCount != null ? afterCount : 0) - (beforeCount != null ? beforeCount : 0);
 
-        return GlobalResponse.success("식재료 데이터 초기화 완료",insertedCount);
+        return GlobalResponse.success(201,"식재료 데이터 초기화 완료",insertedCount);
     }
 }

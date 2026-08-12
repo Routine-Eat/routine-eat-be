@@ -29,5 +29,9 @@ public class User extends BaseTimeEntity {
                 .build();
     }
 
+    public void updateSkillLevel(SkillLevel skillLevel){
+        this.skillLevel=skillLevel;
+    }
+
 
 }

@@ -1,11 +1,9 @@
 package com.likelion.routineeatbe.domain.user.controller;
 
 import com.likelion.routineeatbe.domain.cookingEquipment.dto.response.CookingEquipmentResponse;
-import com.likelion.routineeatbe.domain.user.dto.request.CreateUserFoodIngredientRequest;
-import com.likelion.routineeatbe.domain.user.dto.request.CreateUserRequest;
-import com.likelion.routineeatbe.domain.user.dto.request.DeleteUserFoodIngredientRequest;
-import com.likelion.routineeatbe.domain.user.dto.request.UpdateOwnFoodIngredientAmountRequest;
+import com.likelion.routineeatbe.domain.user.dto.request.*;
 import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
+import com.likelion.routineeatbe.domain.user.dto.response.UserOnboardingResponse;
 import com.likelion.routineeatbe.domain.user.dto.response.UserResponse;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
@@ -224,5 +222,48 @@ public interface UserControllerDocs {
             @PathVariable("userId") Long userId,
             @Schema(description = "조리도구 아이디 리스트",example = "[1,2,3]")
             @RequestBody List<Long> equipmentIdList
+    );
+
+    @Operation(
+            summary = "사용자 데이터 수정",
+            description = """
+                    userId에 해당하는 사용자의 데이터 수정 \n
+                    Skill Level은 꼭 BEGINNER/AVAERAGE/PRO 중에 하나로 할것!!
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "사용자 프로필 데이터 수정 성공"
+            ),
+            @ApiResponse(responseCode = "4041", description = "잘못된 사용자 id 형식", content = @Content),
+    })
+    @PatchMapping("/{userId}")
+    GlobalResponse<UserResponse> updateUserSkillLevel(
+            @PathVariable("userId") Long userId,
+            @RequestBody UpdateUserRequest request);
+
+    @Operation(
+            summary = "사용자 온보딩 데이터 저장",
+            description = """
+                    userId에 해당하는 사용자의 온보딩 데이터 저장 \n
+                    Skill Level은 꼭 BEGINNER/AVAERAGE/PRO 중에 하나로 할것!! \n
+                    알레르기/비선호/보유 식품 리스트는 없어도 통과됨 \n
+                    조리환경 리스트는 최소 1개는 있어야함!
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "사용자 온보딩 데이터 저장 성공"
+            ),
+            @ApiResponse(responseCode = "4041", description = "잘못된 사용자 id 형식", content = @Content),
+            @ApiResponse(responseCode = "4042", description = "잘못된 식재료 id 형식", content = @Content),
+            @ApiResponse(responseCode = "4043", description = "잘못된 조리도구 id 형식", content = @Content),
+    })
+    @PostMapping("/{userId}/onboarding")
+    GlobalResponse<UserOnboardingResponse> saveOnboardingData(
+            @PathVariable("userId") Long userId,
+            @RequestBody UserOnboardingRequest request
     );
 }

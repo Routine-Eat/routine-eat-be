@@ -34,4 +34,24 @@ public record RecipeSearchResult(
                 cost
         );
     }
+
+    public RecipeSearchResult withRequiredIngredientAvailability(
+            Long count,
+            Long cost
+    ) {
+        return new RecipeSearchResult(
+                recipeId,
+                menuId,
+                menuName,
+                thumbnailUrl,
+                calory,
+                timeRequired,
+                difficultyLevel,
+                category,
+                cookingCount,
+                matchedIngredientCount,
+                count,
+                cost
+        );
+    }
 }

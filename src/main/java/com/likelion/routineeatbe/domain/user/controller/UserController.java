@@ -1,5 +1,6 @@
 package com.likelion.routineeatbe.domain.user.controller;
 
+import com.likelion.routineeatbe.domain.cookingEquipment.dto.response.CookingEquipmentResponse;
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserFoodIngredientRequest;
 import com.likelion.routineeatbe.domain.user.dto.request.CreateUserRequest;
 import com.likelion.routineeatbe.domain.user.dto.request.DeleteUserFoodIngredientRequest;
@@ -7,6 +8,7 @@ import com.likelion.routineeatbe.domain.user.dto.request.UpdateOwnFoodIngredient
 import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
 import com.likelion.routineeatbe.domain.user.dto.response.UserResponse;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
+import com.likelion.routineeatbe.domain.user.service.UserCookingEquipmentService;
 import com.likelion.routineeatbe.domain.user.service.UserFoodIngredientService;
 import com.likelion.routineeatbe.domain.user.service.UserService;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
@@ -20,6 +22,7 @@ import java.util.List;
 public class UserController implements UserControllerDocs {
     private final UserService userService;
     private final UserFoodIngredientService userFoodIngredientService;
+    private final UserCookingEquipmentService userCookingEquipmentService;
 
     @Override
     public GlobalResponse<List<UserResponse>> getAllUsers(){
@@ -59,5 +62,24 @@ public class UserController implements UserControllerDocs {
     public GlobalResponse deleteUserFoodIngredient(Long userId, DeleteUserFoodIngredientRequest request){
         userFoodIngredientService.deleteUserFoodIngredient(userId,request);
         return GlobalResponse.success("사용자-식재료 관계가 성공적으로 삭제되었습니다.");
+    }
+
+    @Override
+    public GlobalResponse<List<CookingEquipmentResponse>> createUserCookingEquipment(Long userId,List<Long> equipmentIdList){
+        List<CookingEquipmentResponse> cookingEquipmentResponseList= userCookingEquipmentService.createUserCookingEquipment(userId,equipmentIdList);
+
+        return GlobalResponse.success("사용가-조리도구 관계 생성에 성공했습니다.",cookingEquipmentResponseList);
+    }
+
+    @Override
+    public GlobalResponse<List<CookingEquipmentResponse>> getUserCookingEquipment(Long userId){
+        List<CookingEquipmentResponse> cookingEquipmentResponseList=userCookingEquipmentService.getUserCookingEquipment(userId);
+        return GlobalResponse.success("사용자-조리도구 관계 조회가 성공했습니다.",cookingEquipmentResponseList);
+    }
+
+    @Override
+    public GlobalResponse deleteUserCookingEquipment(Long userId,List<Long> equipmentIdList){
+        userCookingEquipmentService.deleteUserCookEquipment(userId,equipmentIdList);
+        return GlobalResponse.success("사용자-조리도구 관계 삭제에 성공했습니다.");
     }
 }

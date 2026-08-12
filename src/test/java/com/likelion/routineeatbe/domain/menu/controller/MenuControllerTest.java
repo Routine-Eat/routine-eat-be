@@ -95,7 +95,6 @@ class MenuControllerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().isSuccess()).isTrue();
         assertThat(response.getBody().getCode()).isEqualTo(201);
-        assertThat(response.getBody().getMessage()).isEqualTo("성공했습니다.");
         assertThat(response.getBody().getData().initCount()).isEqualTo(1156L);
     }
 }

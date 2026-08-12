@@ -9,7 +9,8 @@ import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.foodIngredient.repository.FoodIngredientRepository;
 import com.likelion.routineeatbe.domain.menu.dto.gemini.InitMenuAndRecipeFoodIngredientGeminiResponseDto.FoodIngredientNeedAmount;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
-import com.likelion.routineeatbe.domain.menu.repository.MenuRepository;
+import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
+import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.repository.RecipeFoodIngredientRepository;
 import java.util.List;
@@ -29,7 +30,7 @@ class RecipeFoodIngredientPersistenceServiceTest {
     private RecipeFoodIngredientPersistenceService persistenceService;
 
     @Mock
-    private MenuRepository menuRepository;
+    private RecipeRepository recipeRepository;
 
     @Mock
     private FoodIngredientRepository foodIngredientRepository;
@@ -42,9 +43,10 @@ class RecipeFoodIngredientPersistenceServiceTest {
     void Gemini_필요량_RecipeFoodIngredient_일괄_저장_성공() {
         // given
         Menu menu = Menu.builder().id(1L).build();
+        Recipe recipe = Recipe.builder().id(2L).menu(menu).build();
         FoodIngredient foodIngredient = FoodIngredient.builder().id(10L).build();
         FoodIngredientNeedAmount needAmount = FoodIngredientNeedAmount.create(10L, 100.0, null);
-        given(menuRepository.findAllById(any())).willReturn(List.of(menu));
+        given(recipeRepository.findAllBasicByMenuIdIn(any())).willReturn(List.of(recipe));
         given(foodIngredientRepository.findAllById(any())).willReturn(List.of(foodIngredient));
 
         // when
@@ -56,7 +58,7 @@ class RecipeFoodIngredientPersistenceServiceTest {
         assertThat(result).isEqualTo(1L);
         assertThat(captor.getValue()).hasSize(1);
         RecipeFoodIngredient savedRecipeFoodIngredient = captor.getValue().getFirst();
-        assertThat(savedRecipeFoodIngredient.getMenu()).isSameAs(menu);
+        assertThat(savedRecipeFoodIngredient.getRecipe()).isSameAs(recipe);
         assertThat(savedRecipeFoodIngredient.getFoodIngredient()).isSameAs(foodIngredient);
         assertThat(savedRecipeFoodIngredient.getPrimaryNeedAmountValue()).isEqualTo(100.0);
         assertThat(savedRecipeFoodIngredient.getSecondaryNeedAmountValue()).isNull();

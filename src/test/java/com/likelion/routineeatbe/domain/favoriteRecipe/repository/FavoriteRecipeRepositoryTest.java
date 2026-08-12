@@ -68,6 +68,35 @@ class FavoriteRecipeRepositoryTest {
         )).isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    @Test
+    @DisplayName("사용자와 레시피 조합으로 찜 조회 및 삭제 성공")
+    void 사용자와_레시피_조합으로_찜_조회_및_삭제_성공() {
+        // given
+        User targetUser = entityManager.persist(User.builder().loginNumber("1111").build());
+        User otherUser = entityManager.persist(User.builder().loginNumber("2222").build());
+        Recipe recipe = persistRecipe("찜 해제 대상 레시피");
+        favoriteRecipeRepository.saveAndFlush(FavoriteRecipe.create(targetUser, recipe));
+        favoriteRecipeRepository.saveAndFlush(FavoriteRecipe.create(otherUser, recipe));
+        entityManager.clear();
+
+        // when
+        FavoriteRecipe favoriteRecipe = favoriteRecipeRepository.findByUserIdAndRecipeId(
+                        targetUser.getId(),
+                        recipe.getId()
+                )
+                .orElseThrow();
+        favoriteRecipeRepository.delete(favoriteRecipe);
+        favoriteRecipeRepository.flush();
+
+        // then
+        assertThat(favoriteRecipeRepository.findByUserIdAndRecipeId(
+                targetUser.getId(), recipe.getId()
+        )).isEmpty();
+        assertThat(favoriteRecipeRepository.findByUserIdAndRecipeId(
+                otherUser.getId(), recipe.getId()
+        )).isPresent();
+    }
+
     private Recipe persistRecipe(String menuName) {
         Menu menu = entityManager.persist(Menu.builder()
                 .name(menuName)

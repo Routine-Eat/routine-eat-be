@@ -15,6 +15,11 @@ public enum FavoriteRecipeErrorCode implements BaseErrorCode {
             "FAVORITE4091",
             "이미 찜한 레시피입니다.",
             HttpStatus.CONFLICT
+    ),
+    FAVORITE_RECIPE_NOT_FOUND(
+            "FAVORITE4043",
+            "레시피 찜 정보를 찾을 수 없습니다.",
+            HttpStatus.NOT_FOUND
     );
 
     private final String code;

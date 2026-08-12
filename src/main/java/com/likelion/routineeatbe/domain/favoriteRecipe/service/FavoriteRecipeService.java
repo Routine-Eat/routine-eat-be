@@ -91,4 +91,66 @@ public class FavoriteRecipeService {
                 savedFavoriteRecipe.getId()
         );
     }
+
+    /**
+     * (1) 작업 목적
+     * 사용자가 찜한 레시피를 찜 목록에서 해제합니다.
+     *
+     * (2) 세부 작업 내용
+     * - 사용자 고유 식별번호와 레시피 PK로 삭제 대상을 조회합니다.
+     * - 사용자와 레시피 조합에 해당하는 찜 정보가 없으면 예외를 발생시킵니다.
+     * - 조회된 찜 정보를 삭제합니다.
+     *
+     * @param recipeId 찜을 해제할 레시피 PK
+     * @param userNumber 사용자 고유 식별번호
+     */
+    @Transactional
+    public void removeFavorite(Long recipeId, Integer userNumber) {
+        log.info(
+                "[FavoriteRecipeService] 레시피 찜 해제 | removeFavorite() - START | recipeId: {}, userNumber: {}",
+                recipeId,
+                userNumber
+        );
+
+        /*
+            1. 사용자 조회
+            - 사용자 고유 식별번호가 존재하지 않으면 USER_NOT_FOUND 예외를 발생시킵니다.
+         */
+        User user = userRepository.findByLoginNumber(String.valueOf(userNumber))
+                .orElseThrow(() -> new CustomException(
+                        FavoriteRecipeErrorCode.USER_NOT_FOUND
+                ));
+
+        /*
+            2. 레시피 조회
+            - 레시피 PK가 존재하지 않으면 RECIPE_NOT_FOUND 예외를 발생시킵니다.
+         */
+        Recipe recipe = recipeRepository.findById(recipeId)
+                .orElseThrow(() -> new CustomException(
+                        FavoriteRecipeErrorCode.RECIPE_NOT_FOUND
+                ));
+
+        /*
+            3. 레시피 찜 조회
+            - 사용자와 레시피 조합의 찜 정보가 없으면 FAVORITE_RECIPE_NOT_FOUND 예외를 발생시킵니다.
+         */
+        FavoriteRecipe favoriteRecipe = favoriteRecipeRepository.findByUserIdAndRecipeId(
+                        user.getId(),
+                        recipe.getId()
+                )
+                .orElseThrow(() -> new CustomException(
+                        FavoriteRecipeErrorCode.FAVORITE_RECIPE_NOT_FOUND
+                ));
+
+        /*
+            4. 레시피 찜 삭제
+            - 조회된 찜 정보를 삭제합니다.
+         */
+        favoriteRecipeRepository.delete(favoriteRecipe);
+
+        log.info(
+                "[FavoriteRecipeService] 레시피 찜 해제 | removeFavorite() - END | favoriteRecipeId: {}",
+                favoriteRecipe.getId()
+        );
+    }
 }

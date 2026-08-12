@@ -138,4 +138,77 @@ class FavoriteRecipeServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(FavoriteRecipeErrorCode.FAVORITE_RECIPE_ALREADY_EXISTS);
     }
+
+    @Test
+    @DisplayName("사용자와 레시피의 찜 정보를 조회하여 레시피 찜 해제 성공")
+    void 사용자와_레시피의_찜_정보를_조회하여_레시피_찜_해제_성공() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        Recipe recipe = Recipe.builder().id(10L).build();
+        FavoriteRecipe favoriteRecipe = FavoriteRecipe.builder()
+                .id(100L)
+                .user(user)
+                .recipe(recipe)
+                .build();
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(recipeRepository.findById(10L)).willReturn(Optional.of(recipe));
+        given(favoriteRecipeRepository.findByUserIdAndRecipeId(1L, 10L))
+                .willReturn(Optional.of(favoriteRecipe));
+
+        // when
+        favoriteRecipeService.removeFavorite(10L, 1234);
+
+        // then
+        then(favoriteRecipeRepository).should().delete(favoriteRecipe);
+    }
+
+    @Test
+    @DisplayName("레시피 찜 해제 실패 - 존재하지 않는 사용자")
+    void 레시피_찜_해제_실패_존재하지_않는_사용자() {
+        // given
+        given(userRepository.findByLoginNumber("9999")).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> favoriteRecipeService.removeFavorite(10L, 9999))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(FavoriteRecipeErrorCode.USER_NOT_FOUND);
+        then(recipeRepository).shouldHaveNoInteractions();
+        then(favoriteRecipeRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("레시피 찜 해제 실패 - 존재하지 않는 레시피")
+    void 레시피_찜_해제_실패_존재하지_않는_레시피() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(recipeRepository.findById(999L)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> favoriteRecipeService.removeFavorite(999L, 1234))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(FavoriteRecipeErrorCode.RECIPE_NOT_FOUND);
+        then(favoriteRecipeRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("레시피 찜 해제 실패 - 존재하지 않는 찜 정보")
+    void 레시피_찜_해제_실패_존재하지_않는_찜_정보() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        Recipe recipe = Recipe.builder().id(10L).build();
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(recipeRepository.findById(10L)).willReturn(Optional.of(recipe));
+        given(favoriteRecipeRepository.findByUserIdAndRecipeId(1L, 10L))
+                .willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> favoriteRecipeService.removeFavorite(10L, 1234))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(FavoriteRecipeErrorCode.FAVORITE_RECIPE_NOT_FOUND);
+        then(favoriteRecipeRepository).shouldHaveNoMoreInteractions();
+    }
 }

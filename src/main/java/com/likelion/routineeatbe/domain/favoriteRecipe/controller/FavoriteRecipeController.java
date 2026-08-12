@@ -29,4 +29,19 @@ public class FavoriteRecipeController implements FavoriteRecipeControllerDocs {
                         null
                 ));
     }
+
+    @Override
+    public ResponseEntity<GlobalResponse<Void>> removeFavorite(
+            Long recipeId,
+            Integer userNumber
+    ) {
+        favoriteRecipeService.removeFavorite(recipeId, userNumber);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(GlobalResponse.success(
+                        HttpStatus.CREATED.value(),
+                        "레시피 찜 해제에 성공했습니다.",
+                        null
+                ));
+    }
 }

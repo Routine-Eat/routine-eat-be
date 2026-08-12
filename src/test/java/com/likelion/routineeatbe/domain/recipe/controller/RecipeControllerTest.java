@@ -3,7 +3,9 @@ package com.likelion.routineeatbe.domain.recipe.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
 import com.likelion.routineeatbe.domain.recipe.service.RecipeService;
@@ -63,5 +65,40 @@ class RecipeControllerTest {
         assertThat(response.getBody().getMessage()).isEqualTo("전체 레시피 조회에 성공했습니다.");
         assertThat(response.getBody().getData().defaultRecipe().content()).containsExactly(recipe);
         assertThat(response.getBody().getData().glutenFreeRecipe().nextCursor()).isEqualTo(11L);
+    }
+
+    @Test
+    @DisplayName("검색어 기반 레시피 검색 API 200 응답 성공")
+    void 검색어_기반_레시피_검색_API_200_응답_성공() {
+        // given
+        RecipeKeywordSearchReqDto request = new RecipeKeywordSearchReqDto(
+                "1234", "감자", 1L, 10
+        );
+        RecipeKeywordSearchResDto recipe = RecipeKeywordSearchResDto.builder()
+                .recipeId(659L)
+                .menuName("감자미역국")
+                .build();
+        CursorSliceResponse<RecipeKeywordSearchResDto> serviceResult =
+                CursorSliceResponse.<RecipeKeywordSearchResDto>builder()
+                        .content(List.of(recipe))
+                        .size(10)
+                        .hasNext(true)
+                        .nextCursor(11L)
+                        .build();
+        given(recipeService.searchRecipesByMenuName(request)).willReturn(serviceResult);
+
+        // when
+        ResponseEntity<GlobalResponse<CursorSliceResponse<RecipeKeywordSearchResDto>>> response =
+                recipeController.searchRecipesByMenuName(request);
+
+        // then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().isSuccess()).isTrue();
+        assertThat(response.getBody().getCode()).isEqualTo(200);
+        assertThat(response.getBody().getMessage())
+                .isEqualTo("주어진 검색어로 레시피 검색에 성공했습니다.");
+        assertThat(response.getBody().getData().content()).containsExactly(recipe);
+        assertThat(response.getBody().getData().nextCursor()).isEqualTo(11L);
     }
 }

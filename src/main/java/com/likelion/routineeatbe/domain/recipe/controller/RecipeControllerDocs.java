@@ -1,7 +1,10 @@
 package com.likelion.routineeatbe.domain.recipe.controller;
 
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
+import com.likelion.routineeatbe.global.response.CursorSliceResponse;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -46,5 +49,31 @@ public interface RecipeControllerDocs {
     @GetMapping
     ResponseEntity<GlobalResponse<RecipeSearchResponseDto>> getRecipes(
             @Valid @ModelAttribute RecipeSearchRequestDto request
+    );
+
+    @Operation(
+            summary = "검색어 기반 레시피 검색",
+            description = """
+                    메뉴/레시피명에 검색어가 포함된 레시피를 일치도 순으로 조회합니다.
+
+                    [Query Parameter]
+                    - userNumber: 사용자 고유 식별번호
+                    - searchWord: 메뉴/레시피명 검색어
+                    - cursor: 1부터 시작하는 조회 위치, 다음 요청은 응답의 nextCursor 사용
+                    - size: 1회 조회 개수, 기본값 10, 최대 100
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "검색어 기반 레시피 검색 성공",
+                    content = @Content(schema = @Schema(implementation = CursorSliceResponse.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "잘못된 검색 조건", content = @Content),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음", content = @Content)
+    })
+    @GetMapping("/search")
+    ResponseEntity<GlobalResponse<CursorSliceResponse<RecipeKeywordSearchResDto>>> searchRecipesByMenuName(
+            @Valid @ModelAttribute RecipeKeywordSearchReqDto request
     );
 }

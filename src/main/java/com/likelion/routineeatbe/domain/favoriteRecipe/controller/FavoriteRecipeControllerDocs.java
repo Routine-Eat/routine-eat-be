@@ -1,0 +1,55 @@
+package com.likelion.routineeatbe.domain.favoriteRecipe.controller;
+
+import com.likelion.routineeatbe.global.response.GlobalResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+@Tag(name = "Favorite Recipe", description = "레시피 찜 API")
+@RequestMapping("/api/v1/recipes")
+public interface FavoriteRecipeControllerDocs {
+
+    @Operation(
+            summary = "레시피 찜 등록",
+            description = """
+                    사용자가 선택한 레시피를 찜 목록에 등록합니다.
+
+                    [Path Variable]
+                    - recipeId: 레시피 PK
+
+                    [Query Parameter]
+                    - userNumber: 사용자 고유 식별번호
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "레시피 찜 성공",
+                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 값", content = @Content),
+            @ApiResponse(responseCode = "404", description = "사용자 또는 레시피를 찾을 수 없음", content = @Content),
+            @ApiResponse(responseCode = "409", description = "이미 찜한 레시피", content = @Content)
+    })
+    @PostMapping("/{recipeId}/favorites")
+    ResponseEntity<GlobalResponse<Void>> addFavorite(
+            @Parameter(description = "레시피 PK", required = true)
+            @Positive(message = "레시피 PK는 양수여야 합니다.")
+            @PathVariable("recipeId") Long recipeId,
+            @Parameter(description = "사용자 고유 식별번호", required = true)
+            @NotNull(message = "사용자 고유 식별번호는 필수입니다.")
+            @Positive(message = "사용자 고유 식별번호는 양수여야 합니다.")
+            @RequestParam("userNumber") Integer userNumber
+    );
+}

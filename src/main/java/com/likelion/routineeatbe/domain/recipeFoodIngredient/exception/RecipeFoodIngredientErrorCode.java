@@ -28,6 +28,11 @@ public enum RecipeFoodIngredientErrorCode implements BaseErrorCode {
             "RFI004",
             "이미 초기화된 메뉴 음식 재료 데이터가 포함되어 있습니다.",
             HttpStatus.CONFLICT
+    ),
+    BASIC_RECIPE_NOT_FOUND(
+            "RFI005",
+            "음식 재료 필요량을 저장할 기본 레시피를 찾을 수 없습니다.",
+            HttpStatus.NOT_FOUND
     );
 
     private final String code;

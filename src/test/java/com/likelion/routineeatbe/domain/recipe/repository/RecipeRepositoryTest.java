@@ -50,8 +50,8 @@ class RecipeRepositoryTest {
         FoodIngredient carrot = persistFoodIngredient("당근", 2000L);
         Recipe simpleRecipe = persistRecipe("감자 요리", 10L, RecommendationType.SIMPLE);
         persistRecipe("당근 요리", 20L, RecommendationType.DIET);
-        persistRequiredIngredient(simpleRecipe.getMenu(), potato, 100.0);
-        persistRequiredIngredient(simpleRecipe.getMenu(), carrot, 100.0);
+        persistRequiredIngredient(simpleRecipe, potato, 100.0);
+        persistRequiredIngredient(simpleRecipe, carrot, 100.0);
         entityManager.persist(UserFoodIngredient.builder()
                 .user(user)
                 .foodIngredient(potato)
@@ -177,16 +177,18 @@ class RecipeRepositoryTest {
                 .pricePerHundred(pricePerHundred)
                 .primaryUnit(PrimaryUnit.G)
                 .secondaryUnit(SecondaryUnit.GAE)
+                .allergy(false)
+                .dislike(false)
                 .build());
     }
 
     private void persistRequiredIngredient(
-            Menu menu,
+            Recipe recipe,
             FoodIngredient foodIngredient,
             Double requiredAmount
     ) {
         entityManager.persist(RecipeFoodIngredient.create(
-                menu,
+                recipe,
                 foodIngredient,
                 requiredAmount,
                 null

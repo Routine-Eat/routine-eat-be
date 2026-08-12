@@ -3,8 +3,8 @@ package com.likelion.routineeatbe.domain.recipeFoodIngredient.service;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.foodIngredient.repository.FoodIngredientRepository;
 import com.likelion.routineeatbe.domain.menu.dto.gemini.InitMenuAndRecipeFoodIngredientGeminiResponseDto.FoodIngredientNeedAmount;
-import com.likelion.routineeatbe.domain.menu.entity.Menu;
-import com.likelion.routineeatbe.domain.menu.repository.MenuRepository;
+import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
+import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.exception.RecipeFoodIngredientErrorCode;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.repository.RecipeFoodIngredientRepository;
@@ -26,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class RecipeFoodIngredientPersistenceService {
 
-    private final MenuRepository menuRepository;
+    private final RecipeRepository recipeRepository;
     private final FoodIngredientRepository foodIngredientRepository;
     private final RecipeFoodIngredientRepository recipeFoodIngredientRepository;
 
@@ -56,7 +56,9 @@ public class RecipeFoodIngredientPersistenceService {
             return 0L;
         }
 
-        Map<Long, Menu> menusById = findMenusById(needAmountsByMenuId.keySet());
+        Map<Long, Recipe> recipesByMenuId = findBasicRecipesByMenuId(
+                needAmountsByMenuId.keySet()
+        );
         Set<Long> foodIngredientIds = needAmountsByMenuId.values().stream()
                 .flatMap(List::stream)
                 .map(FoodIngredientNeedAmount::foodIngredientId)
@@ -65,10 +67,10 @@ public class RecipeFoodIngredientPersistenceService {
 
         List<RecipeFoodIngredient> recipeFoodIngredients = new ArrayList<>();
         needAmountsByMenuId.forEach((menuId, needAmounts) -> {
-            Menu menu = menusById.get(menuId);
+            Recipe recipe = recipesByMenuId.get(menuId);
             needAmounts.forEach(needAmount -> recipeFoodIngredients.add(
                     RecipeFoodIngredient.create(
-                            menu,
+                            recipe,
                             foodIngredientsById.get(needAmount.foodIngredientId()),
                             needAmount.primaryNeedAmountValue(),
                             needAmount.secondaryNeedAmountValue()
@@ -91,25 +93,28 @@ public class RecipeFoodIngredientPersistenceService {
     }
 
     /**
-     * 저장 대상 메뉴를 식별자로 일괄 조회하고 누락 여부를 검증합니다.
+     * 저장 대상 메뉴에 연결된 기본 레시피를 일괄 조회하고 누락 여부를 검증합니다.
      *
      * @param menuIds 조회할 메뉴 식별자 집합
-     * @return 메뉴 식별자별 Menu Entity
+     * @return 메뉴 식별자별 기본 Recipe Entity
      */
-    private Map<Long, Menu> findMenusById(Set<Long> menuIds) {
+    private Map<Long, Recipe> findBasicRecipesByMenuId(Set<Long> menuIds) {
         log.debug(
-                "[RecipeFoodIngredientPersistenceService] 저장 대상 메뉴 조회 시작 | findMenusById() - START | menuCount: {}",
+                "[RecipeFoodIngredientPersistenceService] 저장 대상 기본 레시피 조회 시작 | findBasicRecipesByMenuId() - START | menuCount: {}",
                 menuIds.size()
         );
 
-        Map<Long, Menu> result = menuRepository.findAllById(menuIds).stream()
-                .collect(Collectors.toMap(Menu::getId, Function.identity()));
+        Map<Long, Recipe> result = recipeRepository.findAllBasicByMenuIdIn(menuIds).stream()
+                .collect(Collectors.toMap(
+                        recipe -> recipe.getMenu().getId(),
+                        Function.identity()
+                ));
         if (result.size() != menuIds.size()) {
-            throw new CustomException(RecipeFoodIngredientErrorCode.MENU_NOT_FOUND);
+            throw new CustomException(RecipeFoodIngredientErrorCode.BASIC_RECIPE_NOT_FOUND);
         }
 
         log.debug(
-                "[RecipeFoodIngredientPersistenceService] 저장 대상 메뉴 조회 종료 | findMenusById() - END | resultSize: {}",
+                "[RecipeFoodIngredientPersistenceService] 저장 대상 기본 레시피 조회 종료 | findBasicRecipesByMenuId() - END | resultSize: {}",
                 result.size()
         );
         return result;

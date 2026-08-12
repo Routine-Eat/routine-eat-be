@@ -148,7 +148,7 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
                 from Recipe recipe
                 join recipe.menu menu
                 left join RecipeFoodIngredient recipeFoodIngredient
-                    on recipeFoodIngredient.menu = menu
+                    on recipeFoodIngredient.recipe = recipe
                 left join UserFoodIngredient userFoodIngredient
                     on userFoodIngredient.foodIngredient = recipeFoodIngredient.foodIngredient
                     and userFoodIngredient.user.id = :userId
@@ -258,23 +258,23 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
             return content;
         }
 
-        Set<Long> menuIds = content.stream()
-                .map(RecipeSearchResult::menuId)
+        Set<Long> recipeIds = content.stream()
+                .map(RecipeSearchResult::recipeId)
                 .collect(Collectors.toSet());
         List<RecipeFoodIngredient> requiredIngredients = entityManager.createQuery("""
                         select recipeFoodIngredient
                         from RecipeFoodIngredient recipeFoodIngredient
                         join fetch recipeFoodIngredient.foodIngredient
-                        where recipeFoodIngredient.menu.id in :menuIds
+                        where recipeFoodIngredient.recipe.id in :recipeIds
                         """, RecipeFoodIngredient.class)
-                .setParameter("menuIds", menuIds)
+                .setParameter("recipeIds", recipeIds)
                 .getResultList();
 
         Map<Long, Double> ownedAmountByIngredient = findOwnedAmountByIngredient(
                 userId,
                 requiredIngredients
         );
-        Map<Long, Double> costByMenu = new HashMap<>();
+        Map<Long, Double> costByRecipe = new HashMap<>();
 
         for (RecipeFoodIngredient requiredIngredient : requiredIngredients) {
             Long foodIngredientId = requiredIngredient.getFoodIngredient().getId();
@@ -284,12 +284,12 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
             double ingredientCost = shortageAmount
                     * requiredIngredient.getFoodIngredient().getPricePerHundred()
                     / 100.0;
-            costByMenu.merge(requiredIngredient.getMenu().getId(), ingredientCost, Double::sum);
+            costByRecipe.merge(requiredIngredient.getRecipe().getId(), ingredientCost, Double::sum);
         }
 
         return content.stream()
                 .map(result -> result.withRequiredIngredientCost(
-                        (long) Math.ceil(costByMenu.getOrDefault(result.menuId(), 0.0))
+                        (long) Math.ceil(costByRecipe.getOrDefault(result.recipeId(), 0.0))
                 ))
                 .toList();
     }

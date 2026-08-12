@@ -43,8 +43,10 @@ class MenuRepositoryTest {
         persistRecipeStep(basicRecipe, 1L);
         persistRecipeStep(basicRecipe, 2L);
         persistRecipeStep(userRecipe, 1L);
-        persistRecipeFoodIngredient(targetMenu, persistFoodIngredient("재료 1"));
-        persistRecipeFoodIngredient(targetMenu, persistFoodIngredient("재료 2"));
+        FoodIngredient sharedIngredient = persistFoodIngredient("재료 1");
+        persistRecipeFoodIngredient(basicRecipe, sharedIngredient);
+        persistRecipeFoodIngredient(userRecipe, sharedIngredient);
+        persistRecipeFoodIngredient(basicRecipe, persistFoodIngredient("재료 2"));
         entityManager.flush();
         entityManager.clear();
 
@@ -96,12 +98,14 @@ class MenuRepositoryTest {
                 .pricePerHundred(1000L)
                 .primaryUnit(PrimaryUnit.G)
                 .secondaryUnit(SecondaryUnit.GAE)
+                .allergy(false)
+                .dislike(false)
                 .build());
     }
 
-    private void persistRecipeFoodIngredient(Menu menu, FoodIngredient foodIngredient) {
+    private void persistRecipeFoodIngredient(Recipe recipe, FoodIngredient foodIngredient) {
         entityManager.persist(RecipeFoodIngredient.create(
-                menu,
+                recipe,
                 foodIngredient,
                 100.0,
                 null

@@ -1,10 +1,7 @@
 package com.likelion.routineeatbe.domain.user.controller;
 
 import com.likelion.routineeatbe.domain.cookingEquipment.dto.response.CookingEquipmentResponse;
-import com.likelion.routineeatbe.domain.user.dto.request.CreateUserFoodIngredientRequest;
-import com.likelion.routineeatbe.domain.user.dto.request.CreateUserRequest;
-import com.likelion.routineeatbe.domain.user.dto.request.DeleteUserFoodIngredientRequest;
-import com.likelion.routineeatbe.domain.user.dto.request.UpdateOwnFoodIngredientAmountRequest;
+import com.likelion.routineeatbe.domain.user.dto.request.*;
 import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
 import com.likelion.routineeatbe.domain.user.dto.response.UserResponse;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
@@ -81,5 +78,12 @@ public class UserController implements UserControllerDocs {
     public GlobalResponse deleteUserCookingEquipment(Long userId,List<Long> equipmentIdList){
         userCookingEquipmentService.deleteUserCookEquipment(userId,equipmentIdList);
         return GlobalResponse.success("사용자-조리도구 관계 삭제에 성공했습니다.");
+    }
+
+    @Override
+    public GlobalResponse<UserResponse> updateUserSkillLevel(Long userId, UpdateUserRequest request){
+        UserResponse userResponse= userService.updateUser(userId,request);
+
+        return GlobalResponse.success("사용자 정보 변경에 성공했습니다.",userResponse);
     }
 }

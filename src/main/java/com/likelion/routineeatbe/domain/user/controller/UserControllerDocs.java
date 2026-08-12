@@ -1,10 +1,7 @@
 package com.likelion.routineeatbe.domain.user.controller;
 
 import com.likelion.routineeatbe.domain.cookingEquipment.dto.response.CookingEquipmentResponse;
-import com.likelion.routineeatbe.domain.user.dto.request.CreateUserFoodIngredientRequest;
-import com.likelion.routineeatbe.domain.user.dto.request.CreateUserRequest;
-import com.likelion.routineeatbe.domain.user.dto.request.DeleteUserFoodIngredientRequest;
-import com.likelion.routineeatbe.domain.user.dto.request.UpdateOwnFoodIngredientAmountRequest;
+import com.likelion.routineeatbe.domain.user.dto.request.*;
 import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
 import com.likelion.routineeatbe.domain.user.dto.response.UserResponse;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
@@ -225,4 +222,23 @@ public interface UserControllerDocs {
             @Schema(description = "조리도구 아이디 리스트",example = "[1,2,3]")
             @RequestBody List<Long> equipmentIdList
     );
+
+    @Operation(
+            summary = "사용자 데이터 수정",
+            description = """
+                    userId에 해당하는 사용자의 데이터 수정 \n
+                    Skill Level은 꼭 BEGINNER/AVAERAGE/PRO 중에 하나로 할것!!
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "사용자 프로필 데이터 수정 성공"
+            ),
+            @ApiResponse(responseCode = "4041", description = "잘못된 사용자 id 형식", content = @Content),
+    })
+    @PatchMapping("/{userId}")
+    GlobalResponse<UserResponse> updateUserSkillLevel(
+            @PathVariable("userId") Long userId,
+            @RequestBody UpdateUserRequest request);
 }

@@ -23,7 +23,7 @@ public class CookingEquipmentController implements CookingEquipmentControllerDoc
     @Override
     public GlobalResponse<List<CookingEquipmentResponse>> getCookingEquipments(String search, CookingEquipmentSymbol symbol){
         List<CookingEquipmentResponse> cookingEquipmentResponseList = cookingEquipmentService.getCookingEquipments(search,symbol);
-        return GlobalResponse.success("조리도구 조회가 성공했습니다.",cookingEquipmentResponseList);
+        return GlobalResponse.success(200,"조리도구 조회가 성공했습니다.",cookingEquipmentResponseList);
     }
 
     @Override
@@ -53,6 +53,6 @@ public class CookingEquipmentController implements CookingEquipmentControllerDoc
         // 3. 추가된 개수 계산
         int insertedCount = (afterCount != null ? afterCount : 0) - (beforeCount != null ? beforeCount : 0);
 
-        return GlobalResponse.success("조리도구 데이터 초기화 완료",insertedCount);
+        return GlobalResponse.success(201,"조리도구 데이터 초기화 완료",insertedCount);
     }
 }

@@ -187,4 +187,22 @@ public interface UserControllerDocs {
             @Schema(description = "조리도구 아이디 리스트",example = "[1,2,3]")
             @RequestBody List<Long> equipmentIdList
     );
+
+    @Operation(
+            summary = "사용자-조리도구 목록 조회",
+            description = """
+                    userId : 사용자 id
+                    특정 사용자가 보유한 조리도구 목록 조회
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "사용자-조리도구 관계 리스트 조회 성공"
+            ),
+    })
+    @GetMapping("/{userId}/cooking-equipments")
+    GlobalResponse<List<CookingEquipmentResponse>> getUserCookingEquipment(
+            @NotNull @PathVariable("userId") Long userId
+    );
 }

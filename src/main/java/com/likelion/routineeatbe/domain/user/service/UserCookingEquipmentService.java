@@ -51,4 +51,19 @@ public class UserCookingEquipmentService {
                 .map(CookingEquipmentResponse::from)
                 .toList();
     }
+
+    /**
+     * - 사용자-조리도구 관계 조회
+     * - 사용자 아이디로 특정 사용자가 보유란 조리도구 목록 조회
+     * @param userId 사용자 id
+     * @return 조리도구 반환 dto 리스트
+     */
+    public List<CookingEquipmentResponse> getUserCookingEquipment(Long userId){
+        List<UserCookingEquipment> userCookingEquipments=userCookingEquipmentRepository.findAllByUserId(userId);
+
+        return userCookingEquipments.stream()
+                .map(UserCookingEquipment::getCookingEquipment)
+                .map(CookingEquipmentResponse::from)
+                .toList();
+    }
 }

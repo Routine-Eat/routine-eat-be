@@ -37,7 +37,11 @@ public class UserService {
         return UserResponse.fromUserEntity(savedUser);
     }
 
-    @Transactional
+    /**
+     * - 모든 사용자 조회
+     * @return
+     */
+    @Transactional(readOnly = true)
     public List<UserResponse> getAllUsers(){
         List<User> users=userRepository.findAll();
         return users.stream()

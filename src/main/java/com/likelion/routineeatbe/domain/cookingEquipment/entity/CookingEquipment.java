@@ -22,4 +22,8 @@ public class CookingEquipment extends BaseTimeEntity {
     @Column(nullable = false,comment = "조리 도구 종류")
     @Enumerated(EnumType.STRING)
     private CookingEquipmentType type;
+
+    @Column(comment = "대표 분야")
+    @Enumerated(EnumType.STRING)
+    private CookingEquipmentSymbol symbol;
 }

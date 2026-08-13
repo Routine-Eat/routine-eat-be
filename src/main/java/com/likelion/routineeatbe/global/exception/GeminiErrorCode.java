@@ -14,7 +14,12 @@ public enum GeminiErrorCode implements BaseErrorCode {
     INVALID_RESPONSE("GEM003", "Gemini API 응답 형식이 올바르지 않습니다.", HttpStatus.BAD_GATEWAY),
     INVALID_FUNCTION_CALL("GEM004", "Gemini Function Call 응답이 올바르지 않습니다.", HttpStatus.BAD_GATEWAY),
     INVALID_METADATA("GEM005", "Gemini가 생성한 메뉴 메타데이터가 올바르지 않습니다.", HttpStatus.BAD_GATEWAY),
-    RATE_LIMIT_EXCEEDED("GEM006", "Gemini API 호출 한도를 초과했습니다.", HttpStatus.SERVICE_UNAVAILABLE);
+    RATE_LIMIT_EXCEEDED("GEM006", "Gemini API 호출 한도를 초과했습니다.", HttpStatus.SERVICE_UNAVAILABLE),
+    INVALID_COOKING_STEP_METADATA(
+            "GEM007",
+            "Gemini가 생성한 요리 단계 데이터가 올바르지 않습니다.",
+            HttpStatus.BAD_GATEWAY
+    );
 
     private final String code;
     private final String message;

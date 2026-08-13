@@ -50,3 +50,4 @@ gemini:
   menu-analyze-model: ${ROUTINE_EAT_MENU_ANALYZE_GEMINI_MODEL}
   food-ingredient-analyze-model: ${ROUTINE_EAT_FOOD_INGREDIENT_ANALYZE_GEMINI_MODEL}
   cooking-equipment-analyze-model: ${ROUTINE_EAT_COOKING_EQUIPMENT_ANALYZE_GEMINI_MODEL}
+  cooking-step-generate-model: ${ROUTINE_EAT_COOKING_STEP_GENERATE_GEMINI_MODEL}

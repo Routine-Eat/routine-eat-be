@@ -52,6 +52,7 @@ class InitMenuAndRecipeCookingEquipmentGeminiServiceTest {
                 "menu-model",
                 "food-ingredient-model",
                 "cooking-equipment-model",
+                "cooking-step-model",
                 10,
                 new GeminiProperties.Retry(
                         4,

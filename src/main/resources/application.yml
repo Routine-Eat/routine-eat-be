@@ -35,6 +35,7 @@ data:
       max-request-count: ${FOOD_SAFETY_KOREA_MAX_REQUEST_COUNT:100}
 
 gemini:
+  cooking-step-generate-model: ${ROUTINE_EAT_COOKING_STEP_GENERATE_GEMINI_MODEL}
   batch-size: ${ROUTINE_EAT_GEMINI_BATCH_SIZE:10}
   retry:
     max-attempts: ${ROUTINE_EAT_GEMINI_RETRY_MAX_ATTEMPTS:4}

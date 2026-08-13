@@ -2,6 +2,7 @@ package com.likelion.routineeatbe.domain.cookingRecord.controller;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.NextCookingStepResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingRecordService;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,28 @@ public class CookingRecordController implements CookingRecordControllerDocs {
                 .body(GlobalResponse.success(
                         HttpStatus.CREATED.value(),
                         "요리 시작에 성공했습니다.",
+                        result
+                ));
+    }
+
+    @Override
+    public ResponseEntity<GlobalResponse<NextCookingStepResDto>> moveToNextCookingStep(
+            Long cookingRecordId,
+            String userNumber
+    ) {
+        NextCookingStepResDto result = cookingRecordService.moveToNextCookingStep(
+                cookingRecordId,
+                userNumber
+        );
+        String message = result == null
+                ? "요리가 종료되었습니다."
+                : "다음 요리 단계로 이동했습니다. 현재 %d번째 단계입니다."
+                        .formatted(result.currentCookingStep().level());
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(GlobalResponse.success(
+                        HttpStatus.CREATED.value(),
+                        message,
                         result
                 ));
     }

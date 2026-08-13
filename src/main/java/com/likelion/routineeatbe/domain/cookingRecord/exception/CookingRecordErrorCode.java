@@ -21,6 +21,19 @@ public enum CookingRecordErrorCode implements BaseErrorCode {
             "CR4093",
             "이미 진행 중이거나 완료된 요리 기록이 있습니다.",
             HttpStatus.CONFLICT
+    ),
+    COOKING_RECORD_NOT_FOUND("CR4043", "요리 기록을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    COOKING_SESSION_NOT_FOUND("CR4044", "요리 세션을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    COOKING_STEP_NOT_FOUND("CR4045", "요리 단계를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    COOKING_SESSION_NOT_IN_PROGRESS(
+            "CR4094",
+            "진행 중인 요리 세션이 아닙니다.",
+            HttpStatus.CONFLICT
+    ),
+    INVALID_COOKING_STEP_STATE(
+            "CR4095",
+            "요리 단계 상태가 올바르지 않습니다.",
+            HttpStatus.CONFLICT
     );
 
     private final String code;

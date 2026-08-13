@@ -2,8 +2,11 @@ package com.likelion.routineeatbe.domain.cookingRecord.repository;
 
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -29,5 +32,24 @@ public interface CookingRecordRepository extends JpaRepository<CookingRecord, Lo
             @Param("userId") Long userId,
             @Param("recipeId") Long recipeId,
             @Param("statuses") Collection<CookingSessionStatus> statuses
+    );
+
+    /**
+     * 사용자 소유 요리 기록을 비관적 쓰기 잠금으로 조회합니다.
+     *
+     * @param cookingRecordId 요리 기록 PK
+     * @param userId 사용자 PK
+     * @return 잠금이 적용된 사용자 소유 요리 기록
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select cookingRecord
+            from CookingRecord cookingRecord
+            where cookingRecord.id = :cookingRecordId
+              and cookingRecord.user.id = :userId
+            """)
+    Optional<CookingRecord> findByIdAndUserIdForUpdate(
+            @Param("cookingRecordId") Long cookingRecordId,
+            @Param("userId") Long userId
     );
 }

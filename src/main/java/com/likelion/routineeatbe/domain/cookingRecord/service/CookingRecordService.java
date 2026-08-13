@@ -3,12 +3,16 @@ package com.likelion.routineeatbe.domain.cookingRecord.service;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.NextCookingStepResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.exception.CookingRecordErrorCode;
 import com.likelion.routineeatbe.domain.cookingRecord.mapper.CookingRecordMapper;
 import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRepository;
 import com.likelion.routineeatbe.domain.cookingRecord.service.gemini.CookingStepGenerateGeminiService;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
+import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
+import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
+import com.likelion.routineeatbe.domain.cookingSession.repository.CookingStepRepository;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.entity.RecipeStep;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
@@ -24,6 +28,7 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -38,6 +43,7 @@ public class CookingRecordService {
     private final RecipeStepRepository recipeStepRepository;
     private final RecipeFoodIngredientRepository recipeFoodIngredientRepository;
     private final CookingRecordRepository cookingRecordRepository;
+    private final CookingStepRepository cookingStepRepository;
     private final CookingStepGenerateGeminiService geminiService;
     private final CookingRecordPersistenceService persistenceService;
     private final CookingRecordMapper cookingRecordMapper;
@@ -113,5 +119,104 @@ public class CookingRecordService {
                 result.cookingRecordId()
         );
         return result;
+    }
+
+    /**
+     * (1) 작업 목적
+     * 사용자의 요리 세션을 다음 요리 단계로 이동하거나 마지막 단계에서 완료 처리합니다.
+     *
+     * (2) 세부 작업 내용
+     * - 사용자 소유 요리 기록과 세션을 비관적 쓰기 잠금으로 조회합니다.
+     * - 진행 중 세션의 현재 단계가 마지막이면 완료 상태로 변경합니다.
+     * - 마지막 단계가 아니면 현재 단계를 증가시키고 다음 단계 상세 정보를 반환합니다.
+     *
+     * @param cookingRecordId 요리 기록 PK
+     * @param userNumber 사용자 고유 식별번호
+     * @return 이동한 요리 단계 정보, 요리 완료 시 null
+     */
+    @Transactional
+    public NextCookingStepResDto moveToNextCookingStep(
+            Long cookingRecordId,
+            String userNumber
+    ) {
+        log.info(
+                "[CookingRecordService] 다음 요리 단계 이동 시작 | moveToNextCookingStep() - START | cookingRecordId: {}, userNumber: {}",
+                cookingRecordId,
+                userNumber
+        );
+
+        User user = userRepository.findByLoginNumber(userNumber)
+                .orElseThrow(() -> new CustomException(CookingRecordErrorCode.USER_NOT_FOUND));
+        CookingRecord cookingRecord = cookingRecordRepository
+                .findByIdAndUserIdForUpdate(cookingRecordId, user.getId())
+                .orElseThrow(() -> new CustomException(
+                        CookingRecordErrorCode.COOKING_RECORD_NOT_FOUND
+                ));
+        CookingSession cookingSession = cookingRecord.getCookingSession();
+        if (cookingSession == null) {
+            throw new CustomException(CookingRecordErrorCode.COOKING_SESSION_NOT_FOUND);
+        }
+        if (cookingSession.getStatus() != CookingSessionStatus.IN_PROGRESS) {
+            throw new CustomException(
+                    CookingRecordErrorCode.COOKING_SESSION_NOT_IN_PROGRESS
+            );
+        }
+        validateCookingStepState(cookingSession);
+
+        if (cookingSession.isLastStep()) {
+            cookingSession.complete();
+            log.info(
+                    "[CookingRecordService] 다음 요리 단계 이동 종료 | moveToNextCookingStep() - END | cookingRecordId: {}, status: {}",
+                    cookingRecordId,
+                    cookingSession.getStatus()
+            );
+            return null;
+        }
+
+        cookingSession.moveToNextStep();
+        CookingStep cookingStep = cookingStepRepository.findByCookingSessionIdAndLevel(
+                        cookingSession.getId(),
+                        cookingSession.getCurrentCookingStepLevel().longValue()
+                )
+                .orElseThrow(() -> new CustomException(
+                        CookingRecordErrorCode.COOKING_STEP_NOT_FOUND
+                ));
+        NextCookingStepResDto result = cookingRecordMapper.toNextCookingStepResDto(
+                cookingSession,
+                cookingStep
+        );
+
+        log.info(
+                "[CookingRecordService] 다음 요리 단계 이동 종료 | moveToNextCookingStep() - END | cookingRecordId: {}, currentLevel: {}, nextLevel: {}",
+                cookingRecordId,
+                result.currentCookingStep().level(),
+                result.nextCookingStepLevel()
+        );
+        return result;
+    }
+
+    /**
+     * 요리 세션의 전체 단계 수와 현재 단계 번호가 이동 가능한 범위인지 검증합니다.
+     *
+     * @param cookingSession 검증할 요리 세션
+     */
+    private void validateCookingStepState(CookingSession cookingSession) {
+        log.debug(
+                "[CookingRecordService] 요리 단계 상태 검증 시작 | validateCookingStepState() - START | cookingSessionId: {}",
+                cookingSession.getId()
+        );
+        if (cookingSession.getCookingStepCount() == null
+                || cookingSession.getCookingStepCount() < 1
+                || cookingSession.getCurrentCookingStepLevel() == null
+                || cookingSession.getCurrentCookingStepLevel() < 1
+                || cookingSession.getCurrentCookingStepLevel()
+                        > cookingSession.getCookingStepCount()) {
+            throw new CustomException(CookingRecordErrorCode.INVALID_COOKING_STEP_STATE);
+        }
+        log.debug(
+                "[CookingRecordService] 요리 단계 상태 검증 종료 | validateCookingStepState() - END | currentLevel: {}, cookingStepCount: {}",
+                cookingSession.getCurrentCookingStepLevel(),
+                cookingSession.getCookingStepCount()
+        );
     }
 }

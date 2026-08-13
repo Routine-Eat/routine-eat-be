@@ -6,6 +6,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
+import com.likelion.routineeatbe.domain.cookingSession.repository.CookingStepRepository;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import com.likelion.routineeatbe.domain.menu.entity.MenuType;
@@ -31,6 +32,9 @@ class CookingRecordRepositoryTest {
 
     @Autowired
     private CookingRecordRepository cookingRecordRepository;
+
+    @Autowired
+    private CookingStepRepository cookingStepRepository;
 
     @Autowired
     private TestEntityManager entityManager;
@@ -117,6 +121,43 @@ class CookingRecordRepositoryTest {
 
         // then
         assertThat(result).isFalse();
+    }
+
+    @Test
+    @DisplayName("사용자 소유 요리 기록과 세션을 조회하고 양수 단계만 조회한다")
+    void 사용자_소유_요리_기록_세션_단계_조회_성공() {
+        // given
+        User user = entityManager.persist(User.builder().loginNumber("3456").build());
+        User otherUser = entityManager.persist(User.builder().loginNumber("7890").build());
+        Recipe recipe = persistRecipe();
+        CookingRecord cookingRecord = CookingRecord.create(user, recipe, 1);
+        CookingSession cookingSession = CookingSession.create(cookingRecord, 2);
+        CookingStep.create(cookingSession, 0L, "체크리스트", "손을 씻으세요.", null);
+        CookingStep expected = CookingStep.create(
+                cookingSession,
+                2L,
+                "두 번째 단계",
+                "두 번째 단계입니다.",
+                null
+        );
+        CookingRecord saved = cookingRecordRepository.saveAndFlush(cookingRecord);
+        entityManager.clear();
+
+        // when
+        CookingRecord result = cookingRecordRepository
+                .findByIdAndUserIdForUpdate(saved.getId(), user.getId())
+                .orElseThrow();
+
+        // then
+        assertThat(result.getCookingSession()).isNotNull();
+        assertThat(cookingStepRepository.findByCookingSessionIdAndLevel(
+                result.getCookingSession().getId(),
+                2L
+        )).get().extracting(CookingStep::getId).isEqualTo(expected.getId());
+        assertThat(cookingRecordRepository.findByIdAndUserIdForUpdate(
+                saved.getId(),
+                otherUser.getId()
+        )).isEmpty();
     }
 
     private Recipe persistRecipe() {

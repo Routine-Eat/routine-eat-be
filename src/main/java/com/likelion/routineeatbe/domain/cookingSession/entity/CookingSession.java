@@ -92,4 +92,16 @@ public class CookingSession {
     public void addCookingStep(CookingStep cookingStep) {
         this.cookingSteps.add(cookingStep);
     }
+
+    public boolean isLastStep() {
+        return this.currentCookingStepLevel >= this.cookingStepCount;
+    }
+
+    public void moveToNextStep() {
+        this.currentCookingStepLevel++;
+    }
+
+    public void complete() {
+        this.status = CookingSessionStatus.COMPLETED;
+    }
 }

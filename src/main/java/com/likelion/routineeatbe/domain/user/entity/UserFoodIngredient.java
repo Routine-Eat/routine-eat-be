@@ -58,4 +58,22 @@ public class UserFoodIngredient extends BaseTimeEntity {
         }
     }
 
+    public double deductPrimaryAmountValue(double amount) {
+        if (amount <= 0 || primaryAmountValue == null || primaryAmountValue <= 0) {
+            return amount;
+        }
+        double deductedAmount = Math.min(primaryAmountValue, amount);
+        this.primaryAmountValue -= deductedAmount;
+        return amount - deductedAmount;
+    }
+
+    public double deductSecondaryAmountValue(double amount) {
+        if (amount <= 0 || secondaryAmountValue == null || secondaryAmountValue <= 0) {
+            return amount;
+        }
+        double deductedAmount = Math.min(secondaryAmountValue, amount);
+        this.secondaryAmountValue -= deductedAmount;
+        return amount - deductedAmount;
+    }
+
 }

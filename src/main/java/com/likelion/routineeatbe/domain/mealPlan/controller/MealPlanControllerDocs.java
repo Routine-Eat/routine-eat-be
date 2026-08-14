@@ -81,4 +81,22 @@ public interface MealPlanControllerDocs {
         @Parameter(description = "저장 종류 (선택)")
         MealPlanStatus status
     );
+
+    @Operation(
+            summary = "사용자-식단 상세 조회 API",
+            description = """
+                사용자 식단 상세 조회
+            """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "사용자-식단 상세 조회 성공"
+            )
+    })
+    @GetMapping("/{userId}/{mealPlanId}")
+    GlobalResponse<MealPlanDetailResponse> getDetailMealPlan(
+            @PathVariable Long userId,
+            @PathVariable Long mealPlanId
+    );
 }

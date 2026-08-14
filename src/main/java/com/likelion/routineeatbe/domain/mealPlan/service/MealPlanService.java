@@ -9,6 +9,7 @@ import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlan;
 import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlanStatus;
 import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlanType;
 import com.likelion.routineeatbe.domain.mealPlan.entity.PlanMenu;
+import com.likelion.routineeatbe.domain.mealPlan.exception.MealPlanErrorCode;
 import com.likelion.routineeatbe.domain.mealPlan.repository.MealPlanRepository;
 import com.likelion.routineeatbe.domain.mealPlan.repository.PlanMenuRepository;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
@@ -123,5 +124,35 @@ public class MealPlanService {
                         planMenuIdsMap.getOrDefault(mealPlan.getId(), List.of())
                 ))
                 .toList();
+    }
+
+    /**
+     * 식단 상세 조회
+     * @param userId 사용자 식별자
+     * @param mealPlanId 식단 식별자
+     * @return 식단 상세 정보 (단일 객체 반환으로 수정)
+     */
+    @Transactional(readOnly = true)
+    public MealPlanDetailResponse getDetailMealPlan(Long userId, Long mealPlanId) {
+
+        // 1. 식단(MealPlan) 존재 및 본인 소유 여부 검증
+        MealPlan mealPlan = mealPlanRepository.findByIdAndUser_Id(mealPlanId, userId)
+                .orElseThrow(() -> new CustomException(MealPlanErrorCode.NOT_EXIST_PLAN));
+
+        // 2. PlanMenuRepository에서 해당 식단에 연결된 PlanMenu 목록 조회
+        List<PlanMenu> planMenus = planMenuRepository.findAllByMealPlan_Id(mealPlanId);
+
+        // 3. PlanMenu 엔티티 리스트를 PlanMenuResponse DTO 리스트로 변환
+        List<PlanMenuResponse> planMenuList = planMenus.stream()
+                .map(PlanMenuResponse::from)
+                .toList();
+
+        // 4. 최종 MealPlanDetailResponse DTO 생성 및 반환
+        return MealPlanDetailResponse.from(
+                mealPlan.getId(),
+                mealPlan.getType(),
+                mealPlan.getStatus(),
+                planMenuList
+        );
     }
 }

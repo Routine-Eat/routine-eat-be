@@ -2,6 +2,8 @@ package com.likelion.routineeatbe.domain.mealPlan.repository;
 
 import com.likelion.routineeatbe.domain.mealPlan.entity.PlanMenu;
 import java.util.List;
+
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,4 +28,7 @@ public interface PlanMenuRepository extends JpaRepository<PlanMenu, Long> {
 
     @Query("select pm.id from PlanMenu pm where pm.mealPlan.id = :mealPlanId")
     List<Long> findByMealPlan_Id(@Param("mealPlanId") Long mealPlanId);
+
+    @EntityGraph(attributePaths = {"menu"})
+    List<PlanMenu> findAllByMealPlan_Id(Long mealPlanId);
 }

@@ -12,7 +12,8 @@ public enum MealPlanErrorCode implements BaseErrorCode {
     // 안전 필터와 도구 필터를 통과한 서로 다른 메뉴가 세 개 미만인 경우
     NO_RECOMMENDABLE_RECIPE("MEALPLAN4041", "세 가지 식단을 구성할 만큼 추천 가능한 레시피가 없습니다.", HttpStatus.NOT_FOUND),
     // AI가 후보 이외의 메뉴, 중복 메뉴, 잘못된 식사 타입을 반환한 경우
-    INVALID_AI_RECOMMENDATION("MEALPLAN5021", "AI 추천 결과가 올바르지 않습니다.", HttpStatus.BAD_GATEWAY);
+    INVALID_AI_RECOMMENDATION("MEALPLAN5021", "AI 추천 결과가 올바르지 않습니다.", HttpStatus.BAD_GATEWAY),
+    NOT_EXIST_PLAN("MEALPLAN4042","존재하지 않는 식단입니다.",HttpStatus.NOT_FOUND);
 
     private final String code;
     private final String message;

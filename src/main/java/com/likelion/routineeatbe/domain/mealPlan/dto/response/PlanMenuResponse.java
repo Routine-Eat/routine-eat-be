@@ -1,6 +1,7 @@
 package com.likelion.routineeatbe.domain.mealPlan.dto.response;
 
 import com.likelion.routineeatbe.domain.mealPlan.entity.PlanMenu;
+import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -19,17 +20,24 @@ public record PlanMenuResponse(
         @Schema(description = "메뉴 아이디",example = "true")
         Long menuId,
         @Schema(description = "메뉴 완료 여부",example = "true")
-        String menuName
+        String menuName,
+        @Schema(description = "메뉴 난이도",example = "1단계")
+        DifficultyLevel difficultyLevel,
+        @Schema(description = "소요시간",example = "15")
+        Integer timeRequired
 ) {
     public static PlanMenuResponse from(
             PlanMenu planMenu
     ){
+        Menu menu=planMenu.getMenu();
         return PlanMenuResponse.builder()
                 .planMenuId(planMenu.getId())
                 .planMenuDate(planMenu.getDate())
                 .planMenuCompleted(planMenu.getCompleted())
-                .menuId(planMenu.getMenu().getId())
-                .menuName(planMenu.getMenu().getName())
+                .menuId(menu.getId())
+                .menuName(menu.getName())
+                .difficultyLevel(menu.getDifficultyLevel())
+                .timeRequired(menu.getTimeRequired())
                 .build();
     }
 }

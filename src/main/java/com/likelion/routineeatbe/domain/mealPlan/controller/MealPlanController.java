@@ -37,4 +37,9 @@ public class MealPlanController implements MealPlanControllerDocs{
         List<MealPlanResponse> mealPlanResponseList=mealPlanService.getUserMealPlan(userId,status);
         return GlobalResponse.success(200,"사용자 식단 조회에 성공했습니다.",mealPlanResponseList);
     }
+
+    @Override
+    public GlobalResponse<MealPlanDetailResponse> getDetailMealPlan(Long userId,Long mealPlanId){
+        return GlobalResponse.success(200,"식단 상제조회에 성공 했습니다.",mealPlanService.getDetailMealPlan(userId,mealPlanId));
+    }
 }

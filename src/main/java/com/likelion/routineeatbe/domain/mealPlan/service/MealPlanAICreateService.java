@@ -20,12 +20,8 @@ import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.config.GeminiProperties;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import com.likelion.routineeatbe.global.util.GeminiUtil;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+
+import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,9 +37,9 @@ public class MealPlanAICreateService {
     // 0. 상수 정의 (식단 구성 규칙)
     // ==========================================
     private static final int MENUS_PER_PLAN = 3; // 하나의 식단(Plan)당 들어갈 메뉴 개수 (3개)
-    private static final int PLAN_COUNT = MealPlanType.values().length; // 식단 종류 개수 (PRACTICE, USEALL, SIMPLE -> 총 3개)
-    private static final int REQUIRED_MENU_COUNT = MENUS_PER_PLAN * PLAN_COUNT; // 3개 식단을 모두 만들 때 필요한 총 메뉴 수 (3 * 3 = 9개)
-    private static final int NON_USE_ALL_REQUIRED_MENU_COUNT = MENUS_PER_PLAN * (PLAN_COUNT - 1); // USEALL 제외 시 필요한 총 메뉴 수 (3 * 2 = 6개)
+    private static final int PLAN_COUNT = MealPlanType.values().length; // 식단 종류 개수 (PRACTICE, USEALL, SIMPLE, RECYCLING -> 총 4개)
+    private static final int REQUIRED_MENU_COUNT = MENUS_PER_PLAN * PLAN_COUNT; // 4개 식단을 모두 만들 때 필요한 총 메뉴 수 (3 * 4 = 12개)
+    private static final int NON_USE_ALL_REQUIRED_MENU_COUNT = MENUS_PER_PLAN * (PLAN_COUNT - 1); // USEALL 제외 시 필요한 총 메뉴 수 (3 * 3 = 9개)
     private static final int MAX_AI_CANDIDATES = 60; // AI 프롬프트(토큰 제약)로 넘길 최대 후보 레시피 개수
 
     private final UserRepository userRepository;
@@ -56,7 +52,7 @@ public class MealPlanAICreateService {
     private final GeminiProperties geminiProperties;
 
     /**
-     * 메인 비즈니스 로직: 사용자 맞춤형 3가지 타입의 식단을 추천합니다.
+     * 메인 비즈니스 로직: 사용자 맞춤형 식단을 추천합니다.
      */
     @Transactional(readOnly = true)
     public AiMealRecommendationResponse recommendThreeMeals(Long userId) {
@@ -67,11 +63,10 @@ public class MealPlanAICreateService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER));
 
-        // 1-1. 절대 먹으면 안 되는 식재료 ID 수집 (알레르기 + 비선호)
-        Set<Long> forbiddenIngredientIds = ingredientIds(userId, UserFoodIngredientType.ALLERGY);
-        forbiddenIngredientIds.addAll(ingredientIds(userId, UserFoodIngredientType.DISLIKE));
+        // 1-1. 절대 먹으면 안 되는 제외(EXCEPTION) 식재료 ID 수집
+        Set<Long> forbiddenIngredientIds = ingredientIds(userId, UserFoodIngredientType.EXCEPTION);
 
-        // 1-2. 현재 사용자가 보유하고 있는 식재료 ID 수집
+        // 1-2. 현재 사용자가 보유(OWN)하고 있는 식재료 ID 수집
         Set<Long> ownedIngredientIds = ingredientIds(userId, UserFoodIngredientType.OWN);
 
         // 1-3. 현재 사용자가 보유하고 있는 조리 도구 ID 수집
@@ -90,7 +85,7 @@ public class MealPlanAICreateService {
         // [STEP 2] 백엔드 하드 필터링(Safety Rule) 및 후보군 정렬
         // ----------------------------------------------------
         List<Candidate> candidates = recipes.stream()
-                // [안전 규칙 1] 알레르기 또는 비선호 식재료가 1개라도 포함된 레시피는 아예 제외
+                // [안전 규칙 1] 제외(EXCEPTION) 식재료가 1개라도 포함된 레시피는 아예 제외
                 .filter(recipe -> recipe.getRecipeFoodIngredients().stream()
                         .map(relation -> relation.getFoodIngredient().getId())
                         .noneMatch(forbiddenIngredientIds::contains))
@@ -131,12 +126,12 @@ public class MealPlanAICreateService {
         // 냉털(USEALL) 플랜용 메뉴가 3개 이상이면 USEALL 플랜 생성 가능으로 판단
         boolean useAllAvailable = useAllCandidateMenuIds.size() >= MENUS_PER_PLAN;
 
-        // USEALL 가능 여부에 따라 필요한 총 후보 레시피 최소 수량 결정 (9개 또는 6개)
+        // USEALL 가능 여부에 따라 필요한 총 후보 레시피 최소 수량 결정 (12개 또는 9개)
         int requiredCandidateCount = useAllAvailable
                 ? REQUIRED_MENU_COUNT
                 : NON_USE_ALL_REQUIRED_MENU_COUNT;
 
-        // [핵심 예외 발생 지점] 안전 후보군 개수가 최소 필요 수량(6개 또는 9개)보다 적으면 에러 발생!
+        // [핵심 예외 발생 지점] 안전 후보군 개수가 최소 필요 수량보다 적으면 에러 발생!
         if (candidates.size() < requiredCandidateCount) {
             throw new CustomException(MealPlanErrorCode.NO_RECOMMENDABLE_RECIPE);
         }
@@ -166,7 +161,7 @@ public class MealPlanAICreateService {
     }
 
     /**
-     * [보조 메서드] 특정 릴레이션 타입(ALLERGY, DISLIKE, OWN)에 해당하는 식재료 ID Set을 가져옵니다.
+     * [보조 메서드] 특정 릴레이션 타입(EXCEPTION, OWN, RESERVATION)에 해당하는 식재료 ID Set을 가져옵니다.
      */
     private Set<Long> ingredientIds(Long userId, UserFoodIngredientType type) {
         return userFoodIngredientRepository.findAllWithFoodIngredientByUserIdAndRelationType(userId, type)
@@ -202,10 +197,11 @@ public class MealPlanAICreateService {
             SkillLevel skillLevel,
             boolean useAllAvailable
     ) {
-        // 정단하게 필터링된 후보 레시피들의 상세 데이터를 한 줄씩 문자열로 변환
+        // AI가 메인 재료를 파악할 수 있도록 ingredients 항목 추가
         String candidateLines = candidates.stream()
                 .map(candidate -> "- menuId=" + candidate.menuId
                         + ", name=" + candidate.menuName
+                        + ", ingredients=" + candidate.ingredientNames
                         + ", ownedIngredientCount=" + candidate.ownedIngredientCount
                         + ", totalIngredientCount=" + candidate.totalIngredientCount
                         + ", difficulty=" + candidate.difficultyScore
@@ -214,7 +210,7 @@ public class MealPlanAICreateService {
                 .collect(Collectors.joining("\n"));
 
         // USEALL 플랜 생성 가능 여부에 따른 AI 지시사항 분기 처리
-        String requiredPlanTypes = useAllAvailable ? "PRACTICE, USEALL, SIMPLE" : "PRACTICE, SIMPLE";
+        String requiredPlanTypes = useAllAvailable ? "PRACTICE, USEALL, SIMPLE, RECYCLING" : "PRACTICE, SIMPLE, RECYCLING";
         String useAllInstruction = useAllAvailable
                 ? "- USEALL: choose ONLY from these menu IDs: " + useAllCandidateMenuIds.stream().sorted().toList()
                 + ". These are the only menus whose every required ingredient is currently owned. Do not select any other ID for USEALL."
@@ -223,13 +219,17 @@ public class MealPlanAICreateService {
         return """
                 You MUST return exactly these plans: %s. Return each type exactly once.
                 Every plan MUST contain exactly three DISTINCT menu IDs.
-                A menu ID MUST NOT be reused in another plan. Use only the listed candidate menu IDs.
-                All candidates already passed allergy, dislike-ingredient, and required-cooking-equipment checks.
+                Every plan MUST contain exactly three DISTINCT menu IDs.
+                Across all returned plans, AT MOST ONE menu ID can be reused (e.g., up to 1 shared menu ID total across plans).
+                Prefer completely distinct menu IDs if possible.
+                Use only the listed candidate menu IDs.
+                All candidates already passed excluded-ingredient and required-cooking-equipment checks.
 
                 Plan objectives:
                 - PRACTICE: improve the user's cooking skill. The user's current skill is %s; prefer appropriately challenging difficulty.
                 %s
                 - SIMPLE: prefer lower difficulty and shorter timeRequiredMinutes.
+                - RECYCLING: choose three distinct menus that share the SAME primary/main food ingredient (e.g., salmon, chicken, pork, beef, tofu, egg, etc.). Do NOT count basic condiments or seasonings (e.g., soy sauce, salt, garlic, sugar, cooking oil) as the main ingredient.
                 Prefer menus with cookedBefore=false when the objective scores are comparable.
                 Candidates:
                 %s
@@ -242,7 +242,7 @@ public class MealPlanAICreateService {
     }
 
     /**
-     * [보조 메서드] AI가 반환한 결과가 백엔드의 비즈니스 규칙(중복 없음, 존재 유무 등)을 준수했는지 엄격히 검증합니다.
+     * [보조 메서드] AI가 반환한 결과가 백엔드의 비즈니스 규칙을 준수했는지 엄격히 검증합니다.
      */
     private AiMealRecommendationResponse toResponse(
             MealRecommendationGeminiResponse aiResult,
@@ -260,7 +260,9 @@ public class MealPlanAICreateService {
         Map<Long, Candidate> candidatesByMenuId = candidates.stream()
                 .collect(Collectors.toMap(Candidate::menuId, candidate -> candidate));
         Set<MealPlanType> planTypes = new HashSet<>();
-        Set<Long> selectedMenuIds = new HashSet<>();
+
+        // [변경 1] Set 대신 전체 선택된 menuId를 담을 List 사용
+        List<Long> allSelectedMenuIds = new ArrayList<>();
 
         // 2. 각 플랜 및 메뉴 항목을 순회하며 검증 진행
         List<AiMealRecommendationResponse.Plan> plans = aiResult.plans().stream().map(aiPlan -> {
@@ -272,9 +274,17 @@ public class MealPlanAICreateService {
                 throw invalidAiRecommendation("duplicate plan type or a plan does not contain exactly three menus", aiResult);
             }
 
+            // [변경 2] 단일 플랜 내에서 메뉴 3개가 서로 중복되는지 검증 (한 플랜 안에는 서로 다른 메뉴 3개여야 함)
+            Set<Long> inPlanMenuIds = aiPlan.menus().stream()
+                    .map(MealRecommendationGeminiResponse.Menu::menuId)
+                    .collect(Collectors.toSet());
+            if (inPlanMenuIds.size() != MENUS_PER_PLAN) {
+                throw invalidAiRecommendation("a single plan contains duplicate menu IDs within itself", aiResult);
+            }
+
             List<AiMealRecommendationResponse.Menu> menus = aiPlan.menus().stream().map(aiMenu -> {
                 Candidate candidate = candidatesByMenuId.get(aiMenu.menuId());
-                // AI가 후보군에 없던 menuId를 마음대로 생성(할루시네이션)했는지 체크
+                // AI가 후보군에 없던 menuId를 생성했는지 체크
                 if (candidate == null) {
                     throw invalidAiRecommendation("menuId " + aiMenu.menuId() + " is not in the safe candidate list", aiResult);
                 }
@@ -282,24 +292,32 @@ public class MealPlanAICreateService {
                 if (type == MealPlanType.USEALL && !useAllCandidateMenuIds.contains(aiMenu.menuId())) {
                     throw invalidAiRecommendation("USEALL menuId " + aiMenu.menuId() + " requires an ingredient the user does not own", aiResult);
                 }
-                // 서로 다른 플랜 간에 동일한 menuId가 중복으로 선택되었는지 체크
-                if (!selectedMenuIds.add(aiMenu.menuId())) {
-                    throw invalidAiRecommendation("menuId " + aiMenu.menuId() + " was reused across plans", aiResult);
-                }
+
+                allSelectedMenuIds.add(aiMenu.menuId()); // 전체 선택된 메뉴 리스트에 추가
                 return new AiMealRecommendationResponse.Menu(
                         candidate.menuId, candidate.menuName, aiMenu.reason());
             }).toList();
             return new AiMealRecommendationResponse.Plan(type, aiPlan.reason(), menus);
         }).toList();
 
-        // 3. 최종 요구사항(플랜 종류, 총 선택된 메뉴 수) 검증
+        // 3. 최종 요구사항(플랜 종류) 검증
         Set<MealPlanType> expectedPlanTypes = useAllAvailable
-                ? Set.of(MealPlanType.PRACTICE, MealPlanType.USEALL, MealPlanType.SIMPLE)
-                : Set.of(MealPlanType.PRACTICE, MealPlanType.SIMPLE);
-        int expectedMenuCount = expectedPlanCount * MENUS_PER_PLAN;
+                ? Set.of(MealPlanType.PRACTICE, MealPlanType.USEALL, MealPlanType.SIMPLE, MealPlanType.RECYCLING)
+                : Set.of(MealPlanType.PRACTICE, MealPlanType.SIMPLE, MealPlanType.RECYCLING);
 
-        if (!planTypes.equals(expectedPlanTypes) || selectedMenuIds.size() != expectedMenuCount) {
-            throw invalidAiRecommendation("required plan types and distinct menu count do not match", aiResult);
+        if (!planTypes.equals(expectedPlanTypes)) {
+            throw invalidAiRecommendation("required plan types do not match", aiResult);
+        }
+
+        // [변경 3] 전체 플랜 간 메뉴 중복 개수 검증 (최대 1개 중복만 허용)
+        int totalMenuSlots = expectedPlanCount * MENUS_PER_PLAN; // 총 메뉴 칸 수 (예: 12개 또는 9개)
+        long distinctMenuCount = allSelectedMenuIds.stream().distinct().count(); // 중복을 제거한 실제 고유 메뉴 수
+        int overlapCount = totalMenuSlots - (int) distinctMenuCount; // 겹친 횟수
+
+        // overlapCount = 0 (중복 없음), overlapCount = 1 (1개 메뉴가 2개 플랜에 중복 사용됨)
+        // 겹친 횟수가 2 이상(2개 이상 중복)이면 에러
+        if (overlapCount > 1) {
+            throw invalidAiRecommendation("more than 1 menu overlap found across plans (overlapCount: " + overlapCount + ")", aiResult);
         }
 
         Map<MealPlanType, AiMealRecommendationResponse.Plan> plansByType = plans.stream()
@@ -308,7 +326,8 @@ public class MealPlanAICreateService {
         return new AiMealRecommendationResponse(
                 plansByType.get(MealPlanType.PRACTICE),
                 plansByType.get(MealPlanType.USEALL),
-                plansByType.get(MealPlanType.SIMPLE)
+                plansByType.get(MealPlanType.SIMPLE),
+                plansByType.get(MealPlanType.RECYCLING)
         );
     }
 
@@ -326,9 +345,9 @@ public class MealPlanAICreateService {
     }
 
     /**
-     * [내부 Record 클래스] AI 추천 판단을 돕기 위해 레시피의 핵심 정보만 요약한 가벼운 데이터 객체입니다.
+     * [내부 Record 클래스] AI 추천 판단을 돕기 위해 레시피의 핵심 정보만 요약한 데이터 객체입니다.
      */
-    private record Candidate(Long menuId, String menuName, int ownedIngredientCount,
+    private record Candidate(Long menuId, String menuName, List<String> ingredientNames, int ownedIngredientCount,
                              int totalIngredientCount, int difficultyScore, int timeRequired,
                              boolean cookedBefore) {
         static Candidate from(Recipe recipe, Set<Long> ownedIngredientIds, Set<Long> cookedMenuIds) {
@@ -336,9 +355,13 @@ public class MealPlanAICreateService {
                     .map(relation -> relation.getFoodIngredient().getId())
                     .filter(ownedIngredientIds::contains)
                     .count();
+            List<String> ingredientNames = recipe.getRecipeFoodIngredients().stream()
+                    .map(relation -> relation.getFoodIngredient().getName())
+                    .toList();
             return new Candidate(
                     recipe.getMenu().getId(),
                     recipe.getMenu().getName(),
+                    ingredientNames,
                     ownedCount,
                     recipe.getRecipeFoodIngredients().size(),
                     recipe.getMenu().getDifficultyLevel().ordinal() + 1,

@@ -18,7 +18,7 @@ public class MealPlan extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false,comment = "식단 종류")
+    @Column(nullable = false,comment = "식단 종류",length = 10)
     @Enumerated(EnumType.STRING)
     private MealPlanType type;
 

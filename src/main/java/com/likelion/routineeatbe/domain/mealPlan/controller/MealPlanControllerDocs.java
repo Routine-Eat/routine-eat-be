@@ -22,10 +22,11 @@ import java.util.List;
 public interface MealPlanControllerDocs {
 
     @Operation(
-            summary = "AI 목적별 식단 3종 추천",
+            summary = "AI 목적별 식단 4종 추천",
             description = """
                 알레르기·비선호 식재료와 미보유 조리도구를 제외한 뒤, \n
-                PRACTICE(실력 향상), USEALL(보유 재료만 사용), SIMPLE(간단한 요리) 식단을 각각 서로 다른 메뉴 3개로 추천 \n
+                PRACTICE(실력 향상), USEALL(보유 재료만 사용), SIMPLE(간단한 요리), RECYCLING(메인 재료 공통) \n
+                식단을 각각 서로 다른 메뉴 3개로 추천 \n
                 보유 재료만으로 만들 수 있는 USEALL 메뉴가 3개 미만이면 useAll은 null로 반환 \n
             """
     )

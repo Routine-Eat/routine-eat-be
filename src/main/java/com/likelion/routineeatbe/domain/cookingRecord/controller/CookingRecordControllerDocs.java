@@ -2,7 +2,7 @@ package com.likelion.routineeatbe.domain.cookingRecord.controller;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
-import com.likelion.routineeatbe.domain.cookingRecord.dto.response.NextCookingStepResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -80,14 +80,49 @@ public interface CookingRecordControllerDocs {
             @ApiResponse(
                     responseCode = "201",
                     description = "다음 요리 단계 이동 또는 요리 완료 성공",
-                    content = @Content(schema = @Schema(implementation = NextCookingStepResDto.class))
+                    content = @Content(schema = @Schema(implementation = CookingStepNavigationResDto.class))
             ),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 값", content = @Content),
             @ApiResponse(responseCode = "404", description = "사용자, 요리 기록 또는 단계를 찾을 수 없음", content = @Content),
             @ApiResponse(responseCode = "409", description = "진행 중인 세션이 아니거나 단계 상태가 잘못됨", content = @Content)
     })
     @PostMapping("/{cookingRecordId}/cooking-session/cooking-steps/next")
-    ResponseEntity<GlobalResponse<NextCookingStepResDto>> moveToNextCookingStep(
+    ResponseEntity<GlobalResponse<CookingStepNavigationResDto>> moveToNextCookingStep(
+            @Parameter(description = "요리 기록 PK", required = true)
+            @Positive(message = "요리 기록 PK는 양수여야 합니다.")
+            @PathVariable("cookingRecordId") Long cookingRecordId,
+            @Parameter(description = "사용자 고유 식별번호", required = true)
+            @NotBlank(message = "사용자 고유 식별번호는 필수입니다.")
+            @Size(min = 4, max = 4, message = "사용자 고유 식별번호는 4자리여야 합니다.")
+            @Pattern(regexp = "^[0-9]{4}$", message = "사용자 고유 식별번호는 숫자 4자리여야 합니다.")
+            @RequestParam("userNumber") String userNumber
+    );
+
+    @Operation(
+            summary = "이전 요리 단계로 이동",
+            description = """
+                    진행 중인 요리 세션을 이전 단계로 이동하고 해당 단계의 상세 정보를 반환합니다.
+                    현재 단계가 1이면 단계를 변경하지 않습니다.
+
+                    [Path Variable]
+                    - cookingRecordId: 요리 기록 PK
+
+                    [Query Parameter]
+                    - userNumber: 4자리 사용자 고유 식별번호
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "이전 요리 단계 이동 또는 첫 단계 경계 처리 성공",
+                    content = @Content(schema = @Schema(implementation = CookingStepNavigationResDto.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 값", content = @Content),
+            @ApiResponse(responseCode = "404", description = "사용자, 요리 기록 또는 단계를 찾을 수 없음", content = @Content),
+            @ApiResponse(responseCode = "409", description = "진행 중인 세션이 아니거나 단계 상태가 잘못됨", content = @Content)
+    })
+    @PostMapping("/{cookingRecordId}/cooking-session/cooking-steps/prev")
+    ResponseEntity<GlobalResponse<CookingStepNavigationResDto>> moveToPreviousCookingStep(
             @Parameter(description = "요리 기록 PK", required = true)
             @Positive(message = "요리 기록 PK는 양수여야 합니다.")
             @PathVariable("cookingRecordId") Long cookingRecordId,

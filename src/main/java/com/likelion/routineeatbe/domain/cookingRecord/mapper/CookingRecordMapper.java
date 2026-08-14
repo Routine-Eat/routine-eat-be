@@ -4,7 +4,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGene
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTitleResDto;
-import com.likelion.routineeatbe.domain.cookingRecord.dto.response.NextCookingStepResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
@@ -16,18 +16,25 @@ import org.springframework.stereotype.Component;
 public class CookingRecordMapper {
 
     /**
-     * 저장된 요리 기록과 Gemini 생성 결과를 요리 시작 응답 DTO로 변환합니다.
+     * 저장된 요리 기록, Gemini 생성 결과와 첫 요리 단계를 요리 시작 응답 DTO로 변환합니다.
      *
      * @param cookingRecord 저장된 요리 기록
      * @param recipe 요리를 시작한 레시피
      * @param generated Gemini가 생성한 체크리스트와 요리 단계
+     * @param firstCookingStep 저장된 첫 번째 요리 단계
      * @return 요리 시작 응답 DTO
      */
     public CookingStartResDto toCookingStartResDto(
             CookingRecord cookingRecord,
             Recipe recipe,
-            CookingStepGenerateGeminiResponseDto generated
+            CookingStepGenerateGeminiResponseDto generated,
+            CookingStep firstCookingStep
     ) {
+        CookingSession cookingSession = cookingRecord.getCookingSession();
+        Integer currentLevel = cookingSession.getCurrentCookingStepLevel();
+        Integer nextLevel = currentLevel < cookingSession.getCookingStepCount()
+                ? currentLevel + 1
+                : null;
         List<CookingStepTitleResDto> cookingStepTitles = generated.cookingSteps().stream()
                 .map(cookingStep -> CookingStepTitleResDto.builder()
                         .stepLevel(cookingStep.level().longValue())
@@ -40,19 +47,22 @@ public class CookingRecordMapper {
                 .recipeThumbnailUrl(recipe.getMenu().getThumbnailUrl())
                 .recipeTimeRequired(recipe.getMenu().getTimeRequired())
                 .checkListBeforeStart(List.copyOf(generated.checkListBeforeStart()))
-                .cookingStepCount(generated.cookingSteps().size())
+                .cookingStepCount(cookingSession.getCookingStepCount())
+                .prevCookingStepLevel(currentLevel - 1)
+                .nextCookingStepLevel(nextLevel)
+                .currentCookingStep(toCookingStepDetailResDto(firstCookingStep))
                 .cookingStepTitles(cookingStepTitles)
                 .build();
     }
 
     /**
-     * 요리 세션과 현재 요리 단계를 다음 단계 이동 응답 DTO로 변환합니다.
+     * 요리 세션과 현재 요리 단계를 단계 이동 응답 DTO로 변환합니다.
      *
      * @param cookingSession 단계 이동이 완료된 요리 세션
      * @param cookingStep 현재 요리 단계
-     * @return 다음 단계 이동 응답 DTO
+     * @return 단계 이동 응답 DTO
      */
-    public NextCookingStepResDto toNextCookingStepResDto(
+    public CookingStepNavigationResDto toCookingStepNavigationResDto(
             CookingSession cookingSession,
             CookingStep cookingStep
     ) {
@@ -60,7 +70,7 @@ public class CookingRecordMapper {
         Integer nextLevel = currentLevel < cookingSession.getCookingStepCount()
                 ? currentLevel + 1
                 : null;
-        return NextCookingStepResDto.builder()
+        return CookingStepNavigationResDto.builder()
                 .cookingStepCount(cookingSession.getCookingStepCount())
                 .prevCookingStepLevel(currentLevel - 1)
                 .nextCookingStepLevel(nextLevel)

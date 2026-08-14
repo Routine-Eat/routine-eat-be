@@ -12,7 +12,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGene
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
-import com.likelion.routineeatbe.domain.cookingRecord.dto.response.NextCookingStepResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.exception.CookingRecordErrorCode;
 import com.likelion.routineeatbe.domain.cookingRecord.mapper.CookingRecordMapper;
@@ -68,9 +68,33 @@ class CookingRecordServiceTest {
         RecipeStep recipeStep = RecipeStep.builder().level(1L).build();
         CookingStartReqDto request = new CookingStartReqDto(2L, 2);
         CookingStepGenerateGeminiResponseDto generated = generatedResponse();
-        CookingRecord saved = CookingRecord.builder().id(3L).build();
+        CookingRecord saved = createCookingRecord(3L, user, 1, 3);
+        CookingStep firstCookingStep = CookingStep.builder()
+                .id(20L)
+                .level(1L)
+                .title("준비")
+                .content("재료를 준비하세요.")
+                .cookingSession(saved.getCookingSession())
+                .build();
         CookingStartResDto expected = CookingStartResDto.create(
-                3L, "볶음밥", null, 10, List.of("손을 씻으세요."), 3, List.of()
+                3L,
+                "볶음밥",
+                null,
+                10,
+                List.of("손을 씻으세요."),
+                3,
+                0,
+                2,
+                CookingStepDetailResDto.create(
+                        20L,
+                        1L,
+                        "준비",
+                        null,
+                        "재료를 준비하세요.",
+                        null,
+                        List.of()
+                ),
+                List.of()
         );
 
         given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
@@ -84,7 +108,14 @@ class CookingRecordServiceTest {
         given(geminiService.generate(user, recipe, List.of(ingredient), List.of(recipeStep), 2))
                 .willReturn(generated);
         given(persistenceService.save(1L, 2L, 2, generated)).willReturn(saved);
-        given(cookingRecordMapper.toCookingStartResDto(saved, recipe, generated))
+        given(cookingStepRepository.findByCookingSessionIdAndLevel(100L, 1L))
+                .willReturn(Optional.of(firstCookingStep));
+        given(cookingRecordMapper.toCookingStartResDto(
+                saved,
+                recipe,
+                generated,
+                firstCookingStep
+        ))
                 .willReturn(expected);
 
         // when
@@ -131,7 +162,7 @@ class CookingRecordServiceTest {
                 .content("볶아주세요.")
                 .cookingSession(cookingSession)
                 .build();
-        NextCookingStepResDto expected = NextCookingStepResDto.create(
+        CookingStepNavigationResDto expected = CookingStepNavigationResDto.create(
                 3,
                 1,
                 3,
@@ -144,11 +175,11 @@ class CookingRecordServiceTest {
                 .willReturn(Optional.of(cookingRecord));
         given(cookingStepRepository.findByCookingSessionIdAndLevel(100L, 2L))
                 .willReturn(Optional.of(cookingStep));
-        given(cookingRecordMapper.toNextCookingStepResDto(cookingSession, cookingStep))
+        given(cookingRecordMapper.toCookingStepNavigationResDto(cookingSession, cookingStep))
                 .willReturn(expected);
 
         // when
-        NextCookingStepResDto result = cookingRecordService.moveToNextCookingStep(
+        CookingStepNavigationResDto result = cookingRecordService.moveToNextCookingStep(
                 10L,
                 "1234"
         );
@@ -170,7 +201,7 @@ class CookingRecordServiceTest {
                 .willReturn(Optional.of(cookingRecord));
 
         // when
-        NextCookingStepResDto result = cookingRecordService.moveToNextCookingStep(
+        CookingStepNavigationResDto result = cookingRecordService.moveToNextCookingStep(
                 10L,
                 "1234"
         );
@@ -195,6 +226,93 @@ class CookingRecordServiceTest {
 
         // when & then
         assertThatThrownBy(() -> cookingRecordService.moveToNextCookingStep(10L, "1234"))
+                .isInstanceOf(CustomException.class)
+                .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
+                        .isEqualTo(CookingRecordErrorCode.COOKING_SESSION_NOT_IN_PROGRESS));
+    }
+
+    @Test
+    @DisplayName("진행 중인 요리 세션을 이전 단계로 이동한다")
+    void 진행_중_요리_세션_이전_단계_이동_성공() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = createCookingRecord(10L, user, 2, 3);
+        CookingSession cookingSession = cookingRecord.getCookingSession();
+        CookingStep cookingStep = CookingStep.builder()
+                .id(19L)
+                .level(1L)
+                .title("재료 준비")
+                .content("대파를 잘라주세요.")
+                .cookingSession(cookingSession)
+                .build();
+        CookingStepNavigationResDto expected = CookingStepNavigationResDto.create(
+                3,
+                0,
+                2,
+                CookingStepDetailResDto.create(
+                        19L,
+                        1L,
+                        "재료 준비",
+                        null,
+                        "대파를 잘라주세요.",
+                        null,
+                        List.of()
+                )
+        );
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository.findByIdAndUserIdForUpdate(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+        given(cookingStepRepository.findByCookingSessionIdAndLevel(100L, 1L))
+                .willReturn(Optional.of(cookingStep));
+        given(cookingRecordMapper.toCookingStepNavigationResDto(cookingSession, cookingStep))
+                .willReturn(expected);
+
+        // when
+        CookingStepNavigationResDto result = cookingRecordService.moveToPreviousCookingStep(
+                10L,
+                "1234"
+        );
+
+        // then
+        assertThat(result).isSameAs(expected);
+        assertThat(cookingSession.getCurrentCookingStepLevel()).isEqualTo(1);
+        assertThat(cookingSession.getStatus()).isEqualTo(CookingSessionStatus.IN_PROGRESS);
+    }
+
+    @Test
+    @DisplayName("첫 요리 단계에서는 이전 단계로 이동하지 않는다")
+    void 첫_요리_단계_이전_단계_이동_차단() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = createCookingRecord(10L, user, 1, 3);
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository.findByIdAndUserIdForUpdate(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+
+        // when
+        CookingStepNavigationResDto result = cookingRecordService
+                .moveToPreviousCookingStep(10L, "1234");
+
+        // then
+        assertThat(result).isNull();
+        assertThat(cookingRecord.getCookingSession().getCurrentCookingStepLevel()).isEqualTo(1);
+        then(cookingStepRepository).shouldHaveNoInteractions();
+        then(cookingRecordMapper).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("완료된 요리 세션은 이전 단계 이동에 실패한다")
+    void 완료된_요리_세션_이전_단계_이동_실패() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = createCookingRecord(10L, user, 3, 3);
+        cookingRecord.getCookingSession().complete();
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository.findByIdAndUserIdForUpdate(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+
+        // when & then
+        assertThatThrownBy(() -> cookingRecordService.moveToPreviousCookingStep(10L, "1234"))
                 .isInstanceOf(CustomException.class)
                 .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
                         .isEqualTo(CookingRecordErrorCode.COOKING_SESSION_NOT_IN_PROGRESS));

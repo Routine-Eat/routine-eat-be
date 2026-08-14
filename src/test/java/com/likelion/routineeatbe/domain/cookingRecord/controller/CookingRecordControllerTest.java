@@ -9,8 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTitleResDto;
-import com.likelion.routineeatbe.domain.cookingRecord.dto.response.NextCookingStepResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingRecordService;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -50,6 +50,17 @@ class CookingRecordControllerTest {
                 8,
                 List.of("프라이팬의 물기를 확인하세요."),
                 1,
+                0,
+                null,
+                CookingStepDetailResDto.create(
+                        20L,
+                        1L,
+                        "재료 준비",
+                        null,
+                        "대파를 잘라주세요.",
+                        null,
+                        List.of()
+                ),
                 List.of(CookingStepTitleResDto.create(1L, "재료 준비"))
         );
         given(cookingRecordService.startCooking("1234", request)).willReturn(response);
@@ -67,6 +78,11 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.data.checkListBeforeStart[0]")
                         .value("프라이팬의 물기를 확인하세요."))
                 .andExpect(jsonPath("$.data.cookingStepCount").value(1))
+                .andExpect(jsonPath("$.data.prevCookingStepLevel").value(0))
+                .andExpect(jsonPath("$.data.nextCookingStepLevel").doesNotExist())
+                .andExpect(jsonPath("$.data.currentCookingStep.cookingStepId").value(20))
+                .andExpect(jsonPath("$.data.currentCookingStep.level").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.stepTips").isEmpty())
                 .andExpect(jsonPath("$.data.cookingStepTitles[0].stepLevel").value(1));
         then(cookingRecordService).should().startCooking("1234", request);
     }
@@ -105,7 +121,7 @@ class CookingRecordControllerTest {
     @DisplayName("다음 요리 단계 이동 API 성공 - 201 반환")
     void 다음_요리_단계_이동_API_성공_201_반환() throws Exception {
         // given
-        NextCookingStepResDto response = NextCookingStepResDto.create(
+        CookingStepNavigationResDto response = CookingStepNavigationResDto.create(
                 10,
                 1,
                 3,
@@ -170,5 +186,65 @@ class CookingRecordControllerTest {
                 ).param("userNumber", "1234"))
                 .andExpect(status().isBadRequest());
         then(cookingRecordService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("이전 요리 단계 이동 API 성공 - 201 반환")
+    void 이전_요리_단계_이동_API_성공_201_반환() throws Exception {
+        // given
+        CookingStepNavigationResDto response = CookingStepNavigationResDto.create(
+                10,
+                0,
+                2,
+                CookingStepDetailResDto.create(
+                        19L,
+                        1L,
+                        "대파 준비하기",
+                        "https://example.com/step.jpg",
+                        "대파를 잘라주세요.",
+                        "가위를 사용해도 괜찮아요.",
+                        List.of()
+                )
+        );
+        given(cookingRecordService.moveToPreviousCookingStep(10L, "1234"))
+                .willReturn(response);
+
+        // when & then
+        mockMvc.perform(post(
+                        "/api/v1/cooking-records/{cookingRecordId}/cooking-session/cooking-steps/prev",
+                        10L
+                ).param("userNumber", "1234"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(201))
+                .andExpect(jsonPath("$.message")
+                        .value("이전 요리 단계로 이동했습니다. 현재 1번째 단계입니다."))
+                .andExpect(jsonPath("$.data.cookingStepCount").value(10))
+                .andExpect(jsonPath("$.data.prevCookingStepLevel").value(0))
+                .andExpect(jsonPath("$.data.nextCookingStepLevel").value(2))
+                .andExpect(jsonPath("$.data.currentCookingStep.cookingStepId").value(19))
+                .andExpect(jsonPath("$.data.currentCookingStep.level").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.stepTips").isEmpty());
+        then(cookingRecordService).should().moveToPreviousCookingStep(10L, "1234");
+    }
+
+    @Test
+    @DisplayName("이전 요리 단계 이동 API 성공 - 첫 단계 경계")
+    void 이전_요리_단계_이동_API_성공_첫_단계_경계() throws Exception {
+        // given
+        given(cookingRecordService.moveToPreviousCookingStep(10L, "1234"))
+                .willReturn(null);
+
+        // when & then
+        mockMvc.perform(post(
+                        "/api/v1/cooking-records/{cookingRecordId}/cooking-session/cooking-steps/prev",
+                        10L
+                ).param("userNumber", "1234"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(201))
+                .andExpect(jsonPath("$.message").value("1 이전 단계로 이동할 수 없습니다."))
+                .andExpect(jsonPath("$.data").doesNotExist());
+        then(cookingRecordService).should().moveToPreviousCookingStep(10L, "1234");
     }
 }

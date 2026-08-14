@@ -101,6 +101,14 @@ public class CookingSession {
         this.currentCookingStepLevel++;
     }
 
+    public boolean isFirstStep() {
+        return this.currentCookingStepLevel <= 1;
+    }
+
+    public void moveToPreviousStep() {
+        this.currentCookingStepLevel--;
+    }
+
     public void complete() {
         this.status = CookingSessionStatus.COMPLETED;
     }

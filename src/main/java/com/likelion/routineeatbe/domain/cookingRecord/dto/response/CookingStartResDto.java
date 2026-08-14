@@ -19,6 +19,12 @@ public record CookingStartResDto(
         List<String> checkListBeforeStart,
         @Schema(description = "전체 요리 단계 개수", example = "10")
         Integer cookingStepCount,
+        @Schema(description = "이전 요리 단계 번호", example = "0")
+        Integer prevCookingStepLevel,
+        @Schema(description = "다음 요리 단계 번호", example = "2", nullable = true)
+        Integer nextCookingStepLevel,
+        @Schema(description = "현재 요리 단계 상세 정보")
+        CookingStepDetailResDto currentCookingStep,
         @Schema(description = "요리 단계 제목 목록")
         List<CookingStepTitleResDto> cookingStepTitles
 ) {
@@ -30,6 +36,9 @@ public record CookingStartResDto(
             Integer recipeTimeRequired,
             List<String> checkListBeforeStart,
             Integer cookingStepCount,
+            Integer prevCookingStepLevel,
+            Integer nextCookingStepLevel,
+            CookingStepDetailResDto currentCookingStep,
             List<CookingStepTitleResDto> cookingStepTitles
     ) {
         return CookingStartResDto.builder()
@@ -39,6 +48,9 @@ public record CookingStartResDto(
                 .recipeTimeRequired(recipeTimeRequired)
                 .checkListBeforeStart(List.copyOf(checkListBeforeStart))
                 .cookingStepCount(cookingStepCount)
+                .prevCookingStepLevel(prevCookingStepLevel)
+                .nextCookingStepLevel(nextCookingStepLevel)
+                .currentCookingStep(currentCookingStep)
                 .cookingStepTitles(List.copyOf(cookingStepTitles))
                 .build();
     }

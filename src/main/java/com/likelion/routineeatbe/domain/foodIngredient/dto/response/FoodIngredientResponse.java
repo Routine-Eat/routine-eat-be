@@ -29,11 +29,8 @@ public record FoodIngredientResponse (
     @Schema(description = "식재료 보조 단위",example = "GAE")
     SecondaryUnit foodIngredientSecondaryUnit,
 
-    @Schema(description = "알레르기 대표 여부",example = "true")
-    Boolean foodIngredientAllergy,
-
-    @Schema(description = "비선호 대표 여부",example = "true")
-    Boolean foodIngredientDislike
+    @Schema(description = "제외 대표 여부",example = "true")
+    Boolean foodIngredientException
     ){
 
     public static FoodIngredientResponse from(FoodIngredient foodIngredient){
@@ -44,8 +41,7 @@ public record FoodIngredientResponse (
                 .foodIngredientPricePerHundred(foodIngredient.getPricePerHundred())
                 .foodIngredientPrimaryUnit(foodIngredient.getPrimaryUnit())
                 .foodIngredientSecondaryUnit(foodIngredient.getSecondaryUnit())
-                .foodIngredientAllergy(foodIngredient.getAllergy())
-                .foodIngredientDislike(foodIngredient.getDislike())
+                .foodIngredientException(foodIngredient.getException())
                 .build();
     }
 }

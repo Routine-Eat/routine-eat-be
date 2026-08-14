@@ -42,10 +42,9 @@ public interface UserControllerDocs {
             description = """
                     사용자와 관련된 식재료를 조회합니다. \n
                     relationType : \n
-                        1. 알러지 (ALLERGY) \n
-                        2. 비선호 (DISLIKE) \n
-                        3. 보유 (OWN) \n
-                        4. 예약 (RESERVATION) \n
+                        1. 제외 (EXCEPTION) \n
+                        2. 보유 (OWN) \n
+                        3. 예약 (RESERVATION) \n
                     관계를 전달하지 않을 시 관련된 식재료 전체 조회
                     """
     )
@@ -89,10 +88,9 @@ public interface UserControllerDocs {
             description = """
                     relationType과 그에 해당하는 식재료 리스트를 전달하여 DB에 등록 \n
                     relationType : \n
-                        1. 알러지 (ALLERGY) \n
-                        2. 비선호 (DISLIKE) \n
-                        3. 보유 (OWN) \n
-                        4. 예약 (RESERVATION) \n
+                        1. 제외 (EXCEPTION) \n
+                        2. 보유 (OWN) \n
+                        3. 예약 (RESERVATION) \n
                     - 예약은 장보기에 저장 용도 \n
                     - 식재료 리스트는 OWN만 주/부 보유량 포함하여 날릴 수 있음, 나머지는 X
                     - 주/부 보유량은 선택사항
@@ -141,10 +139,9 @@ public interface UserControllerDocs {
             description = """
                     relationType과 그에 해당하는 식재료 리스트를 전달하여 DB에서 삭제 \n
                     relationType : \n
-                        1. 알러지 (ALLERGY) \n
-                        2. 비선호 (DISLIKE) \n
-                        3. 보유 (OWN) \n
-                        4. 예약 (RESERVATION) \n
+                        1. 제외 (EXCEPTION) \n
+                        2. 보유 (OWN) \n
+                        3. 예약 (RESERVATION) \n
                     예약은 장보기에 저장 용도 \n
                     """
     )

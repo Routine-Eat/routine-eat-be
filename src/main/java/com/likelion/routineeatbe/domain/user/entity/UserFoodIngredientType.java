@@ -6,8 +6,7 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum UserFoodIngredientType {
-    ALLERGY("알러지"),
-    DISLIKE("비선호"),
+    EXCEPTION("제외"),
     OWN("보유"),
     RESERVATION("예약");
 

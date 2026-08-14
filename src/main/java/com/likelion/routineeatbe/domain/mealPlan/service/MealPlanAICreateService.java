@@ -6,6 +6,7 @@ import com.likelion.routineeatbe.domain.mealPlan.dto.response.AiMealRecommendati
 import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlanType;
 import com.likelion.routineeatbe.domain.mealPlan.exception.MealPlanErrorCode;
 import com.likelion.routineeatbe.domain.mealPlan.repository.PlanMenuRepository;
+import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipeCookingEquipment.entity.RecipeCookingEquipment;
 import com.likelion.routineeatbe.domain.recipeCookingEquipment.repository.RecipeCookingEquipmentRepository;
@@ -284,18 +285,26 @@ public class MealPlanAICreateService {
 
             List<AiMealRecommendationResponse.Menu> menus = aiPlan.menus().stream().map(aiMenu -> {
                 Candidate candidate = candidatesByMenuId.get(aiMenu.menuId());
+
                 // AI가 후보군에 없던 menuId를 생성했는지 체크
                 if (candidate == null) {
                     throw invalidAiRecommendation("menuId " + aiMenu.menuId() + " is not in the safe candidate list", aiResult);
                 }
+
                 // USEALL 플랜인데 보유 식재료 전용 메뉴가 아닌 항목을 골랐는지 체크
                 if (type == MealPlanType.USEALL && !useAllCandidateMenuIds.contains(aiMenu.menuId())) {
                     throw invalidAiRecommendation("USEALL menuId " + aiMenu.menuId() + " requires an ingredient the user does not own", aiResult);
                 }
 
                 allSelectedMenuIds.add(aiMenu.menuId()); // 전체 선택된 메뉴 리스트에 추가
+
+                // 💡 변경된 DTO 생성자에 맞춰 필드 바인딩
                 return new AiMealRecommendationResponse.Menu(
-                        candidate.menuId, candidate.menuName, aiMenu.reason());
+                        candidate.menuId,
+                        candidate.menuName,
+                        candidate.difficultyLevel,
+                        candidate.timeRequired
+                );
             }).toList();
             return new AiMealRecommendationResponse.Plan(type, aiPlan.reason(), menus);
         }).toList();
@@ -347,8 +356,14 @@ public class MealPlanAICreateService {
     /**
      * [내부 Record 클래스] AI 추천 판단을 돕기 위해 레시피의 핵심 정보만 요약한 데이터 객체입니다.
      */
-    private record Candidate(Long menuId, String menuName, List<String> ingredientNames, int ownedIngredientCount,
-                             int totalIngredientCount, int difficultyScore, int timeRequired,
+    private record Candidate(Long menuId,
+                             String menuName,
+                             DifficultyLevel difficultyLevel,
+                             List<String> ingredientNames,
+                             int ownedIngredientCount,
+                             int totalIngredientCount,
+                             int difficultyScore,
+                             int timeRequired,
                              boolean cookedBefore) {
         static Candidate from(Recipe recipe, Set<Long> ownedIngredientIds, Set<Long> cookedMenuIds) {
             int ownedCount = (int) recipe.getRecipeFoodIngredients().stream()
@@ -361,6 +376,7 @@ public class MealPlanAICreateService {
             return new Candidate(
                     recipe.getMenu().getId(),
                     recipe.getMenu().getName(),
+                    recipe.getMenu().getDifficultyLevel(),
                     ingredientNames,
                     ownedCount,
                     recipe.getRecipeFoodIngredients().size(),

@@ -1,6 +1,9 @@
 package com.likelion.routineeatbe.domain.mealPlan.dto.response;
 
 import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlanType;
+import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.util.List;
 
 /**
@@ -16,6 +19,6 @@ public record AiMealRecommendationResponse(Plan practice, Plan useAll, Plan simp
     }
 
     /** 메뉴 식별자, 표시 이름, 식단 목적에 맞는 개별 추천 이유입니다. */
-    public record Menu(Long menuId, String menuName, String reason) {
+    public record Menu(Long menuId, String menuName, DifficultyLevel difficultyLevel, Integer timeRequired) {
     }
 }

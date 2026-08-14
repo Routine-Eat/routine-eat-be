@@ -19,7 +19,7 @@ public class PlanMenu extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false,comment = "식단 날짜")
+    @Column(nullable = false,comment = "메뉴 완료 날짜")
     private LocalDate date;
 
     @Column(nullable = false,comment = "메뉴 완료 여부")

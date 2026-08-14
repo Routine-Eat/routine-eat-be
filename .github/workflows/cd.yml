@@ -270,6 +270,7 @@ jobs:
       DEV_DB_USER: ${{ secrets.DEV_DB_USER }}
       DEV_DB_PW: ${{ secrets.DEV_DB_PW }}
       DEV_CLOUDFRONT_DOMAIN: ${{ secrets.DEV_CLOUDFRONT_DOMAIN }}
+      DEV_S3_BUCKET: ${{ secrets.DEV_S3_BUCKET }}
       FOOD_SAFETY_KOREA_RECIPE_SERVICE_ID: ${{ secrets.FOOD_SAFETY_KOREA_RECIPE_SERVICE_ID }}
       FOOD_SAFETY_KOREA_RECIPE_DATA_TYPE: ${{ secrets.FOOD_SAFETY_KOREA_RECIPE_DATA_TYPE }}
       FOOD_SAFETY_KOREA_RECIPE_API_KEY: ${{ secrets.FOOD_SAFETY_KOREA_RECIPE_API_KEY }}
@@ -341,6 +342,7 @@ jobs:
           DB_USER_B64="$(printf '%s' "$DEV_DB_USER" | base64 --wrap=0)"
           DB_PW_B64="$(printf '%s' "$DEV_DB_PW" | base64 --wrap=0)"
           DEV_CLOUDFRONT_DOMAIN_B64="$(printf '%s' "$DEV_CLOUDFRONT_DOMAIN" | base64 --wrap=0)"
+          DEV_S3_BUCKET_B64="$(printf '%s' "$DEV_S3_BUCKET" | base64 --wrap=0)"
           FOOD_SAFETY_KOREA_RECIPE_SERVICE_ID_B64="$(printf '%s' "$FOOD_SAFETY_KOREA_RECIPE_SERVICE_ID" | base64 --wrap=0)"
           FOOD_SAFETY_KOREA_RECIPE_DATA_TYPE_B64="$(printf '%s' "$FOOD_SAFETY_KOREA_RECIPE_DATA_TYPE" | base64 --wrap=0)"
           FOOD_SAFETY_KOREA_RECIPE_API_KEY_B64="$(printf '%s' "$FOOD_SAFETY_KOREA_RECIPE_API_KEY" | base64 --wrap=0)"
@@ -356,6 +358,7 @@ jobs:
             export DEV_DB_USER=\$(printf '%s' '$DB_USER_B64' | base64 --decode)
             export DEV_DB_PW=\$(printf '%s' '$DB_PW_B64' | base64 --decode)
             export DEV_CLOUDFRONT_DOMAIN=\$(printf '%s' '$DEV_CLOUDFRONT_DOMAIN_B64' | base64 --decode)
+            export DEV_S3_BUCKET=\$(printf '%s' '$DEV_S3_BUCKET_B64' | base64 --decode)
             export FOOD_SAFETY_KOREA_RECIPE_SERVICE_ID=\$(printf '%s' '$FOOD_SAFETY_KOREA_RECIPE_SERVICE_ID_B64' | base64 --decode)
             export FOOD_SAFETY_KOREA_RECIPE_DATA_TYPE=\$(printf '%s' '$FOOD_SAFETY_KOREA_RECIPE_DATA_TYPE_B64' | base64 --decode)
             export FOOD_SAFETY_KOREA_RECIPE_API_KEY=\$(printf '%s' '$FOOD_SAFETY_KOREA_RECIPE_API_KEY_B64' | base64 --decode)

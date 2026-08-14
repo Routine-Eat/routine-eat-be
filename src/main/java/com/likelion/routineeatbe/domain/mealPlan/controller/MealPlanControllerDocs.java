@@ -9,6 +9,7 @@ import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlanType;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -99,4 +100,25 @@ public interface MealPlanControllerDocs {
             @PathVariable Long userId,
             @PathVariable Long mealPlanId
     );
+
+    @Operation(
+            summary = "식단 메뉴 완료 여부 수정 API",
+            description = """
+                식단 메뉴 완료 여부 수정
+                완료 날짜는 자동 기입
+            """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "203",
+                    description = "식단 메뉴 완료 여부 수정 성공"
+            )
+    })
+    @PatchMapping("/userId/{userId}/plan-menus/{planMenuId}")
+    GlobalResponse<MealPlanDetailResponse> updatePlanMenuCompleted(
+            @PathVariable Long userId,
+            @PathVariable Long planMenuId,
+            @RequestBody
+            @Schema(example = "true")
+            Boolean completed);
 }

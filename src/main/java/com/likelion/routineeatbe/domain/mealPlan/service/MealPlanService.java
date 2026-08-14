@@ -71,12 +71,7 @@ public class MealPlanService {
                 .toList();
 
         // 5. 최종 MealPlanResponse 반환
-        return MealPlanDetailResponse.from(
-                savedMealPlan.getId(),
-                savedMealPlan.getType(),
-                savedMealPlan.getStatus(),
-                planMenuResponses
-        );
+        return MealPlanDetailResponse.from(savedMealPlan, planMenuResponses);
     }
 
     /**
@@ -148,11 +143,6 @@ public class MealPlanService {
                 .toList();
 
         // 4. 최종 MealPlanDetailResponse DTO 생성 및 반환
-        return MealPlanDetailResponse.from(
-                mealPlan.getId(),
-                mealPlan.getType(),
-                mealPlan.getStatus(),
-                planMenuList
-        );
+        return MealPlanDetailResponse.from(mealPlan, planMenuList);
     }
 }

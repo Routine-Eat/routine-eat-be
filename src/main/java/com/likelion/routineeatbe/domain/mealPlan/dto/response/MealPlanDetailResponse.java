@@ -1,5 +1,6 @@
 package com.likelion.routineeatbe.domain.mealPlan.dto.response;
 
+import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlan;
 import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlanStatus;
 import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlanType;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -17,15 +18,13 @@ public record MealPlanDetailResponse(
 
 ){
     public static MealPlanDetailResponse from(
-            Long mealPlanId,
-            MealPlanType mealPlanType,
-            MealPlanStatus mealPlanStatus,
+            MealPlan mealPlan,
             List<PlanMenuResponse> planMenuList
     ){
         return MealPlanDetailResponse.builder()
-                .mealPlanId(mealPlanId)
-                .mealPlanType(mealPlanType)
-                .mealPlanStatus(mealPlanStatus)
+                .mealPlanId(mealPlan.getId())
+                .mealPlanType(mealPlan.getType())
+                .mealPlanStatus(mealPlan.getStatus())
                 .planMenuList(planMenuList)
                 .build();
     }

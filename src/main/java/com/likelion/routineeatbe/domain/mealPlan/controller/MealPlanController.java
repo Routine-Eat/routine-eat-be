@@ -8,6 +8,7 @@ import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlanType;
 import com.likelion.routineeatbe.domain.mealPlan.service.MealPlanAICreateService;
 import com.likelion.routineeatbe.domain.mealPlan.dto.response.AiMealRecommendationResponse;
 import com.likelion.routineeatbe.domain.mealPlan.service.MealPlanService;
+import com.likelion.routineeatbe.domain.mealPlan.service.PlanMenulService;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,6 +20,7 @@ import java.util.List;
 public class MealPlanController implements MealPlanControllerDocs{
     private final MealPlanAICreateService mealPlanAICreateService;
     private final MealPlanService mealPlanService;
+    private final PlanMenulService planMenulService;
 
     @Override
     public GlobalResponse<AiMealRecommendationResponse> recommendThreeMeals(Long userId) {
@@ -41,5 +43,12 @@ public class MealPlanController implements MealPlanControllerDocs{
     @Override
     public GlobalResponse<MealPlanDetailResponse> getDetailMealPlan(Long userId,Long mealPlanId){
         return GlobalResponse.success(200,"식단 상제조회에 성공 했습니다.",mealPlanService.getDetailMealPlan(userId,mealPlanId));
+    }
+
+    @Override
+    public GlobalResponse<MealPlanDetailResponse> updatePlanMenuCompleted(Long userId,Long planMenuId,Boolean completed){
+        MealPlanDetailResponse mealPlanDetailResponse=planMenulService.updateUserMealPlan(userId,planMenuId,completed);
+
+        return GlobalResponse.success(203,"식단 메뉴 완료 여부 수정 성공",mealPlanDetailResponse);
     }
 }

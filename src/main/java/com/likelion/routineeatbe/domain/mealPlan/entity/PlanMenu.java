@@ -41,4 +41,12 @@ public class PlanMenu extends BaseTimeEntity {
                 .completed(false)
                 .build();
     }
+    public void updatePlanMenuCompleted(Boolean completed){
+        this.completed=completed;
+        if (Boolean.TRUE.equals(completed)) {
+            this.date = LocalDate.now();
+        } else {
+            this.date = null;
+        }
+    }
 }

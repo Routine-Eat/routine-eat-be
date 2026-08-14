@@ -18,9 +18,18 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class PlanMenulService {
+public class PlanMenuService {
     private final PlanMenuRepository planMenuRepository;
 
+    /**
+     * 식단의 메뉴 완료 여부 수정
+     * - planId로 연결된 식단 조회
+     * - 식단으로 사용자 조회하여 요청한 사용자 아이디랑 비교
+     * @param userId 사용자 id
+     * @param planMenuId 식단 메뉴 id
+     * @param completed 완료 여부
+     * @return 식단 상세 조회로 요청하지 않은 식단 메뉴까지 출력
+     */
     @Transactional
     public MealPlanDetailResponse updateUserMealPlan(Long userId,Long planMenuId,Boolean completed){
         PlanMenu planMenu=planMenuRepository.findById(planMenuId)

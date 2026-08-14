@@ -320,10 +320,16 @@ jobs:
             > ~/.ssh/config
           chmod 600 ~/.ssh/config
 
-      # 4. 원격 Spring Boot 서버에 이미지와 Compose 파일을 저장할 디렉터리 생성
-      #    ubuntu 계정이 /docker 경로에 쓰기 권한을 가지고 있어야 함
-      - name: Create remote deployment directory
-        run: ssh springboot-server "mkdir -p $SPRINGBOOT_DEPLOY_PATH"
+      # 4. 원격 배포 디렉터리를 만들고 새 이미지 복사에 필요한 디스크 공간 확보
+      #    실행 중인 컨테이너 이미지는 유지하고 기존 TAR와 미사용 이미지만 정리
+      - name: Prepare remote deployment directory
+        run: |
+          ssh springboot-server "
+            set -e
+            mkdir -p $SPRINGBOOT_DEPLOY_PATH
+            rm --force $SPRINGBOOT_DEPLOY_PATH/spring-api-server.tar
+            docker image prune --all --force
+          "
 
       # 5. Docker 이미지 TAR와 Compose 파일을 Nginx 배스천을 거쳐 Spring Boot 서버로 복사
       - name: Copy Spring Boot deployment files
@@ -353,6 +359,8 @@ jobs:
           
 
           ssh springboot-server "
+            set -e
+
             export DEV_DB_HOST=\$(printf '%s' '$DB_HOST_B64' | base64 --decode)
             export DEV_DB_NAME=\$(printf '%s' '$DB_NAME_B64' | base64 --decode)
             export DEV_DB_USER=\$(printf '%s' '$DB_USER_B64' | base64 --decode)
@@ -367,6 +375,15 @@ jobs:
             export ROUTINE_EAT_FOOD_INGREDIENT_ANALYZE_GEMINI_MODEL=\$(printf '%s' '$ROUTINE_EAT_FOOD_INGREDIENT_ANALYZE_GEMINI_MODEL_B64' | base64 --decode)
             export ROUTINE_EAT_COOKING_EQUIPMENT_ANALYZE_GEMINI_MODEL=\$(printf '%s' '$ROUTINE_EAT_COOKING_EQUIPMENT_ANALYZE_GEMINI_MODEL_B64' | base64 --decode)
             cd $SPRINGBOOT_DEPLOY_PATH
+
             docker load --input spring-api-server.tar
+            rm --force spring-api-server.tar
+
             docker compose up -d --force-recreate
+
+            expected_image_id=\$(docker image inspect spring-api-server:latest --format '{{.Id}}')
+            running_image_id=\$(docker inspect spring-api-server --format '{{.Image}}')
+            test \"\$expected_image_id\" = \"\$running_image_id\"
+
+            docker image prune --all --force
           "

@@ -12,9 +12,9 @@ public record UserOnboardingRequest(
         @Schema(description = "사용자 요리 실력",example = "PRO")
         SkillLevel skillLevel,
 
-        @Schema(description = "사용자 알레르기 음식 id 리스트",example = """
+        @Schema(description = "사용자 제외 식재료 id 리스트",example = """
                 {
-                    "relationType": "ALLERGY",
+                    "relationType": "EXCEPTION",
                     "foodIngredientList": [
                       {
                         "foodIngredientId": 1
@@ -25,22 +25,7 @@ public record UserOnboardingRequest(
                     ]
                   }
                 """)
-        CreateUserFoodIngredientRequest allergyIngredientList,
-
-        @Schema(description = "사용자 비선호 음식 id 리스트",example = """
-                {
-                    "relationType": "DISLIKE",
-                    "foodIngredientList": [
-                      {
-                        "foodIngredientId": 3
-                      },
-                      {
-                        "foodIngredientId": 4
-                      }
-                    ]
-                  }
-                """)
-        CreateUserFoodIngredientRequest dislikeIngredientList,
+        CreateUserFoodIngredientRequest exceptionIngredientList,
 
         @Schema(description = "사용자 보유 음식 id 리스트",example = """
                 {

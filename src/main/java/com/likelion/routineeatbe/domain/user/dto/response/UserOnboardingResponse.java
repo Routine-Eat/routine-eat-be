@@ -19,7 +19,7 @@ public record UserOnboardingResponse(
                 """)
         UserResponse userResponse,
 
-        @Schema(description = "사용자 알레르기 식재료 정보",example = """
+        @Schema(description = "사용자 제외 식재료 정보",example = """
                 {
                       "userFoodIngredientType": "ALLERGY",
                       "foodIngredientList": [
@@ -40,30 +40,7 @@ public record UserOnboardingResponse(
                       ]
                     }
                 """)
-        UserFoodIngredientResponse allergyIngredientResponse,
-
-        @Schema(description = "사용자 비선호 식재료 정보",example = """
-                {
-                      "userFoodIngredientType": "DISLIKE",
-                      "foodIngredientList": [
-                        {
-                          "foodIngredientId": 3,
-                          "foodIngredientName": "고구마",
-                          "foodIngredientType": "POTATO_AND_STARCH",
-                          "foodIngredientPrimaryUnit": "G",
-                          "foodIngredientSecondaryUnit": "GAE"
-                        },
-                        {
-                          "foodIngredientId": 4,
-                          "foodIngredientName": "고구마 전분",
-                          "foodIngredientType": "POTATO_AND_STARCH",
-                          "foodIngredientPrimaryUnit": "G",
-                          "foodIngredientSecondaryUnit": "CUP"
-                        }
-                      ]
-                    }
-                """)
-        UserFoodIngredientResponse dislikeIngredientResponse,
+        UserFoodIngredientResponse exceptionIngredientResponse,
 
         @Schema(description = "사용자 보유 식재료 정보",example = """
                  {
@@ -97,15 +74,13 @@ public record UserOnboardingResponse(
 ) {
     public static UserOnboardingResponse from(
             UserResponse userResponse,
-            UserFoodIngredientResponse allergyIngredientResponse,
-            UserFoodIngredientResponse dislikeIngredientResponse,
+            UserFoodIngredientResponse exceptionIngredientResponse,
             UserFoodIngredientResponse ownIngredientResponse,
             List<CookingEquipmentResponse> cookingEquipmentResponseList
     ) {
         return UserOnboardingResponse.builder()
                 .userResponse(userResponse)
-                .allergyIngredientResponse(allergyIngredientResponse)
-                .dislikeIngredientResponse(dislikeIngredientResponse)
+                .exceptionIngredientResponse(exceptionIngredientResponse)
                 .ownIngredientResponse(ownIngredientResponse)
                 .cookingEquipmentResponseList(cookingEquipmentResponseList)
                 .build();

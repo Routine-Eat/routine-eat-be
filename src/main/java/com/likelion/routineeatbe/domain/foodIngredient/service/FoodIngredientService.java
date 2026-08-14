@@ -44,27 +44,13 @@ public class FoodIngredientService {
     }
 
     /**
-     * - 알레르기 유발 식품 조회
-     * allergy 컬럼이 true인 항목만 출력
+     * - 제외 대표 식품 조회
+     * exception 컬럼이 true인 항목만 출력
      * @return
      */
     @Transactional(readOnly = true)
-    public List<FoodIngredientResponse> getAllergyFoodIngredients(){
-        List<FoodIngredient> foodIngredients=foodIngredientRepository.findByAllergyTrue();
-
-        return foodIngredients.stream()
-                .map(FoodIngredientResponse::from)
-                .toList();
-    }
-
-    /**
-     * - 비선호 대표 식품 조회
-     * disklike 컬럼이 true인 항목만 출력
-     * @return
-     */
-    @Transactional(readOnly = true)
-    public List<FoodIngredientResponse> getDislikeFoodIngredients(){
-        List<FoodIngredient> foodIngredients=foodIngredientRepository.findByDislikeTrue();
+    public List<FoodIngredientResponse> getExceptionFoodIngredients(){
+        List<FoodIngredient> foodIngredients=foodIngredientRepository.findByExceptionTrue();
 
         return foodIngredients.stream()
                 .map(FoodIngredientResponse::from)

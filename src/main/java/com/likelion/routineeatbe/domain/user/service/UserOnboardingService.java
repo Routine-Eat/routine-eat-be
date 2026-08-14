@@ -70,8 +70,7 @@ public class UserOnboardingService {
         // 3. 식재료 정보(알레르기, 비선호, 보유) 개별 처리
         // DTO 변경에 따라 단일 CreateUserFoodIngredientRequest 객체를 직접 헬퍼 메서드로 전달
         // 각 호출별로 해당 타입(ALLERGY, DISLIKE, OWN)에 맞는 DB 저장 및 Response DTO를 각각 생성받음
-        UserFoodIngredientResponse allergyResponse = processUserFoodIngredients(user, request.allergyIngredientList());
-        UserFoodIngredientResponse dislikeResponse = processUserFoodIngredients(user, request.dislikeIngredientList());
+        UserFoodIngredientResponse exceptionResponse = processUserFoodIngredients(user, request.exceptionIngredientList());
         UserFoodIngredientResponse ownResponse = processUserFoodIngredients(user, request.ownIngredientList());
 
         // 4. 조리도구 정보 일괄 처리
@@ -82,8 +81,7 @@ public class UserOnboardingService {
         // 생성된 모든 하위 Response DTO들을 하나로 합성하여 클라이언트에 최종 응답
         return UserOnboardingResponse.from(
                 UserResponse.fromUserEntity(user),
-                allergyResponse,
-                dislikeResponse,
+                exceptionResponse,
                 ownResponse,
                 equipmentResponses
         );

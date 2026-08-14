@@ -3,6 +3,7 @@ package com.likelion.routineeatbe.domain.cookingRecord.service;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
+import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingRecord.exception.CookingRecordErrorCode;
 import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRepository;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
@@ -10,10 +11,13 @@ import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
+import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
+import com.likelion.routineeatbe.domain.recipeFoodIngredient.repository.RecipeFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +35,7 @@ public class CookingRecordPersistenceService {
 
     private final UserRepository userRepository;
     private final RecipeRepository recipeRepository;
+    private final RecipeFoodIngredientRepository recipeFoodIngredientRepository;
     private final CookingRecordRepository cookingRecordRepository;
 
     /**
@@ -40,6 +45,7 @@ public class CookingRecordPersistenceService {
      * (2) 세부 작업 내용
      * - 사용자 행을 잠가 동일 사용자의 동시 요리 시작 요청을 직렬화합니다.
      * - 같은 사용자와 레시피에 진행 중 또는 완료된 세션이 있으면 저장을 차단합니다.
+     * - 레시피의 1인분 음식 재료 필요량에 요청 인분 수를 곱해 사용량으로 저장합니다.
      * - 체크리스트는 level 0, 실제 요리 단계는 level 1 이상으로 저장합니다.
      *
      * @param userId 사용자 PK
@@ -68,8 +74,25 @@ public class CookingRecordPersistenceService {
         if (cookingRecordRepository.existsBlockingSession(userId, recipeId, BLOCKING_STATUSES)) {
             throw new CustomException(CookingRecordErrorCode.COOKING_ALREADY_STARTED);
         }
+        List<RecipeFoodIngredient> recipeFoodIngredients = recipeFoodIngredientRepository
+                .findAllByRecipeIdInWithFoodIngredient(List.of(recipeId));
+        if (recipeFoodIngredients.isEmpty()) {
+            throw new CustomException(CookingRecordErrorCode.RECIPE_FOOD_INGREDIENT_EMPTY);
+        }
 
         CookingRecord cookingRecord = CookingRecord.create(user, recipe, servings);
+        for (RecipeFoodIngredient recipeFoodIngredient : recipeFoodIngredients) {
+            Double secondaryUsedAmountValue =
+                    recipeFoodIngredient.getSecondaryNeedAmountValue() == null
+                            ? null
+                            : recipeFoodIngredient.getSecondaryNeedAmountValue() * servings;
+            CookingRecordFoodIngredient.create(
+                    cookingRecord,
+                    recipeFoodIngredient.getFoodIngredient(),
+                    recipeFoodIngredient.getPrimaryNeedAmountValue() * servings,
+                    secondaryUsedAmountValue
+            );
+        }
         CookingSession cookingSession = CookingSession.create(
                 cookingRecord,
                 generated.cookingSteps().size()
@@ -93,8 +116,9 @@ public class CookingRecordPersistenceService {
 
         CookingRecord result = cookingRecordRepository.saveAndFlush(cookingRecord);
         log.info(
-                "[CookingRecordPersistenceService] 요리 시작 데이터 저장 종료 | save() - END | cookingRecordId: {}",
-                result.getId()
+                "[CookingRecordPersistenceService] 요리 시작 데이터 저장 종료 | save() - END | cookingRecordId: {}, foodIngredientCount: {}",
+                result.getId(),
+                result.getFoodIngredients().size()
         );
         return result;
     }

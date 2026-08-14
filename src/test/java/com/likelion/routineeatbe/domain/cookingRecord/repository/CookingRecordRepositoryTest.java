@@ -3,10 +3,15 @@ package com.likelion.routineeatbe.domain.cookingRecord.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
+import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
 import com.likelion.routineeatbe.domain.cookingSession.repository.CookingStepRepository;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredientType;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import com.likelion.routineeatbe.domain.menu.entity.MenuType;
@@ -40,12 +45,26 @@ class CookingRecordRepositoryTest {
     private TestEntityManager entityManager;
 
     @Test
-    @DisplayName("요리 기록 저장 시 세션과 level 0 체크리스트를 함께 저장한다")
-    void 요리_기록_세션_체크리스트_Cascade_저장_성공() {
+    @DisplayName("요리 기록 저장 시 세션, 체크리스트와 사용 음식 재료를 함께 저장한다")
+    void 요리_기록_연관_데이터_Cascade_저장_성공() {
         // given
         User user = entityManager.persist(User.builder().loginNumber("1234").build());
         Recipe recipe = persistRecipe();
+        FoodIngredient foodIngredient = entityManager.persist(FoodIngredient.builder()
+                .name("대파")
+                .type(FoodIngredientType.VEGETABLE)
+                .pricePerHundred(1000L)
+                .primaryUnit(PrimaryUnit.G)
+                .secondaryUnit(SecondaryUnit.JULGI)
+                .exception(false)
+                .build());
         CookingRecord cookingRecord = CookingRecord.create(user, recipe, 2);
+        CookingRecordFoodIngredient.create(
+                cookingRecord,
+                foodIngredient,
+                100.0,
+                2.0
+        );
         CookingSession cookingSession = CookingSession.create(cookingRecord, 1);
         CookingStep.create(cookingSession, 0L, "요리 시작 전 체크리스트", "손을 씻으세요.", null);
         CookingStep.create(cookingSession, 1L, "재료 준비", "재료를 준비하세요.", null);
@@ -60,6 +79,12 @@ class CookingRecordRepositoryTest {
         assertThat(result.getCookingSession().getCookingSteps())
                 .extracting(CookingStep::getLevel)
                 .containsExactlyInAnyOrder(0L, 1L);
+        assertThat(result.getFoodIngredients()).singleElement().satisfies(usedIngredient -> {
+            assertThat(usedIngredient.getPrimaryUsedAmountValue()).isEqualTo(100.0);
+            assertThat(usedIngredient.getSecondaryUsedAmountValue()).isEqualTo(2.0);
+            assertThat(usedIngredient.getFoodIngredient().getId())
+                    .isEqualTo(foodIngredient.getId());
+        });
         assertThat(cookingRecordRepository.existsBlockingSession(
                 user.getId(),
                 recipe.getId(),

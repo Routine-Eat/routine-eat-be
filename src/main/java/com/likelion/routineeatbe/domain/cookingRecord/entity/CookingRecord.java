@@ -100,4 +100,8 @@ public class CookingRecord {
     public void assignCookingSession(CookingSession cookingSession) {
         this.cookingSession = cookingSession;
     }
+
+    public void addFoodIngredient(CookingRecordFoodIngredient foodIngredient) {
+        this.foodIngredients.add(foodIngredient);
+    }
 }

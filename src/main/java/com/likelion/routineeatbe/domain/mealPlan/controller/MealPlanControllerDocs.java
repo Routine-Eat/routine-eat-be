@@ -2,14 +2,20 @@ package com.likelion.routineeatbe.domain.mealPlan.controller;
 
 import com.likelion.routineeatbe.domain.mealPlan.dto.request.CreateMealPlanRequest;
 import com.likelion.routineeatbe.domain.mealPlan.dto.response.AiMealRecommendationResponse;
+import com.likelion.routineeatbe.domain.mealPlan.dto.response.MealPlanDetailResponse;
 import com.likelion.routineeatbe.domain.mealPlan.dto.response.MealPlanResponse;
+import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlanStatus;
+import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlanType;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.websocket.server.PathParam;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Tag(name = "Meal Plan", description = "식단 관리 API")
 @RequestMapping("/api/v1/meal-plans")
@@ -47,8 +53,31 @@ public interface MealPlanControllerDocs {
             )
     })
     @PostMapping("/{userId}")
-    GlobalResponse<MealPlanResponse> saveMealPlan(
+    GlobalResponse<MealPlanDetailResponse> saveMealPlan(
             @PathVariable Long userId,
             @RequestBody CreateMealPlanRequest request
             );
+
+    @Operation(
+            summary = "사용자-식단 조회 API",
+            description = """
+            status : 조회할 사용자-식단 관계 종류
+                DONE : 완료
+                PROGRESS : 진행 중
+                SAVED : 저장
+            """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "사용자-식단 조회 성공"
+            )
+    })
+    @GetMapping("/{userId}")
+    GlobalResponse<List<MealPlanResponse>> getUserMealPlan(
+        @PathVariable Long userId,
+        @RequestParam(name = "status", required = false)
+        @Parameter(description = "저장 종류 (선택)")
+        MealPlanStatus status
+    );
 }

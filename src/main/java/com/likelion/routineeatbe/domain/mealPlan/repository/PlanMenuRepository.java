@@ -20,4 +20,10 @@ public interface PlanMenuRepository extends JpaRepository<PlanMenu, Long> {
             order by planMenu.date desc, planMenu.id desc
             """)
     List<Long> findCompletedMenuIdsByUserId(@Param("userId") Long userId);
+
+    // 식단 ID 리스트를 받아 한 번에 모든 PlanMenu 조회 (IN 쿼리)
+    List<PlanMenu> findByMealPlan_IdIn(List<Long> mealPlanIds);
+
+    @Query("select pm.id from PlanMenu pm where pm.mealPlan.id = :mealPlanId")
+    List<Long> findByMealPlan_Id(@Param("mealPlanId") Long mealPlanId);
 }

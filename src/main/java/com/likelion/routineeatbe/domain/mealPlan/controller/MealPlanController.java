@@ -1,13 +1,18 @@
 package com.likelion.routineeatbe.domain.mealPlan.controller;
 
 import com.likelion.routineeatbe.domain.mealPlan.dto.request.CreateMealPlanRequest;
+import com.likelion.routineeatbe.domain.mealPlan.dto.response.MealPlanDetailResponse;
 import com.likelion.routineeatbe.domain.mealPlan.dto.response.MealPlanResponse;
+import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlanStatus;
+import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlanType;
 import com.likelion.routineeatbe.domain.mealPlan.service.MealPlanAICreateService;
 import com.likelion.routineeatbe.domain.mealPlan.dto.response.AiMealRecommendationResponse;
 import com.likelion.routineeatbe.domain.mealPlan.service.MealPlanService;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -22,8 +27,14 @@ public class MealPlanController implements MealPlanControllerDocs{
     }
 
     @Override
-    public GlobalResponse<MealPlanResponse> saveMealPlan(Long userId, CreateMealPlanRequest request){
-        MealPlanResponse mealPlanResponse= mealPlanService.createUserMealPlan(userId,request);
-        return GlobalResponse.success(201,"사용자 식단 저장에 성공했습니다.",mealPlanResponse);
+    public GlobalResponse<MealPlanDetailResponse> saveMealPlan(Long userId, CreateMealPlanRequest request){
+        MealPlanDetailResponse mealPlanDetailResponse = mealPlanService.createUserMealPlan(userId,request);
+        return GlobalResponse.success(201,"사용자 식단 저장에 성공했습니다.", mealPlanDetailResponse);
+    }
+
+    @Override
+    public GlobalResponse<List<MealPlanResponse>> getUserMealPlan(Long userId, MealPlanStatus status){
+        List<MealPlanResponse> mealPlanResponseList=mealPlanService.getUserMealPlan(userId,status);
+        return GlobalResponse.success(200,"사용자 식단 조회에 성공했습니다.",mealPlanResponseList);
     }
 }

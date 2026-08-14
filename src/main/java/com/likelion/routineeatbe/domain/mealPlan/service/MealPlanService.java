@@ -2,9 +2,12 @@ package com.likelion.routineeatbe.domain.mealPlan.service;
 
 import com.likelion.routineeatbe.domain.mealPlan.dto.request.CreateMealPlanRequest;
 import com.likelion.routineeatbe.domain.mealPlan.dto.request.CreatePlanMenuRequest;
+import com.likelion.routineeatbe.domain.mealPlan.dto.response.MealPlanDetailResponse;
 import com.likelion.routineeatbe.domain.mealPlan.dto.response.MealPlanResponse;
 import com.likelion.routineeatbe.domain.mealPlan.dto.response.PlanMenuResponse;
 import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlan;
+import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlanStatus;
+import com.likelion.routineeatbe.domain.mealPlan.entity.MealPlanType;
 import com.likelion.routineeatbe.domain.mealPlan.entity.PlanMenu;
 import com.likelion.routineeatbe.domain.mealPlan.repository.MealPlanRepository;
 import com.likelion.routineeatbe.domain.mealPlan.repository.PlanMenuRepository;
@@ -20,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,12 +39,12 @@ public class MealPlanService {
      * - 식단 저장 API
      * - 사용자 아이디로 식단에 저장
      * - request의 메뉴 아이디로 식단메뉴에 저장
-     * @param userId
-     * @param request
-     * @return
+     * @param userId 사용자 식별자
+     * @param request 생성 요청 데이터
+     * @return 생성된 식단 상데 조회 데이터
      */
     @Transactional
-    public MealPlanResponse createUserMealPlan(Long userId, CreateMealPlanRequest request) {
+    public MealPlanDetailResponse createUserMealPlan(Long userId, CreateMealPlanRequest request) {
         // 1. 사용자(User) 존재 여부 조회
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER));
@@ -65,11 +70,58 @@ public class MealPlanService {
                 .toList();
 
         // 5. 최종 MealPlanResponse 반환
-        return MealPlanResponse.from(
+        return MealPlanDetailResponse.from(
                 savedMealPlan.getId(),
                 savedMealPlan.getType(),
                 savedMealPlan.getStatus(),
                 planMenuResponses
         );
+    }
+
+    /**
+     * - 사용자 식단 조회
+     * - userId로 사용자 고정
+     * - type가 있다면 그 종류만 없다면 전체 조회
+     * @param userId 사용자 식별자
+     * @param status 저장 종류
+     * @return 식단 정보 및 연결된 식단 메뉴 PK
+     */
+    @Transactional(readOnly = true)
+    public List<MealPlanResponse> getUserMealPlan(Long userId, MealPlanStatus status) {
+        if (!userRepository.existsById(userId)) {
+            throw new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER);
+        }
+
+        // 1. type 유무에 따라 식단 조회 (null이면 전체, 존재하면 해당 타입만)
+        List<MealPlan> mealPlans = (status == null)
+                ? mealPlanRepository.findByUser_Id(userId)
+                : mealPlanRepository.findByUser_IdAndStatus(userId, status);
+
+        if (mealPlans.isEmpty()) {
+            return List.of();
+        }
+
+        // 2. 조회된 식단들의 ID만 추출
+        List<Long> mealPlanIds = mealPlans.stream()
+                .map(MealPlan::getId)
+                .toList();
+
+        // 3. 식단 ID들에 속한 모든 PlanMenu를 한 번에 조회 (IN 쿼리)
+        List<PlanMenu> planMenus = planMenuRepository.findByMealPlan_IdIn(mealPlanIds);
+
+        // 4. 식단 ID를 Key로, PlanMenu ID 리스트를 Value로 그룹화 (메모리 연산)
+        Map<Long, List<Long>> planMenuIdsMap = planMenus.stream()
+                .collect(Collectors.groupingBy(
+                        pm -> pm.getMealPlan().getId(),
+                        Collectors.mapping(PlanMenu::getId, Collectors.toList())
+                ));
+
+        // 5. DTO 매핑하여 반환
+        return mealPlans.stream()
+                .map(mealPlan -> MealPlanResponse.from(
+                        mealPlan,
+                        planMenuIdsMap.getOrDefault(mealPlan.getId(), List.of())
+                ))
+                .toList();
     }
 }

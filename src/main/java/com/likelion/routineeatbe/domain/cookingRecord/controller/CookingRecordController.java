@@ -1,6 +1,8 @@
 package com.likelion.routineeatbe.domain.cookingRecord.controller;
 
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingRecordService;
@@ -10,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @Validated
 @RestController
@@ -17,6 +20,26 @@ import org.springframework.web.bind.annotation.RestController;
 public class CookingRecordController implements CookingRecordControllerDocs {
 
     private final CookingRecordService cookingRecordService;
+
+    @Override
+    public ResponseEntity<GlobalResponse<CookingResultSaveResDto>> saveCookingResult(
+            String userNumber,
+            CookingResultSaveReqDto request,
+            MultipartFile image
+    ) {
+        CookingResultSaveResDto result = cookingRecordService.saveCookingResult(
+                userNumber,
+                request,
+                image
+        );
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(GlobalResponse.success(
+                        HttpStatus.CREATED.value(),
+                        "성공했습니다.",
+                        result
+                ));
+    }
 
     @Override
     public ResponseEntity<GlobalResponse<CookingStartResDto>> startCooking(

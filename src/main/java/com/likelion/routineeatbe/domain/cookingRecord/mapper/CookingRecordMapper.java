@@ -1,6 +1,7 @@
 package com.likelion.routineeatbe.domain.cookingRecord.mapper;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTitleResDto;
@@ -14,6 +15,18 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class CookingRecordMapper {
+
+    /**
+     * 요리 결과가 저장된 CookingRecord Entity를 응답 DTO로 변환합니다.
+     *
+     * @param cookingRecord 요리 결과가 저장된 요리 기록
+     * @return 저장된 요리 기록 PK 응답
+     */
+    public CookingResultSaveResDto toCookingResultSaveResDto(CookingRecord cookingRecord) {
+        return CookingResultSaveResDto.builder()
+                .savedCookingRecordId(cookingRecord.getId())
+                .build();
+    }
 
     /**
      * 저장된 요리 기록, Gemini 생성 결과와 첫 요리 단계를 요리 시작 응답 DTO로 변환합니다.

@@ -45,6 +45,40 @@ class CookingRecordRepositoryTest {
     private TestEntityManager entityManager;
 
     @Test
+    @DisplayName("사용자의 가장 최근 완료 요리 기록을 조회한다")
+    void findLatestCompletedCookingRecord_success() {
+        // given
+        User user = entityManager.persist(User.builder().loginNumber("2468").build());
+        Recipe recipe = persistRecipe();
+
+        CookingRecord firstCompleted = CookingRecord.create(user, recipe, 1);
+        CookingSession firstSession = CookingSession.create(firstCompleted, 1);
+        firstSession.complete();
+        cookingRecordRepository.saveAndFlush(firstCompleted);
+
+        CookingRecord latestCompleted = CookingRecord.create(user, recipe, 2);
+        CookingSession latestSession = CookingSession.create(latestCompleted, 1);
+        latestSession.complete();
+        cookingRecordRepository.saveAndFlush(latestCompleted);
+
+        CookingRecord inProgress = CookingRecord.create(user, recipe, 3);
+        CookingSession.create(inProgress, 1);
+        cookingRecordRepository.saveAndFlush(inProgress);
+        entityManager.clear();
+
+        // when
+        CookingRecord result = cookingRecordRepository
+                .findFirstByUser_IdAndCookingSession_StatusOrderByCreatedAtDescIdDesc(
+                        user.getId(),
+                        CookingSessionStatus.COMPLETED
+                )
+                .orElseThrow();
+
+        // then
+        assertThat(result.getId()).isEqualTo(latestCompleted.getId());
+    }
+
+    @Test
     @DisplayName("요리 기록 저장 시 세션, 체크리스트와 사용 음식 재료를 함께 저장한다")
     void 요리_기록_연관_데이터_Cascade_저장_성공() {
         // given

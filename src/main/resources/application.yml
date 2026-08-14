@@ -42,3 +42,8 @@ gemini:
     initial-delay: ${ROUTINE_EAT_GEMINI_RETRY_INITIAL_DELAY:1s}
     max-delay: ${ROUTINE_EAT_GEMINI_RETRY_MAX_DELAY:8s}
     jitter-ratio: ${ROUTINE_EAT_GEMINI_RETRY_JITTER_RATIO:0.25}
+
+storage:
+  s3:
+    bucket: ${S3_BUCKET}
+    cloudfront-domain: ${CLOUDFRONT_DOMAIN}

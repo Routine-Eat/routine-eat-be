@@ -2,24 +2,31 @@ package com.likelion.routineeatbe.domain.cookingRecord.controller;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTitleResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingRecordService;
+import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
@@ -37,6 +44,93 @@ class CookingRecordControllerTest {
 
     @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+
+    @Test
+    @DisplayName("요리 결과 저장 API 성공 - 이미지 포함 201 반환")
+    void 요리_결과_저장_API_이미지_포함_성공() throws Exception {
+        // given
+        CookingResultSaveReqDto request = new CookingResultSaveReqDto(
+                TasteRating.LEVEL_3,
+                DifficultyLevel.LEVEL_2
+        );
+        CookingResultSaveResDto response = CookingResultSaveResDto.create(10L);
+        MockMultipartFile requestPart = new MockMultipartFile(
+                "request",
+                "request.json",
+                MediaType.APPLICATION_JSON_VALUE,
+                objectMapper.writeValueAsBytes(request)
+        );
+        MockMultipartFile image = new MockMultipartFile(
+                "image",
+                "result.jpg",
+                MediaType.IMAGE_JPEG_VALUE,
+                "image-data".getBytes()
+        );
+        given(cookingRecordService.saveCookingResult("1234", request, image))
+                .willReturn(response);
+
+        // when & then
+        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/v1/cooking-records")
+                        .file(requestPart)
+                        .file(image)
+                        .param("userNumber", "1234"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(201))
+                .andExpect(jsonPath("$.message").value("성공했습니다."))
+                .andExpect(jsonPath("$.data.savedCookingRecordId").value(10));
+        then(cookingRecordService).should().saveCookingResult("1234", request, image);
+    }
+
+    @Test
+    @DisplayName("요리 결과 저장 API 성공 - 이미지 생략")
+    void 요리_결과_저장_API_이미지_생략_성공() throws Exception {
+        // given
+        CookingResultSaveReqDto request = new CookingResultSaveReqDto(
+                TasteRating.LEVEL_2,
+                DifficultyLevel.LEVEL_1
+        );
+        CookingResultSaveResDto response = CookingResultSaveResDto.create(10L);
+        MockMultipartFile requestPart = new MockMultipartFile(
+                "request",
+                "request.json",
+                MediaType.APPLICATION_JSON_VALUE,
+                objectMapper.writeValueAsBytes(request)
+        );
+        given(cookingRecordService.saveCookingResult("1234", request, null))
+                .willReturn(response);
+
+        // when & then
+        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/v1/cooking-records")
+                        .file(requestPart)
+                        .param("userNumber", "1234"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.savedCookingRecordId").value(10));
+        then(cookingRecordService).should().saveCookingResult("1234", request, null);
+    }
+
+    @Test
+    @DisplayName("요리 결과 저장 API 실패 - 맛 평가 누락")
+    void 요리_결과_저장_API_실패_맛_평가_누락() throws Exception {
+        // given
+        CookingResultSaveReqDto request = new CookingResultSaveReqDto(
+                null,
+                DifficultyLevel.LEVEL_1
+        );
+        MockMultipartFile requestPart = new MockMultipartFile(
+                "request",
+                "request.json",
+                MediaType.APPLICATION_JSON_VALUE,
+                objectMapper.writeValueAsBytes(request)
+        );
+
+        // when & then
+        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/v1/cooking-records")
+                        .file(requestPart)
+                        .param("userNumber", "1234"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
+    }
 
     @Test
     @DisplayName("요리 시작 API 성공 - 201 반환")

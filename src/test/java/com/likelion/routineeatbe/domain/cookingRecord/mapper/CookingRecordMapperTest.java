@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
@@ -20,6 +21,20 @@ import org.junit.jupiter.api.Test;
 class CookingRecordMapperTest {
 
     private final CookingRecordMapper cookingRecordMapper = new CookingRecordMapper();
+
+    @Test
+    @DisplayName("저장된 요리 기록 PK를 요리 결과 저장 응답으로 변환한다")
+    void toCookingResultSaveResDto_success() {
+        // given
+        CookingRecord cookingRecord = CookingRecord.builder().id(10L).build();
+
+        // when
+        CookingResultSaveResDto result = cookingRecordMapper
+                .toCookingResultSaveResDto(cookingRecord);
+
+        // then
+        assertThat(result.savedCookingRecordId()).isEqualTo(10L);
+    }
 
     @Test
     @DisplayName("요리 시작 응답에 첫 번째 요리 단계 상세 정보를 포함한다")

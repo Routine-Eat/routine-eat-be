@@ -104,4 +104,16 @@ public class CookingRecord {
     public void addFoodIngredient(CookingRecordFoodIngredient foodIngredient) {
         this.foodIngredients.add(foodIngredient);
     }
+
+    public void saveCookingResult(
+            TasteRating tasteRating,
+            DifficultyLevel difficultyLevel,
+            String photoUrl
+    ) {
+        this.tasteRating = tasteRating;
+        this.difficultyRating = difficultyLevel;
+        if (photoUrl != null) {
+            this.photoUrl = photoUrl;
+        }
+    }
 }

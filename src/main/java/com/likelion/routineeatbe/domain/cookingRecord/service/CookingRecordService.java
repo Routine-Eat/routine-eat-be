@@ -1,7 +1,9 @@
 package com.likelion.routineeatbe.domain.cookingRecord.service;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
@@ -29,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -46,7 +49,76 @@ public class CookingRecordService {
     private final CookingStepRepository cookingStepRepository;
     private final CookingStepGenerateGeminiService geminiService;
     private final CookingRecordPersistenceService persistenceService;
+    private final CookingRecordImageStorageService imageStorageService;
     private final CookingRecordMapper cookingRecordMapper;
+
+    /**
+     * (1) 작업 목적
+     * 사용자의 최근 완료 요리 기록에 맛 평가, 난이도와 선택 이미지를 저장합니다.
+     *
+     * (2) 세부 작업 내용
+     * - 사용자의 가장 최근 완료 요리 기록을 조회합니다.
+     * - 선택 이미지가 있으면 S3에 업로드한 후 별도 트랜잭션에서 회고를 저장합니다.
+     * - DB 저장 실패 시 먼저 업로드된 S3 객체를 보상 삭제합니다.
+     *
+     * @param userNumber 사용자 고유 식별번호
+     * @param request 맛 평가와 실제 요리 난이도
+     * @param image 선택 요리 결과 이미지
+     * @return 저장된 요리 기록 PK
+     */
+    public CookingResultSaveResDto saveCookingResult(
+            String userNumber,
+            CookingResultSaveReqDto request,
+            MultipartFile image
+    ) {
+        log.info(
+                "[CookingRecordService] 요리 결과 저장 시작 | saveCookingResult() - START | userNumber: {}",
+                userNumber
+        );
+
+        User user = userRepository.findByLoginNumber(userNumber)
+                .orElseThrow(() -> new CustomException(CookingRecordErrorCode.USER_NOT_FOUND));
+        CookingRecord cookingRecord = cookingRecordRepository
+                .findFirstByUser_IdAndCookingSession_StatusOrderByCreatedAtDescIdDesc(
+                        user.getId(),
+                        CookingSessionStatus.COMPLETED
+                )
+                .orElseThrow(() -> new CustomException(
+                        CookingRecordErrorCode.COMPLETED_COOKING_RECORD_NOT_FOUND
+                ));
+
+        boolean imageUploaded = image != null && !image.isEmpty();
+        String photoUrl = imageUploaded
+                ? imageStorageService.upload(user.getId(), cookingRecord.getId(), image)
+                : null;
+        CookingRecord savedCookingRecord;
+        try {
+            savedCookingRecord = persistenceService.saveCookingResult(
+                    user.getId(),
+                    cookingRecord.getId(),
+                    request.tasteRating(),
+                    request.difficultyLevel(),
+                    photoUrl
+            );
+        } catch (RuntimeException exception) {
+            if (imageUploaded) {
+                imageStorageService.delete(
+                        user.getId(),
+                        cookingRecord.getId(),
+                        image.getOriginalFilename()
+                );
+            }
+            throw exception;
+        }
+
+        CookingResultSaveResDto result =
+                cookingRecordMapper.toCookingResultSaveResDto(savedCookingRecord);
+        log.info(
+                "[CookingRecordService] 요리 결과 저장 종료 | saveCookingResult() - END | cookingRecordId: {}",
+                result.savedCookingRecordId()
+        );
+        return result;
+    }
 
     /**
      * (1) 작업 목적

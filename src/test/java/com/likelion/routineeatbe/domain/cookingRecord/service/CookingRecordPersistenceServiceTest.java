@@ -14,17 +14,23 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGene
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
+import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
 import com.likelion.routineeatbe.domain.cookingRecord.exception.CookingRecordErrorCode;
 import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRepository;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
+import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingStepStage;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
+import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.repository.RecipeFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.entity.User;
+import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
+import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
+import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import java.util.List;
@@ -47,6 +53,127 @@ class CookingRecordPersistenceServiceTest {
     @Mock private RecipeRepository recipeRepository;
     @Mock private RecipeFoodIngredientRepository recipeFoodIngredientRepository;
     @Mock private CookingRecordRepository cookingRecordRepository;
+    @Mock private UserFoodIngredientRepository userFoodIngredientRepository;
+
+    @Test
+    @DisplayName("완료된 요리 기록에 회고와 이미지 URL을 저장한다")
+    void 완료된_요리_기록_회고_이미지_URL_저장_성공() {
+        // given
+        CookingRecord cookingRecord = CookingRecord.builder().id(10L).build();
+        FoodIngredient foodIngredient = FoodIngredient.builder().id(20L).build();
+        CookingRecordFoodIngredient.create(
+                cookingRecord,
+                foodIngredient,
+                100.0,
+                1.0
+        );
+        CookingSession cookingSession = CookingSession.builder()
+                .id(100L)
+                .status(CookingSessionStatus.COMPLETED)
+                .cookingStepCount(3)
+                .currentCookingStepLevel(3)
+                .cookingRecord(cookingRecord)
+                .build();
+        cookingRecord.assignCookingSession(cookingSession);
+        given(cookingRecordRepository.findByIdAndUserIdForUpdate(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+        UserFoodIngredient ownedFoodIngredient = UserFoodIngredient.builder()
+                .id(30L)
+                .relationType(UserFoodIngredientType.OWN)
+                .primaryAmountValue(300.0)
+                .secondaryAmountValue(3.0)
+                .foodIngredient(foodIngredient)
+                .build();
+        given(userFoodIngredientRepository
+                .findAllForUpdateByUserIdAndRelationTypeAndFoodIngredientIds(
+                        1L,
+                        UserFoodIngredientType.OWN,
+                        List.of(20L)
+                ))
+                .willReturn(List.of(ownedFoodIngredient));
+
+        // when
+        CookingRecord result = persistenceService.saveCookingResult(
+                1L,
+                10L,
+                TasteRating.LEVEL_3,
+                DifficultyLevel.LEVEL_2,
+                "https://api-img.nahjjun.cloud/1/10/result.jpg"
+        );
+
+        // then
+        assertThat(result.getTasteRating()).isEqualTo(TasteRating.LEVEL_3);
+        assertThat(result.getDifficultyRating()).isEqualTo(DifficultyLevel.LEVEL_2);
+        assertThat(result.getPhotoUrl())
+                .isEqualTo("https://api-img.nahjjun.cloud/1/10/result.jpg");
+        assertThat(result.getCookingSession().getStatus())
+                .isEqualTo(CookingSessionStatus.TERMINATED);
+        assertThat(ownedFoodIngredient.getPrimaryAmountValue()).isEqualTo(200.0);
+        assertThat(ownedFoodIngredient.getSecondaryAmountValue()).isEqualTo(2.0);
+    }
+
+    @Test
+    @DisplayName("이미지 없는 회고 재저장은 기존 이미지 URL을 유지한다")
+    void 이미지_없는_회고_재저장_기존_URL_유지_성공() {
+        // given
+        CookingRecord cookingRecord = CookingRecord.builder()
+                .id(10L)
+                .photoUrl("https://api-img.nahjjun.cloud/1/10/result.jpg")
+                .build();
+        CookingSession cookingSession = CookingSession.builder()
+                .id(100L)
+                .status(CookingSessionStatus.COMPLETED)
+                .cookingStepCount(3)
+                .currentCookingStepLevel(3)
+                .cookingRecord(cookingRecord)
+                .build();
+        cookingRecord.assignCookingSession(cookingSession);
+        given(cookingRecordRepository.findByIdAndUserIdForUpdate(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+
+        // when
+        CookingRecord result = persistenceService.saveCookingResult(
+                1L,
+                10L,
+                TasteRating.LEVEL_2,
+                DifficultyLevel.LEVEL_1,
+                null
+        );
+
+        // then
+        assertThat(result.getPhotoUrl())
+                .isEqualTo("https://api-img.nahjjun.cloud/1/10/result.jpg");
+        assertThat(result.getCookingSession().getStatus())
+                .isEqualTo(CookingSessionStatus.TERMINATED);
+    }
+
+    @Test
+    @DisplayName("진행 중인 요리 기록은 회고 저장에 실패한다")
+    void 진행_중_요리_기록_회고_저장_실패() {
+        // given
+        CookingRecord cookingRecord = CookingRecord.builder().id(10L).build();
+        CookingSession cookingSession = CookingSession.builder()
+                .id(100L)
+                .status(CookingSessionStatus.IN_PROGRESS)
+                .cookingStepCount(3)
+                .currentCookingStepLevel(2)
+                .cookingRecord(cookingRecord)
+                .build();
+        cookingRecord.assignCookingSession(cookingSession);
+        given(cookingRecordRepository.findByIdAndUserIdForUpdate(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+
+        // when & then
+        assertThatThrownBy(() -> persistenceService.saveCookingResult(
+                1L,
+                10L,
+                TasteRating.LEVEL_1,
+                DifficultyLevel.LEVEL_5,
+                null
+        )).isInstanceOf(CustomException.class)
+                .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
+                        .isEqualTo(CookingRecordErrorCode.COOKING_SESSION_NOT_COMPLETED));
+    }
 
     @Test
     @DisplayName("체크리스트를 level 0으로 저장하고 실제 단계 수만 세션에 기록한다")

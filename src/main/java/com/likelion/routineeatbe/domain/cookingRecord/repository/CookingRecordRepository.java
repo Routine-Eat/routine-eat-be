@@ -13,6 +13,19 @@ import org.springframework.data.repository.query.Param;
 public interface CookingRecordRepository extends JpaRepository<CookingRecord, Long> {
 
     /**
+     * 사용자와 세션 상태에 해당하는 가장 최근 요리 기록을 조회합니다.
+     *
+     * @param userId 사용자 PK
+     * @param status 요리 세션 상태
+     * @return 생성일과 PK 기준 가장 최근 요리 기록
+     */
+    Optional<CookingRecord>
+            findFirstByUser_IdAndCookingSession_StatusOrderByCreatedAtDescIdDesc(
+                    Long userId,
+                    CookingSessionStatus status
+            );
+
+    /**
      * 사용자와 레시피에 연결된 차단 대상 요리 세션의 존재 여부를 확인합니다.
      *
      * @param userId 사용자 PK

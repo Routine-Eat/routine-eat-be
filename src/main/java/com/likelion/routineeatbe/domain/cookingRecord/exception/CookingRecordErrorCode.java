@@ -34,6 +34,26 @@ public enum CookingRecordErrorCode implements BaseErrorCode {
             "CR4095",
             "요리 단계 상태가 올바르지 않습니다.",
             HttpStatus.CONFLICT
+    ),
+    COMPLETED_COOKING_RECORD_NOT_FOUND(
+            "CR4096",
+            "회고를 저장할 완료된 요리 기록이 없습니다.",
+            HttpStatus.CONFLICT
+    ),
+    COOKING_SESSION_NOT_COMPLETED(
+            "CR4097",
+            "완료된 요리 세션이 아닙니다.",
+            HttpStatus.CONFLICT
+    ),
+    INVALID_COOKING_RECORD_IMAGE(
+            "CR4001",
+            "요리 결과 이미지는 올바른 이미지 파일이어야 합니다.",
+            HttpStatus.BAD_REQUEST
+    ),
+    COOKING_RECORD_IMAGE_UPLOAD_FAILED(
+            "CR5021",
+            "요리 결과 이미지 업로드에 실패했습니다.",
+            HttpStatus.BAD_GATEWAY
     );
 
     private final String code;

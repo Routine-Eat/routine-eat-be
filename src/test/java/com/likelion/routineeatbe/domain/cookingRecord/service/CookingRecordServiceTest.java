@@ -9,11 +9,14 @@ import static org.mockito.BDDMockito.then;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
+import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
 import com.likelion.routineeatbe.domain.cookingRecord.exception.CookingRecordErrorCode;
 import com.likelion.routineeatbe.domain.cookingRecord.mapper.CookingRecordMapper;
 import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRepository;
@@ -24,6 +27,7 @@ import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
 import com.likelion.routineeatbe.domain.cookingSession.repository.CookingStepRepository;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
+import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.entity.RecipeStep;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
@@ -41,6 +45,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 
 @ExtendWith(MockitoExtension.class)
 class CookingRecordServiceTest {
@@ -56,7 +62,173 @@ class CookingRecordServiceTest {
     @Mock private CookingStepRepository cookingStepRepository;
     @Mock private CookingStepGenerateGeminiService geminiService;
     @Mock private CookingRecordPersistenceService persistenceService;
+    @Mock private CookingRecordImageStorageService imageStorageService;
     @Mock private CookingRecordMapper cookingRecordMapper;
+
+    @Test
+    @DisplayName("최근 완료 요리 기록에 이미지 없이 회고를 저장한다")
+    void 최근_완료_요리_기록_이미지_없이_회고_저장_성공() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = createCookingRecord(10L, user, 3, 3);
+        cookingRecord.getCookingSession().complete();
+        CookingResultSaveReqDto request = new CookingResultSaveReqDto(
+                TasteRating.LEVEL_3,
+                DifficultyLevel.LEVEL_2
+        );
+        CookingResultSaveResDto expected = CookingResultSaveResDto.create(10L);
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository
+                .findFirstByUser_IdAndCookingSession_StatusOrderByCreatedAtDescIdDesc(
+                        1L,
+                        CookingSessionStatus.COMPLETED
+                ))
+                .willReturn(Optional.of(cookingRecord));
+        given(persistenceService.saveCookingResult(
+                1L,
+                10L,
+                TasteRating.LEVEL_3,
+                DifficultyLevel.LEVEL_2,
+                null
+        )).willReturn(cookingRecord);
+        given(cookingRecordMapper.toCookingResultSaveResDto(cookingRecord))
+                .willReturn(expected);
+
+        // when
+        CookingResultSaveResDto result = cookingRecordService.saveCookingResult(
+                "1234",
+                request,
+                null
+        );
+
+        // then
+        assertThat(result).isSameAs(expected);
+        then(imageStorageService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("요리 결과 이미지를 업로드하고 회고를 저장한다")
+    void 요리_결과_이미지_업로드_회고_저장_성공() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = createCookingRecord(10L, user, 3, 3);
+        cookingRecord.getCookingSession().complete();
+        CookingResultSaveReqDto request = new CookingResultSaveReqDto(
+                TasteRating.LEVEL_2,
+                DifficultyLevel.LEVEL_3
+        );
+        MockMultipartFile image = new MockMultipartFile(
+                "image",
+                "result.jpg",
+                MediaType.IMAGE_JPEG_VALUE,
+                "image-data".getBytes()
+        );
+        String photoUrl = "https://api-img.nahjjun.cloud/1/10/result.jpg";
+        CookingResultSaveResDto expected = CookingResultSaveResDto.create(10L);
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository
+                .findFirstByUser_IdAndCookingSession_StatusOrderByCreatedAtDescIdDesc(
+                        1L,
+                        CookingSessionStatus.COMPLETED
+                ))
+                .willReturn(Optional.of(cookingRecord));
+        given(imageStorageService.upload(1L, 10L, image)).willReturn(photoUrl);
+        given(persistenceService.saveCookingResult(
+                1L,
+                10L,
+                TasteRating.LEVEL_2,
+                DifficultyLevel.LEVEL_3,
+                photoUrl
+        )).willReturn(cookingRecord);
+        given(cookingRecordMapper.toCookingResultSaveResDto(cookingRecord))
+                .willReturn(expected);
+
+        // when
+        CookingResultSaveResDto result = cookingRecordService.saveCookingResult(
+                "1234",
+                request,
+                image
+        );
+
+        // then
+        assertThat(result).isSameAs(expected);
+        then(imageStorageService).should().upload(1L, 10L, image);
+        then(imageStorageService).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
+    @DisplayName("완료된 요리 기록이 없으면 회고 저장에 실패한다")
+    void 완료된_요리_기록_없음_회고_저장_실패() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingResultSaveReqDto request = new CookingResultSaveReqDto(
+                TasteRating.LEVEL_2,
+                DifficultyLevel.LEVEL_2
+        );
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository
+                .findFirstByUser_IdAndCookingSession_StatusOrderByCreatedAtDescIdDesc(
+                        1L,
+                        CookingSessionStatus.COMPLETED
+                ))
+                .willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> cookingRecordService.saveCookingResult(
+                "1234",
+                request,
+                null
+        )).isInstanceOf(CustomException.class)
+                .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
+                        .isEqualTo(
+                                CookingRecordErrorCode.COMPLETED_COOKING_RECORD_NOT_FOUND
+                        ));
+        then(imageStorageService).shouldHaveNoInteractions();
+        then(persistenceService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("이미지 업로드 후 DB 저장 실패 시 S3 객체를 보상 삭제한다")
+    void 이미지_업로드_후_DB_저장_실패_S3_보상_삭제() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = createCookingRecord(10L, user, 3, 3);
+        cookingRecord.getCookingSession().complete();
+        CookingResultSaveReqDto request = new CookingResultSaveReqDto(
+                TasteRating.LEVEL_1,
+                DifficultyLevel.LEVEL_4
+        );
+        MockMultipartFile image = new MockMultipartFile(
+                "image",
+                "result.jpg",
+                MediaType.IMAGE_JPEG_VALUE,
+                "image-data".getBytes()
+        );
+        String photoUrl = "https://api-img.nahjjun.cloud/1/10/result.jpg";
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository
+                .findFirstByUser_IdAndCookingSession_StatusOrderByCreatedAtDescIdDesc(
+                        1L,
+                        CookingSessionStatus.COMPLETED
+                ))
+                .willReturn(Optional.of(cookingRecord));
+        given(imageStorageService.upload(1L, 10L, image)).willReturn(photoUrl);
+        given(persistenceService.saveCookingResult(
+                1L,
+                10L,
+                TasteRating.LEVEL_1,
+                DifficultyLevel.LEVEL_4,
+                photoUrl
+        )).willThrow(new CustomException(CookingRecordErrorCode.COOKING_RECORD_NOT_FOUND));
+
+        // when & then
+        assertThatThrownBy(() -> cookingRecordService.saveCookingResult(
+                "1234",
+                request,
+                image
+        )).isInstanceOf(CustomException.class);
+        then(imageStorageService).should().delete(1L, 10L, "result.jpg");
+    }
 
     @Test
     @DisplayName("사용자 맞춤 요리 단계를 생성하고 요리 기록을 저장한다")

@@ -112,4 +112,8 @@ public class CookingSession {
     public void complete() {
         this.status = CookingSessionStatus.COMPLETED;
     }
+
+    public void terminate() {
+        this.status = CookingSessionStatus.TERMINATED;
+    }
 }

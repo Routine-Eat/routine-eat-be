@@ -1,5 +1,6 @@
 package com.likelion.routineeatbe.domain.mealPlan.entity;
 
+import com.likelion.routineeatbe.domain.mealPlan.dto.request.CreateMealPlanRequest;
 import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
@@ -28,4 +29,12 @@ public class MealPlan extends BaseTimeEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     User user;
+
+    public static MealPlan createMealPlan(CreateMealPlanRequest request,User user){
+        return MealPlan.builder()
+                .type(request.mealPlanType())
+                .status(request.mealPlanStatus())
+                .user(user)
+                .build();
+    }
 }

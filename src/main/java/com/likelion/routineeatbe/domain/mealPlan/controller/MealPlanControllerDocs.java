@@ -1,15 +1,15 @@
 package com.likelion.routineeatbe.domain.mealPlan.controller;
 
+import com.likelion.routineeatbe.domain.mealPlan.dto.request.CreateMealPlanRequest;
 import com.likelion.routineeatbe.domain.mealPlan.dto.response.AiMealRecommendationResponse;
+import com.likelion.routineeatbe.domain.mealPlan.dto.response.MealPlanResponse;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Meal Plan", description = "식단 관리 API")
 @RequestMapping("/api/v1/meal-plans")
@@ -31,4 +31,24 @@ public interface MealPlanControllerDocs {
     })
     @GetMapping("/{userId}/ai-recommendation")
     GlobalResponse<AiMealRecommendationResponse> recommendThreeMeals(@PathVariable Long userId);
+
+    @Operation(
+            summary = "사용자-식단 저장 API",
+            description = """
+            mealPlanType : 선택한 식단에 맞는 타입
+            mealPlanStatus : 새로 만드는 것이므로 무조건 PROGRESS/SAVED 중 하나
+            planMenuIdList : 식단 메뉴 아이디
+            """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "사용자-식단 저장 성공"
+            )
+    })
+    @PostMapping("/{userId}")
+    GlobalResponse<MealPlanResponse> saveMealPlan(
+            @PathVariable Long userId,
+            @RequestBody CreateMealPlanRequest request
+            );
 }

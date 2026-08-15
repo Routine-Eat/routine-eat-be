@@ -108,7 +108,9 @@ class CookingRecordRepositoryTest {
         entityManager.clear();
 
         // then
-        CookingRecord result = cookingRecordRepository.findById(saved.getId()).orElseThrow();
+        CookingRecord result = cookingRecordRepository
+                .findByIdAndUserIdWithFoodIngredients(saved.getId(), user.getId())
+                .orElseThrow();
         assertThat(result.getCookingSession().getCookingStepCount()).isEqualTo(1);
         assertThat(result.getCookingSession().getCookingSteps())
                 .extracting(CookingStep::getLevel)

@@ -2,6 +2,7 @@ package com.likelion.routineeatbe.domain.cookingRecord.controller;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
@@ -21,6 +22,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,6 +35,54 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "Cooking Record", description = "요리 기록 API")
 @RequestMapping("/api/v1/cooking-records")
 public interface CookingRecordControllerDocs {
+
+    @Operation(
+            summary = "이번 요리에 사용한 음식 재료 양 조회",
+            description = """
+                    완료된 요리 기록에 대해 사용자의 현재 재료 보유량과 요리 후 예상 보유량을 조회합니다.
+                    요리 후 예상 보유량은 현재 보유량에서 요리 시작 시 초기화한 사용량을 차감해 계산하며,
+                    실제 사용자 재고 데이터는 변경하지 않습니다.
+
+                    [Path Variable]
+                    - cookingRecordId: 요리 기록 PK
+
+                    [Query Parameter]
+                    - userNumber: 4자리 사용자 고유 식별번호
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "이번 요리에 사용한 음식 재료 양 조회 성공",
+                    content = @Content(
+                            schema = @Schema(
+                                    implementation = CookingRecordFoodIngredientsResDto.class
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 값", content = @Content),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자 또는 요리 기록을 찾을 수 없음",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "요리 세션이 완료되지 않았거나 음식 재료가 초기화되지 않음",
+                    content = @Content
+            )
+    })
+    @GetMapping("/{cookingRecordId}/food-ingredients")
+    ResponseEntity<GlobalResponse<CookingRecordFoodIngredientsResDto>> getFoodIngredients(
+            @Parameter(description = "요리 기록 PK", required = true)
+            @Positive(message = "요리 기록 PK는 양수여야 합니다.")
+            @PathVariable("cookingRecordId") Long cookingRecordId,
+            @Parameter(description = "사용자 고유 식별번호", required = true)
+            @NotBlank(message = "사용자 고유 식별번호는 필수입니다.")
+            @Size(min = 4, max = 4, message = "사용자 고유 식별번호는 4자리여야 합니다.")
+            @Pattern(regexp = "^[0-9]{4}$", message = "사용자 고유 식별번호는 숫자 4자리여야 합니다.")
+            @RequestParam("userNumber") String userNumber
+    );
 
     @Operation(
             summary = "요리 결과 저장",

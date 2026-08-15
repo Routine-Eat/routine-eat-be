@@ -4,16 +4,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
+import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingStepStage;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
+import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
+import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +28,103 @@ import org.junit.jupiter.api.Test;
 class CookingRecordMapperTest {
 
     private final CookingRecordMapper cookingRecordMapper = new CookingRecordMapper();
+
+    @Test
+    @DisplayName("현재 사용자 보유량에서 요리 사용량을 차감한 예상량을 응답으로 변환한다")
+    void 사용자_보유량과_요리_후_예상량_응답_변환_성공() {
+        // given
+        FoodIngredient egg = FoodIngredient.builder()
+                .id(20L)
+                .name("계란")
+                .primaryUnit(PrimaryUnit.G)
+                .secondaryUnit(SecondaryUnit.AL)
+                .build();
+        Recipe recipe = Recipe.builder().id(30L).build();
+        RecipeFoodIngredient recipeFoodIngredient = RecipeFoodIngredient.builder()
+                .id(40L)
+                .recipe(recipe)
+                .foodIngredient(egg)
+                .primaryNeedAmountValue(80.0)
+                .secondaryNeedAmountValue(3.0)
+                .build();
+        CookingRecord cookingRecord = CookingRecord.builder().id(10L).build();
+        CookingRecordFoodIngredient.create(cookingRecord, egg, 160.0, 6.0);
+        UserFoodIngredient firstOwnedIngredient = UserFoodIngredient.builder()
+                .id(50L)
+                .foodIngredient(egg)
+                .primaryAmountValue(200.0)
+                .secondaryAmountValue(3.0)
+                .build();
+        UserFoodIngredient secondOwnedIngredient = UserFoodIngredient.builder()
+                .id(51L)
+                .foodIngredient(egg)
+                .primaryAmountValue(100.0)
+                .secondaryAmountValue(5.0)
+                .build();
+
+        // when
+        CookingRecordFoodIngredientsResDto result = cookingRecordMapper
+                .toCookingRecordFoodIngredientsResDto(
+                        cookingRecord,
+                        List.of(recipeFoodIngredient),
+                        List.of(firstOwnedIngredient, secondOwnedIngredient)
+                );
+
+        // then
+        assertThat(result.recipeFoodIngredients()).singleElement().satisfies(ingredient -> {
+            assertThat(ingredient.id()).isEqualTo(40L);
+            assertThat(ingredient.name()).isEqualTo("계란");
+            assertThat(ingredient.prevPrimaryAmountValue()).isEqualTo(300.0);
+            assertThat(ingredient.currentPrimaryAmountValue()).isEqualTo(140.0);
+            assertThat(ingredient.primaryUnit()).isEqualTo(PrimaryUnit.G);
+            assertThat(ingredient.prevSecondaryAmountValue()).isEqualTo(8.0);
+            assertThat(ingredient.currentSecondaryAmountValue()).isEqualTo(2.0);
+            assertThat(ingredient.secondaryUnit()).isEqualTo(SecondaryUnit.AL);
+        });
+    }
+
+    @Test
+    @DisplayName("보조 단위 필요량이 없으면 보조 단위 응답을 null로 변환한다")
+    void 보조_단위_필요량_없음_응답_변환_성공() {
+        // given
+        FoodIngredient salt = FoodIngredient.builder()
+                .id(21L)
+                .name("소금")
+                .primaryUnit(PrimaryUnit.G)
+                .secondaryUnit(SecondaryUnit.PINCH)
+                .build();
+        RecipeFoodIngredient recipeFoodIngredient = RecipeFoodIngredient.builder()
+                .id(41L)
+                .foodIngredient(salt)
+                .primaryNeedAmountValue(5.0)
+                .secondaryNeedAmountValue(null)
+                .build();
+        CookingRecord cookingRecord = CookingRecord.builder().id(11L).build();
+        CookingRecordFoodIngredient.create(cookingRecord, salt, 20.0, null);
+        UserFoodIngredient ownedIngredient = UserFoodIngredient.builder()
+                .id(52L)
+                .foodIngredient(salt)
+                .primaryAmountValue(15.0)
+                .secondaryAmountValue(2.0)
+                .build();
+
+        // when
+        CookingRecordFoodIngredientsResDto result = cookingRecordMapper
+                .toCookingRecordFoodIngredientsResDto(
+                        cookingRecord,
+                        List.of(recipeFoodIngredient),
+                        List.of(ownedIngredient)
+                );
+
+        // then
+        assertThat(result.recipeFoodIngredients()).singleElement().satisfies(ingredient -> {
+            assertThat(ingredient.prevPrimaryAmountValue()).isEqualTo(15.0);
+            assertThat(ingredient.currentPrimaryAmountValue()).isZero();
+            assertThat(ingredient.prevSecondaryAmountValue()).isNull();
+            assertThat(ingredient.currentSecondaryAmountValue()).isNull();
+            assertThat(ingredient.secondaryUnit()).isNull();
+        });
+    }
 
     @Test
     @DisplayName("저장된 요리 기록 PK를 요리 결과 저장 응답으로 변환한다")

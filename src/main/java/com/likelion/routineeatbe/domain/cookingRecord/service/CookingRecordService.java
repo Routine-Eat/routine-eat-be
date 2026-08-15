@@ -3,6 +3,7 @@ package com.likelion.routineeatbe.domain.cookingRecord.service;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
@@ -22,11 +23,15 @@ import com.likelion.routineeatbe.domain.recipe.repository.RecipeStepRepository;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.repository.RecipeFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.entity.User;
+import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
+import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
+import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,10 +52,87 @@ public class CookingRecordService {
     private final RecipeFoodIngredientRepository recipeFoodIngredientRepository;
     private final CookingRecordRepository cookingRecordRepository;
     private final CookingStepRepository cookingStepRepository;
+    private final UserFoodIngredientRepository userFoodIngredientRepository;
     private final CookingStepGenerateGeminiService geminiService;
     private final CookingRecordPersistenceService persistenceService;
     private final CookingRecordImageStorageService imageStorageService;
     private final CookingRecordMapper cookingRecordMapper;
+
+    /**
+     * (1) 작업 목적
+     * 완료된 요리 기록의 재료 사용 전후 사용자 보유 예상량을 조회합니다.
+     *
+     * (2) 세부 작업 내용
+     * - 사용자 고유 식별번호로 사용자를 조회합니다.
+     * - 사용자 소유 요리 기록을 세션, 레시피와 사용 음식 재료까지 함께 조회합니다.
+     * - 요리 세션이 완료 상태인지 검증합니다.
+     * - 사용자의 현재 보유량과 요리 시작 시 초기화된 사용량을 차감 전후 예상량으로 변환합니다.
+     *
+     * @param cookingRecordId 조회할 요리 기록 PK
+     * @param userNumber 사용자 고유 식별번호
+     * @return 요리 전후 사용자 보유 예상량 목록
+     */
+    @Transactional(readOnly = true)
+    public CookingRecordFoodIngredientsResDto getFoodIngredients(
+            Long cookingRecordId,
+            String userNumber
+    ) {
+        log.info(
+                "[CookingRecordService] 요리 사용 음식 재료 조회 시작 | getFoodIngredients() - START | cookingRecordId: {}, userNumber: {}",
+                cookingRecordId,
+                userNumber
+        );
+
+        User user = userRepository.findByLoginNumber(userNumber)
+                .orElseThrow(() -> new CustomException(CookingRecordErrorCode.USER_NOT_FOUND));
+        CookingRecord cookingRecord = cookingRecordRepository
+                .findByIdAndUserIdWithFoodIngredients(cookingRecordId, user.getId())
+                .orElseThrow(() -> new CustomException(
+                        CookingRecordErrorCode.COOKING_RECORD_NOT_FOUND
+                ));
+        CookingSession cookingSession = cookingRecord.getCookingSession();
+        if (cookingSession == null) {
+            throw new CustomException(CookingRecordErrorCode.COOKING_SESSION_NOT_FOUND);
+        }
+        if (cookingSession.getStatus() != CookingSessionStatus.COMPLETED) {
+            throw new CustomException(CookingRecordErrorCode.COOKING_SESSION_NOT_COMPLETED);
+        }
+        List<RecipeFoodIngredient> recipeFoodIngredients = recipeFoodIngredientRepository
+                .findAllByRecipeIdInWithFoodIngredient(List.of(cookingRecord.getRecipe().getId()));
+        if (recipeFoodIngredients.isEmpty()) {
+            throw new CustomException(CookingRecordErrorCode.RECIPE_FOOD_INGREDIENT_EMPTY);
+        }
+        Set<Long> cookingRecordFoodIngredientIds = cookingRecord.getFoodIngredients().stream()
+                .map(foodIngredient -> foodIngredient.getFoodIngredient().getId())
+                .collect(Collectors.toSet());
+        boolean allFoodIngredientsInitialized = recipeFoodIngredients.stream()
+                .map(recipeFoodIngredient -> recipeFoodIngredient.getFoodIngredient().getId())
+                .allMatch(cookingRecordFoodIngredientIds::contains);
+        if (!allFoodIngredientsInitialized) {
+            throw new CustomException(
+                    CookingRecordErrorCode.COOKING_RECORD_FOOD_INGREDIENT_EMPTY
+            );
+        }
+        List<UserFoodIngredient> ownedFoodIngredients = userFoodIngredientRepository
+                .findAllWithFoodIngredientByUserIdAndRelationTypeAndFoodIngredientIds(
+                        user.getId(),
+                        UserFoodIngredientType.OWN,
+                        cookingRecordFoodIngredientIds.stream().sorted().toList()
+                );
+
+        CookingRecordFoodIngredientsResDto result = cookingRecordMapper
+                .toCookingRecordFoodIngredientsResDto(
+                        cookingRecord,
+                        recipeFoodIngredients,
+                        ownedFoodIngredients
+                );
+        log.info(
+                "[CookingRecordService] 요리 사용 음식 재료 조회 종료 | getFoodIngredients() - END | cookingRecordId: {}, foodIngredientCount: {}",
+                cookingRecordId,
+                result.recipeFoodIngredients().size()
+        );
+        return result;
+    }
 
     /**
      * (1) 작업 목적

@@ -45,6 +45,11 @@ public enum CookingRecordErrorCode implements BaseErrorCode {
             "완료된 요리 세션이 아닙니다.",
             HttpStatus.CONFLICT
     ),
+    COOKING_RECORD_FOOD_INGREDIENT_EMPTY(
+            "CR4098",
+            "요리 기록에 저장된 음식 재료가 없습니다.",
+            HttpStatus.CONFLICT
+    ),
     INVALID_COOKING_RECORD_IMAGE(
             "CR4001",
             "요리 결과 이미지는 올바른 이미지 파일이어야 합니다.",

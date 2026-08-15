@@ -52,4 +52,16 @@ public class CookingRecordFoodIngredient extends BaseTimeEntity {
         cookingRecord.addFoodIngredient(cookingRecordFoodIngredient);
         return cookingRecordFoodIngredient;
     }
+
+    public void updateUsedAmountValues(
+            Double primaryUsedAmountValue,
+            Double secondaryUsedAmountValue
+    ) {
+        if (primaryUsedAmountValue != null) {
+            this.primaryUsedAmountValue = primaryUsedAmountValue;
+        }
+        if (secondaryUsedAmountValue != null) {
+            this.secondaryUsedAmountValue = secondaryUsedAmountValue;
+        }
+    }
 }

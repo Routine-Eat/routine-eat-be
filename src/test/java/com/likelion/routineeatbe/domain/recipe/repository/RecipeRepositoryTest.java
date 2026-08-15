@@ -330,8 +330,6 @@ class RecipeRepositoryTest {
                 .pricePerHundred(pricePerHundred)
                 .primaryUnit(PrimaryUnit.G)
                 .secondaryUnit(SecondaryUnit.GAE)
-                .allergy(false)
-                .dislike(false)
                 .build());
     }
 

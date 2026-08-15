@@ -108,7 +108,9 @@ class CookingRecordRepositoryTest {
         entityManager.clear();
 
         // then
-        CookingRecord result = cookingRecordRepository.findById(saved.getId()).orElseThrow();
+        CookingRecord result = cookingRecordRepository
+                .findByIdAndUserIdWithFoodIngredients(saved.getId(), user.getId())
+                .orElseThrow();
         assertThat(result.getCookingSession().getCookingStepCount()).isEqualTo(1);
         assertThat(result.getCookingSession().getCookingSteps())
                 .extracting(CookingStep::getLevel)
@@ -124,6 +126,45 @@ class CookingRecordRepositoryTest {
                 recipe.getId(),
                 EnumSet.of(CookingSessionStatus.IN_PROGRESS, CookingSessionStatus.COMPLETED)
         )).isTrue();
+    }
+
+    @Test
+    @DisplayName("잠금 조회한 요리 기록 음식 재료의 사용량 변경을 저장한다")
+    void 요리_기록_음식_재료_사용량_변경_저장_성공() {
+        // given
+        User user = entityManager.persist(User.builder().loginNumber("1357").build());
+        Recipe recipe = persistRecipe();
+        FoodIngredient foodIngredient = entityManager.persist(FoodIngredient.builder()
+                .name("계란")
+                .type(FoodIngredientType.VEGETABLE)
+                .pricePerHundred(1000L)
+                .primaryUnit(PrimaryUnit.G)
+                .secondaryUnit(SecondaryUnit.AL)
+                .exception(false)
+                .build());
+        CookingRecord cookingRecord = CookingRecord.create(user, recipe, 1);
+        CookingRecordFoodIngredient.create(cookingRecord, foodIngredient, 80.0, 2.0);
+        CookingSession.create(cookingRecord, 1);
+        CookingRecord saved = cookingRecordRepository.saveAndFlush(cookingRecord);
+        entityManager.clear();
+
+        // when
+        CookingRecord lockedCookingRecord = cookingRecordRepository
+                .findByIdAndUserIdForUpdate(saved.getId(), user.getId())
+                .orElseThrow();
+        lockedCookingRecord.getFoodIngredients().getFirst()
+                .updateUsedAmountValues(60.0, null);
+        entityManager.flush();
+        entityManager.clear();
+
+        // then
+        CookingRecord result = cookingRecordRepository
+                .findByIdAndUserIdWithFoodIngredients(saved.getId(), user.getId())
+                .orElseThrow();
+        assertThat(result.getFoodIngredients()).singleElement().satisfies(usedIngredient -> {
+            assertThat(usedIngredient.getPrimaryUsedAmountValue()).isEqualTo(60.0);
+            assertThat(usedIngredient.getSecondaryUsedAmountValue()).isEqualTo(2.0);
+        });
     }
 
     @Test

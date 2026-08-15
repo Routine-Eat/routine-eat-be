@@ -2,6 +2,7 @@ package com.likelion.routineeatbe.domain.cookingRecord.controller;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -9,6 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientAmountResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
@@ -16,6 +20,8 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNa
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTitleResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingRecordService;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -46,12 +52,83 @@ class CookingRecordControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
+    @DisplayName("이번 요리에 사용한 음식 재료 양 조회 API 성공 - 200 반환")
+    void 이번_요리_사용_음식_재료_양_조회_API_성공() throws Exception {
+        // given
+        CookingRecordFoodIngredientsResDto response =
+                CookingRecordFoodIngredientsResDto.create(List.of(
+                        CookingRecordFoodIngredientAmountResDto.create(
+                                1L,
+                                2L,
+                                "계란",
+                                300.0,
+                                140.0,
+                                PrimaryUnit.G,
+                                8.0,
+                                2.0,
+                                SecondaryUnit.AL
+                        )
+                ));
+        given(cookingRecordService.getFoodIngredients(10L, "1234"))
+                .willReturn(response);
+
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/cooking-records/{cookingRecordId}/food-ingredients",
+                        10L
+                ).param("userNumber", "1234"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message").value("성공했습니다."))
+                .andExpect(jsonPath(
+                        "$.data.foodIngredients[0].cookingRecordFoodIngredientId"
+                ).value(1))
+                .andExpect(jsonPath("$.data.foodIngredients[0].foodIngredientId").value(2))
+                .andExpect(jsonPath("$.data.foodIngredients[0].name").value("계란"))
+                .andExpect(jsonPath(
+                        "$.data.foodIngredients[0].prevPrimaryAmountValue"
+                ).value(300.0))
+                .andExpect(jsonPath(
+                        "$.data.foodIngredients[0].currentPrimaryAmountValue"
+                ).value(140.0))
+                .andExpect(jsonPath("$.data.foodIngredients[0].primaryUnit").value("G"))
+                .andExpect(jsonPath(
+                        "$.data.foodIngredients[0].prevSecondaryAmountValue"
+                ).value(8.0))
+                .andExpect(jsonPath(
+                        "$.data.foodIngredients[0].currentSecondaryAmountValue"
+                ).value(2.0))
+                .andExpect(jsonPath("$.data.foodIngredients[0].secondaryUnit")
+                        .value("AL"));
+        then(cookingRecordService).should().getFoodIngredients(10L, "1234");
+    }
+
+    @Test
+    @DisplayName("이번 요리에 사용한 음식 재료 양 조회 API 실패 - 양수가 아닌 요리 기록 PK")
+    void 이번_요리_사용_음식_재료_양_조회_API_실패_양수가_아닌_요리_기록_PK()
+            throws Exception {
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/cooking-records/{cookingRecordId}/food-ingredients",
+                        0L
+                ).param("userNumber", "1234"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
+    }
+
+    @Test
     @DisplayName("요리 결과 저장 API 성공 - 이미지 포함 201 반환")
     void 요리_결과_저장_API_이미지_포함_성공() throws Exception {
         // given
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_3,
-                DifficultyLevel.LEVEL_2
+                DifficultyLevel.LEVEL_2,
+                List.of(new ModifiedCookingRecordFoodIngredientReqDto(
+                        1L,
+                        80.0,
+                        null
+                ))
         );
         CookingResultSaveResDto response = CookingResultSaveResDto.create(10L);
         MockMultipartFile requestPart = new MockMultipartFile(
@@ -88,7 +165,8 @@ class CookingRecordControllerTest {
         // given
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_2,
-                DifficultyLevel.LEVEL_1
+                DifficultyLevel.LEVEL_1,
+                List.of()
         );
         CookingResultSaveResDto response = CookingResultSaveResDto.create(10L);
         MockMultipartFile requestPart = new MockMultipartFile(
@@ -115,7 +193,36 @@ class CookingRecordControllerTest {
         // given
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 null,
-                DifficultyLevel.LEVEL_1
+                DifficultyLevel.LEVEL_1,
+                List.of()
+        );
+        MockMultipartFile requestPart = new MockMultipartFile(
+                "request",
+                "request.json",
+                MediaType.APPLICATION_JSON_VALUE,
+                objectMapper.writeValueAsBytes(request)
+        );
+
+        // when & then
+        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/v1/cooking-records")
+                        .file(requestPart)
+                        .param("userNumber", "1234"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("요리 결과 저장 API 실패 - 음식 재료 사용량 음수")
+    void 요리_결과_저장_API_실패_음식_재료_사용량_음수() throws Exception {
+        // given
+        CookingResultSaveReqDto request = new CookingResultSaveReqDto(
+                TasteRating.LEVEL_2,
+                DifficultyLevel.LEVEL_1,
+                List.of(new ModifiedCookingRecordFoodIngredientReqDto(
+                        1L,
+                        -1.0,
+                        null
+                ))
         );
         MockMultipartFile requestPart = new MockMultipartFile(
                 "request",

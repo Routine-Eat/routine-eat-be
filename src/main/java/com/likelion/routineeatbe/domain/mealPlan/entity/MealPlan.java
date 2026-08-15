@@ -6,6 +6,9 @@ import com.likelion.routineeatbe.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 @Builder
@@ -29,6 +32,9 @@ public class MealPlan extends BaseTimeEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     User user;
+
+    @OneToMany(mappedBy = "mealPlan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PlanMenu> planMenus = new ArrayList<>();
 
     public static MealPlan createMealPlan(CreateMealPlanRequest request,User user){
         return MealPlan.builder()

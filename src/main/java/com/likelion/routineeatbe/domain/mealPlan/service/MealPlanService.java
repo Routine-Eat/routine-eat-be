@@ -172,4 +172,23 @@ public class MealPlanService {
 
         return MealPlanResponse.from(mealPlan,planMenus);
     }
+
+    /**
+     * 사용자-식단 삭제 API
+     * userId로 사용자 인증
+     * 사용자의 식단이 맞으면 식단 삭제
+     * @param userId
+     * @param mealPlanId
+     */
+    @Transactional
+    public void deleteUserMealPlan(Long userId,Long mealPlanId){
+        MealPlan mealPlan=mealPlanRepository.findById(mealPlanId)
+                .orElseThrow(()->new CustomException(MealPlanErrorCode.NOT_EXIST_PLAN));
+
+        if (!userId.equals(mealPlan.getUser().getId())){
+            throw new CustomException(MealPlanErrorCode.NOT_HAVE_USER);
+        }
+
+        mealPlanRepository.deleteById(mealPlanId);
+    }
 }

@@ -141,4 +141,23 @@ public interface MealPlanControllerDocs {
             @PathVariable Long mealPlanId,
             @RequestBody MealPlanStatus status
     );
+
+    @Operation(
+            summary = "사용자-식단 삭제 API",
+            description = """
+            사용자-식단 삭제
+            저장 취소, 기록 삭제에 사용
+            """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "사용자-식단 삭제 성공"
+            )
+    })
+    @DeleteMapping("/{mealPlanId}/users/{userId}")
+    GlobalResponse<Void> deleteUserMealPlan(
+            @PathVariable Long userId,
+            @PathVariable Long mealPlanId
+            );
 }

@@ -56,4 +56,10 @@ public class MealPlanController implements MealPlanControllerDocs{
         MealPlanResponse mealPlanResponse=mealPlanService.updateMealPlanStatus(userId,mealPlanId,status);
         return GlobalResponse.success(203,"사용자-식단 상태 수정 성공",mealPlanResponse);
     }
+
+    @Override
+    public GlobalResponse<Void> deleteUserMealPlan(Long userId,Long mealPlanId){
+        mealPlanService.deleteUserMealPlan(userId,mealPlanId);
+        return GlobalResponse.success(204,"사용자-식단 삭제에 성공했습니다.",null);
+    }
 }

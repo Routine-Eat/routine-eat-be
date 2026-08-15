@@ -147,6 +147,15 @@ public class MealPlanService {
         return MealPlanDetailResponse.from(mealPlan, planMenuList);
     }
 
+    /**
+     * 식단 상태 변경 API
+     * - userId로 사용자 인증
+     * - mealPlanId로 식단을 status로 변경
+     * @param userId 사용자 식별
+     * @param mealPlanId 식단 식별자
+     * @param status 변경할 상태
+     * @return 변경한 식단 리턴
+     */
     @Transactional
     public MealPlanResponse updateMealPlanStatus(Long userId,Long mealPlanId,MealPlanStatus status){
         MealPlan mealPlan=mealPlanRepository.findById(mealPlanId)

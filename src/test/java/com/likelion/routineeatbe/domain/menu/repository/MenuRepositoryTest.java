@@ -98,8 +98,6 @@ class MenuRepositoryTest {
                 .pricePerHundred(1000L)
                 .primaryUnit(PrimaryUnit.G)
                 .secondaryUnit(SecondaryUnit.GAE)
-                .allergy(false)
-                .dislike(false)
                 .build());
     }
 

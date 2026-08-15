@@ -263,4 +263,20 @@ public interface UserControllerDocs {
             @PathVariable("userId") Long userId,
             @RequestBody UserOnboardingRequest request
     );
+
+    @Operation(
+            summary = "사용자 단일 조회",
+            description = """
+                    loginNumber로 사용자 조회 API
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "사용자 단일 조회 성공"
+            ),
+            @ApiResponse(responseCode = "4041", description = "없는 사용자 loginNumber 형식", content = @Content),
+    })
+    @GetMapping("/{loginNumber}")
+    GlobalResponse<UserResponse> getUserByLoginNumber(@PathVariable String loginNumber);
 }

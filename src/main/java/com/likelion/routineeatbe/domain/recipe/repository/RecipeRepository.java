@@ -57,4 +57,20 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long>, RecipeRep
             order by recipe.id
             """)
     List<Recipe> findAllForCookingEquipmentInitialization();
+
+    /**
+     * AI 식단 추천의 원본 후보를 조회합니다.
+     * Menu와 RecipeFoodIngredient를 fetch join하여 추천 서비스가 메뉴명과 필요 식재료를 사용할 때
+     * 발생할 수 있는 N+1 조회를 방지합니다. 사용자 정의 레시피는 제외하고 BASIC 레시피만 반환합니다.
+     */
+    @Query("""
+            select distinct recipe
+            from Recipe recipe
+            join fetch recipe.menu menu
+            left join fetch recipe.recipeFoodIngredients recipeFoodIngredient
+            left join fetch recipeFoodIngredient.foodIngredient
+            where recipe.type = com.likelion.routineeatbe.domain.recipe.enums.RecipeType.BASIC
+            order by recipe.id
+            """)
+    List<Recipe> findAllBasicWithMenuAndFoodIngredients();
 }

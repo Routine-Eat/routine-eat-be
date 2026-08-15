@@ -18,6 +18,7 @@ import org.springframework.validation.annotation.Validated;
  * @param menuAnalyzeModel 메뉴 호출할 Gemini 모델명
  * @param foodIngredientAnalyzeModel 음식 재료 분석에 사용할 Gemini 모델명
  * @param cookingEquipmentAnalyzeModel 조리 도구 분석에 사용할 Gemini 모델명
+ * @param cookingStepGenerateModel 요리 단계 생성에 사용할 Gemini 모델명
  */
 @Validated
 @ConfigurationProperties(prefix = "gemini")
@@ -27,6 +28,7 @@ public record GeminiProperties(
         @NotBlank String menuAnalyzeModel,
         @NotBlank String foodIngredientAnalyzeModel,
         @NotBlank String cookingEquipmentAnalyzeModel,
+        @NotBlank String cookingStepGenerateModel,
         @Min(1) int batchSize,
         @Valid @NotNull Retry retry
 ) {

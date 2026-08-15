@@ -18,6 +18,7 @@ import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.exception.UserFoodIngredientErrorCode;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
+import com.likelion.routineeatbe.global.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -144,5 +145,22 @@ public class MealPlanService {
 
         // 4. 최종 MealPlanDetailResponse DTO 생성 및 반환
         return MealPlanDetailResponse.from(mealPlan, planMenuList);
+    }
+
+    @Transactional
+    public MealPlanResponse updateMealPlanStatus(Long userId,Long mealPlanId,MealPlanStatus status){
+        MealPlan mealPlan=mealPlanRepository.findById(mealPlanId)
+                .orElseThrow(()->new CustomException(MealPlanErrorCode.NOT_EXIST_PLAN));
+
+        if (!userId.equals(mealPlan.getUser().getId())){
+            throw new CustomException(MealPlanErrorCode.NOT_HAVE_USER);
+        }
+
+        mealPlan.updateMealPlanStatus(status);
+
+        List<Long> planMenus = planMenuRepository.findIdsByMealPlan_IdIn(mealPlanId);
+
+
+        return MealPlanResponse.from(mealPlan,planMenus);
     }
 }

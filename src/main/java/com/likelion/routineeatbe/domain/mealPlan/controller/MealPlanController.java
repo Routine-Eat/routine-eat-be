@@ -50,4 +50,10 @@ public class MealPlanController implements MealPlanControllerDocs{
 
         return GlobalResponse.success(203,"식단 메뉴 완료 여부 수정 성공",mealPlanDetailResponse);
     }
+
+    @Override
+    public GlobalResponse<MealPlanResponse> updateUserMealPlanStatus(Long userId,Long mealPlanId,MealPlanStatus status){
+        MealPlanResponse mealPlanResponse=mealPlanService.updateMealPlanStatus(userId,mealPlanId,status);
+        return GlobalResponse.success(203,"사용자-식단 상태 수정 성공",mealPlanResponse);
+    }
 }

@@ -37,4 +37,7 @@ public class MealPlan extends BaseTimeEntity {
                 .user(user)
                 .build();
     }
+    public void updateMealPlanStatus(MealPlanStatus status){
+        this.status=status;
+    }
 }

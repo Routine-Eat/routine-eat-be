@@ -36,12 +36,14 @@ public class PlanMenuService {
                 .orElseThrow(()->new CustomException(PlanMenuErrorCode.NOT_EXIST_PLAN_MENU));
 
         MealPlan mealPlan=planMenu.getMealPlan();
+
+        if (!userId.equals(mealPlan.getUser().getId())){
+            throw new CustomException(PlanMenuErrorCode.NOT_HAVE_USER);
+        }
         if (mealPlan.getStatus()!=MealPlanStatus.PROGRESS){
             throw new CustomException(PlanMenuErrorCode.NOT_PROGRESS_PLAN);
         }
-        if (userId != mealPlan.getUser().getId()){
-            throw new CustomException(PlanMenuErrorCode.NOT_HAVE_USER);
-        }
+
 
         planMenu.updatePlanMenuCompleted(completed);
 

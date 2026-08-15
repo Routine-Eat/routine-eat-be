@@ -26,6 +26,9 @@ public interface PlanMenuRepository extends JpaRepository<PlanMenu, Long> {
     // 식단 ID 리스트를 받아 한 번에 모든 PlanMenu 조회 (IN 쿼리)
     List<PlanMenu> findByMealPlan_IdIn(List<Long> mealPlanIds);
 
+    @Query("select pm.id from PlanMenu pm where pm.mealPlan.id = :mealPlanId")
+    List<Long> findIdsByMealPlan_IdIn(@Param("mealPlanId") Long mealPlanId);
+
     List<PlanMenu> findByMealPlan_Id(Long mealPlanId);
 
     @EntityGraph(attributePaths = {"menu"})

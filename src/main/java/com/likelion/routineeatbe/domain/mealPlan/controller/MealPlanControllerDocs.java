@@ -121,4 +121,24 @@ public interface MealPlanControllerDocs {
             @RequestBody
             @Schema(example = "true")
             Boolean completed);
+
+    @Operation(
+            summary = "사용자-식단 상태 수정 API",
+            description = """
+            사용자-식단 수정
+            DONE/PROGRESS/SAVED
+            """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "203",
+                    description = "사용자-식단 상태 수정 성공"
+            )
+    })
+    @PatchMapping("/{mealPlanId}/users/{userId}")
+    GlobalResponse<MealPlanResponse> updateUserMealPlanStatus(
+            @PathVariable Long userId,
+            @PathVariable Long mealPlanId,
+            @RequestBody MealPlanStatus status
+    );
 }

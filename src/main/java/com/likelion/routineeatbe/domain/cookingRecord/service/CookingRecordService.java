@@ -129,7 +129,7 @@ public class CookingRecordService {
         log.info(
                 "[CookingRecordService] 요리 사용 음식 재료 조회 종료 | getFoodIngredients() - END | cookingRecordId: {}, foodIngredientCount: {}",
                 cookingRecordId,
-                result.recipeFoodIngredients().size()
+                result.foodIngredients().size()
         );
         return result;
     }
@@ -141,6 +141,7 @@ public class CookingRecordService {
      * (2) 세부 작업 내용
      * - 사용자의 가장 최근 완료 요리 기록을 조회합니다.
      * - 선택 이미지가 있으면 S3에 업로드한 후 별도 트랜잭션에서 회고를 저장합니다.
+     * - 요청된 음식 재료 사용량을 보정한 뒤 수정된 사용량으로 사용자 보유량을 차감합니다.
      * - DB 저장 실패 시 먼저 업로드된 S3 객체를 보상 삭제합니다.
      *
      * @param userNumber 사용자 고유 식별번호
@@ -180,6 +181,7 @@ public class CookingRecordService {
                     cookingRecord.getId(),
                     request.tasteRating(),
                     request.difficultyLevel(),
+                    request.modifiedCookingRecordFoodIngredients(),
                     photoUrl
             );
         } catch (RuntimeException exception) {

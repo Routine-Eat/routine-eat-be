@@ -48,7 +48,15 @@ class CookingRecordMapperTest {
                 .secondaryNeedAmountValue(3.0)
                 .build();
         CookingRecord cookingRecord = CookingRecord.builder().id(10L).build();
-        CookingRecordFoodIngredient.create(cookingRecord, egg, 160.0, 6.0);
+        CookingRecordFoodIngredient cookingRecordFoodIngredient =
+                CookingRecordFoodIngredient.builder()
+                        .id(60L)
+                        .cookingRecord(cookingRecord)
+                        .foodIngredient(egg)
+                        .primaryUsedAmountValue(160.0)
+                        .secondaryUsedAmountValue(6.0)
+                        .build();
+        cookingRecord.addFoodIngredient(cookingRecordFoodIngredient);
         UserFoodIngredient firstOwnedIngredient = UserFoodIngredient.builder()
                 .id(50L)
                 .foodIngredient(egg)
@@ -71,8 +79,9 @@ class CookingRecordMapperTest {
                 );
 
         // then
-        assertThat(result.recipeFoodIngredients()).singleElement().satisfies(ingredient -> {
-            assertThat(ingredient.id()).isEqualTo(40L);
+        assertThat(result.foodIngredients()).singleElement().satisfies(ingredient -> {
+            assertThat(ingredient.cookingRecordFoodIngredientId()).isEqualTo(60L);
+            assertThat(ingredient.foodIngredientId()).isEqualTo(20L);
             assertThat(ingredient.name()).isEqualTo("계란");
             assertThat(ingredient.prevPrimaryAmountValue()).isEqualTo(300.0);
             assertThat(ingredient.currentPrimaryAmountValue()).isEqualTo(140.0);
@@ -117,7 +126,7 @@ class CookingRecordMapperTest {
                 );
 
         // then
-        assertThat(result.recipeFoodIngredients()).singleElement().satisfies(ingredient -> {
+        assertThat(result.foodIngredients()).singleElement().satisfies(ingredient -> {
             assertThat(ingredient.prevPrimaryAmountValue()).isEqualTo(15.0);
             assertThat(ingredient.currentPrimaryAmountValue()).isZero();
             assertThat(ingredient.prevSecondaryAmountValue()).isNull();

@@ -2,6 +2,7 @@ package com.likelion.routineeatbe.domain.cookingRecord.service;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
@@ -22,9 +23,11 @@ import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientReposi
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,13 +56,15 @@ public class CookingRecordPersistenceService {
      * (2) 세부 작업 내용
      * - 요리 기록을 비관적 쓰기 잠금으로 조회해 동시 회고 저장을 직렬화합니다.
      * - 연결된 세션이 완료 상태인지 재검증한 뒤 요리 기록을 변경합니다.
-     * - 요리에 사용한 음식 재료 수량만큼 사용자 보유 재료를 잠금 조회하여 차감합니다.
+     * - 요청된 음식 재료 사용량을 갱신하고 최종 사용량만큼 사용자 보유 재료를 차감합니다.
+     * - 수정 목록이 비어 있으면 요리 시작 시 초기화된 사용량을 그대로 사용합니다.
      * - 저장 완료 후 요리 세션을 종료 상태로 변경해 중복 차감을 방지합니다.
      *
      * @param userId 사용자 PK
      * @param cookingRecordId 요리 기록 PK
      * @param tasteRating 맛 평가
      * @param difficultyLevel 실제 요리 난이도
+     * @param modifiedFoodIngredients 실제 사용량을 수정할 요리 기록 음식 재료 목록
      * @param photoUrl 선택 이미지의 CloudFront URL
      * @return 요리 결과가 저장된 요리 기록
      */
@@ -69,6 +74,7 @@ public class CookingRecordPersistenceService {
             Long cookingRecordId,
             TasteRating tasteRating,
             DifficultyLevel difficultyLevel,
+            List<ModifiedCookingRecordFoodIngredientReqDto> modifiedFoodIngredients,
             String photoUrl
     ) {
         log.info(
@@ -90,9 +96,10 @@ public class CookingRecordPersistenceService {
             throw new CustomException(CookingRecordErrorCode.COOKING_SESSION_NOT_COMPLETED);
         }
 
-        cookingRecord.saveCookingResult(tasteRating, difficultyLevel, photoUrl);
         List<CookingRecordFoodIngredient> usedFoodIngredients =
                 cookingRecord.getFoodIngredients();
+        updateUsedFoodIngredientAmounts(usedFoodIngredients, modifiedFoodIngredients);
+        cookingRecord.saveCookingResult(tasteRating, difficultyLevel, photoUrl);
         if (!usedFoodIngredients.isEmpty()) {
             Map<Long, Double> remainingPrimaryAmounts = usedFoodIngredients.stream()
                     .collect(Collectors.toMap(
@@ -139,6 +146,64 @@ public class CookingRecordPersistenceService {
                 cookingSession.getStatus()
         );
         return cookingRecord;
+    }
+
+    /**
+     * 요청된 요리 기록 음식 재료의 실제 사용량을 갱신합니다.
+     * 수정 목록이 없으면 요리 시작 시 초기화된 사용량을 유지합니다.
+     *
+     * @param usedFoodIngredients 요리 시작 시 초기화된 요리 기록 음식 재료 목록
+     * @param modifiedFoodIngredients 실제 사용량 수정 요청 목록
+     */
+    private void updateUsedFoodIngredientAmounts(
+            List<CookingRecordFoodIngredient> usedFoodIngredients,
+            List<ModifiedCookingRecordFoodIngredientReqDto> modifiedFoodIngredients
+    ) {
+        log.debug(
+                "[CookingRecordPersistenceService] 음식 재료 실제 사용량 수정 시작 | updateUsedFoodIngredientAmounts() - START | modifiedCount: {}",
+                modifiedFoodIngredients == null ? 0 : modifiedFoodIngredients.size()
+        );
+        if (modifiedFoodIngredients == null || modifiedFoodIngredients.isEmpty()) {
+            log.debug(
+                    "[CookingRecordPersistenceService] 음식 재료 실제 사용량 수정 종료 | updateUsedFoodIngredientAmounts() - END | modifiedCount: 0"
+            );
+            return;
+        }
+
+        Set<Long> requestedIds = new HashSet<>();
+        for (ModifiedCookingRecordFoodIngredientReqDto modifiedFoodIngredient
+                : modifiedFoodIngredients) {
+            if (!requestedIds.add(
+                    modifiedFoodIngredient.cookingRecordFoodIngredientId()
+            )) {
+                throw new CustomException(
+                        CookingRecordErrorCode.DUPLICATE_COOKING_RECORD_FOOD_INGREDIENT
+                );
+            }
+        }
+        Map<Long, CookingRecordFoodIngredient> usedFoodIngredientsById =
+                usedFoodIngredients.stream()
+                        .collect(Collectors.toMap(
+                                CookingRecordFoodIngredient::getId,
+                                Function.identity()
+                        ));
+        if (!usedFoodIngredientsById.keySet().containsAll(requestedIds)) {
+            throw new CustomException(
+                    CookingRecordErrorCode.COOKING_RECORD_FOOD_INGREDIENT_NOT_FOUND
+            );
+        }
+
+        modifiedFoodIngredients.forEach(modifiedFoodIngredient ->
+                usedFoodIngredientsById
+                        .get(modifiedFoodIngredient.cookingRecordFoodIngredientId())
+                        .updateUsedAmountValues(
+                                modifiedFoodIngredient.usedPrimaryAmountValue(),
+                                modifiedFoodIngredient.usedSecondaryAmountValue()
+                        ));
+        log.debug(
+                "[CookingRecordPersistenceService] 음식 재료 실제 사용량 수정 종료 | updateUsedFoodIngredientAmounts() - END | modifiedCount: {}",
+                modifiedFoodIngredients.size()
+        );
     }
 
     /**

@@ -10,15 +10,15 @@ import lombok.Builder;
         description = "이번 요리에 사용한 음식 재료 목록 응답 DTO"
 )
 public record CookingRecordFoodIngredientsResDto(
-        @Schema(description = "레시피 음식 재료 목록")
-        List<CookingRecordFoodIngredientAmountResDto> recipeFoodIngredients
+        @Schema(description = "요리에 사용한 음식 재료 목록")
+        List<CookingRecordFoodIngredientAmountResDto> foodIngredients
 ) {
 
     public static CookingRecordFoodIngredientsResDto create(
-            List<CookingRecordFoodIngredientAmountResDto> recipeFoodIngredients
+            List<CookingRecordFoodIngredientAmountResDto> foodIngredients
     ) {
         return CookingRecordFoodIngredientsResDto.builder()
-                .recipeFoodIngredients(List.copyOf(recipeFoodIngredients))
+                .foodIngredients(List.copyOf(foodIngredients))
                 .build();
     }
 }

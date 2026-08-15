@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientAmountResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
@@ -58,6 +59,7 @@ class CookingRecordControllerTest {
                 CookingRecordFoodIngredientsResDto.create(List.of(
                         CookingRecordFoodIngredientAmountResDto.create(
                                 1L,
+                                2L,
                                 "계란",
                                 300.0,
                                 140.0,
@@ -79,22 +81,25 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message").value("성공했습니다."))
-                .andExpect(jsonPath("$.data.recipeFoodIngredients[0].id").value(1))
-                .andExpect(jsonPath("$.data.recipeFoodIngredients[0].name").value("계란"))
                 .andExpect(jsonPath(
-                        "$.data.recipeFoodIngredients[0].prevPrimaryAmountValue"
+                        "$.data.foodIngredients[0].cookingRecordFoodIngredientId"
+                ).value(1))
+                .andExpect(jsonPath("$.data.foodIngredients[0].foodIngredientId").value(2))
+                .andExpect(jsonPath("$.data.foodIngredients[0].name").value("계란"))
+                .andExpect(jsonPath(
+                        "$.data.foodIngredients[0].prevPrimaryAmountValue"
                 ).value(300.0))
                 .andExpect(jsonPath(
-                        "$.data.recipeFoodIngredients[0].currentPrimaryAmountValue"
+                        "$.data.foodIngredients[0].currentPrimaryAmountValue"
                 ).value(140.0))
-                .andExpect(jsonPath("$.data.recipeFoodIngredients[0].primaryUnit").value("G"))
+                .andExpect(jsonPath("$.data.foodIngredients[0].primaryUnit").value("G"))
                 .andExpect(jsonPath(
-                        "$.data.recipeFoodIngredients[0].prevSecondaryAmountValue"
+                        "$.data.foodIngredients[0].prevSecondaryAmountValue"
                 ).value(8.0))
                 .andExpect(jsonPath(
-                        "$.data.recipeFoodIngredients[0].currentSecondaryAmountValue"
+                        "$.data.foodIngredients[0].currentSecondaryAmountValue"
                 ).value(2.0))
-                .andExpect(jsonPath("$.data.recipeFoodIngredients[0].secondaryUnit")
+                .andExpect(jsonPath("$.data.foodIngredients[0].secondaryUnit")
                         .value("AL"));
         then(cookingRecordService).should().getFoodIngredients(10L, "1234");
     }
@@ -118,7 +123,12 @@ class CookingRecordControllerTest {
         // given
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_3,
-                DifficultyLevel.LEVEL_2
+                DifficultyLevel.LEVEL_2,
+                List.of(new ModifiedCookingRecordFoodIngredientReqDto(
+                        1L,
+                        80.0,
+                        null
+                ))
         );
         CookingResultSaveResDto response = CookingResultSaveResDto.create(10L);
         MockMultipartFile requestPart = new MockMultipartFile(
@@ -155,7 +165,8 @@ class CookingRecordControllerTest {
         // given
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_2,
-                DifficultyLevel.LEVEL_1
+                DifficultyLevel.LEVEL_1,
+                List.of()
         );
         CookingResultSaveResDto response = CookingResultSaveResDto.create(10L);
         MockMultipartFile requestPart = new MockMultipartFile(
@@ -182,7 +193,36 @@ class CookingRecordControllerTest {
         // given
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 null,
-                DifficultyLevel.LEVEL_1
+                DifficultyLevel.LEVEL_1,
+                List.of()
+        );
+        MockMultipartFile requestPart = new MockMultipartFile(
+                "request",
+                "request.json",
+                MediaType.APPLICATION_JSON_VALUE,
+                objectMapper.writeValueAsBytes(request)
+        );
+
+        // when & then
+        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/v1/cooking-records")
+                        .file(requestPart)
+                        .param("userNumber", "1234"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("요리 결과 저장 API 실패 - 음식 재료 사용량 음수")
+    void 요리_결과_저장_API_실패_음식_재료_사용량_음수() throws Exception {
+        // given
+        CookingResultSaveReqDto request = new CookingResultSaveReqDto(
+                TasteRating.LEVEL_2,
+                DifficultyLevel.LEVEL_1,
+                List.of(new ModifiedCookingRecordFoodIngredientReqDto(
+                        1L,
+                        -1.0,
+                        null
+                ))
         );
         MockMultipartFile requestPart = new MockMultipartFile(
                 "request",

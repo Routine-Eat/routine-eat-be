@@ -88,13 +88,15 @@ public interface CookingRecordControllerDocs {
             summary = "요리 결과 저장",
             description = """
                     사용자의 가장 최근 완료 요리 기록에 맛 평가와 실제 난이도를 저장합니다.
+                    요청된 음식 재료의 실제 사용량을 먼저 수정하고 해당 값으로 사용자 보유량을 차감합니다.
+                    수정 목록이 비어 있으면 요리 시작 시 초기화된 사용량으로 사용자 보유량을 차감합니다.
                     선택 이미지가 있으면 S3에 업로드하고 CloudFront URL을 기록합니다.
 
                     [Query Parameter]
                     - userNumber: 4자리 사용자 고유 식별번호
 
                     [Multipart Part]
-                    - request: application/json 형식의 맛 평가와 난이도
+                    - request: application/json 형식의 맛 평가, 난이도와 음식 재료 실제 사용량
                     - image: 선택 이미지 파일
                     """
     )
@@ -104,8 +106,8 @@ public interface CookingRecordControllerDocs {
                     description = "요리 결과 저장 성공",
                     content = @Content(schema = @Schema(implementation = CookingResultSaveResDto.class))
             ),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청 또는 이미지", content = @Content),
-            @ApiResponse(responseCode = "404", description = "사용자 또는 요리 기록을 찾을 수 없음", content = @Content),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청, 중복 음식 재료 또는 이미지", content = @Content),
+            @ApiResponse(responseCode = "404", description = "사용자, 요리 기록 또는 요리 기록 음식 재료를 찾을 수 없음", content = @Content),
             @ApiResponse(responseCode = "409", description = "완료된 요리 기록 또는 세션이 없음", content = @Content),
             @ApiResponse(responseCode = "502", description = "이미지 업로드 실패", content = @Content)
     })
@@ -125,7 +127,7 @@ public interface CookingRecordControllerDocs {
             @Size(min = 4, max = 4, message = "사용자 고유 식별번호는 4자리여야 합니다.")
             @Pattern(regexp = "^[0-9]{4}$", message = "사용자 고유 식별번호는 숫자 4자리여야 합니다.")
             @RequestParam("userNumber") String userNumber,
-            @Parameter(description = "맛 평가와 실제 요리 난이도", required = true)
+            @Parameter(description = "맛 평가, 실제 요리 난이도와 음식 재료 실제 사용량", required = true)
             @Valid @RequestPart("request") CookingResultSaveReqDto request,
             @Parameter(description = "선택 요리 결과 이미지")
             @RequestPart(value = "image", required = false) MultipartFile image

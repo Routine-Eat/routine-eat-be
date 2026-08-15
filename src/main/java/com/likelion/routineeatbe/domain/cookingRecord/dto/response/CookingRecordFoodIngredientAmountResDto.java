@@ -11,8 +11,10 @@ import lombok.Builder;
         description = "이번 요리에 사용한 음식 재료 수량 응답 DTO"
 )
 public record CookingRecordFoodIngredientAmountResDto(
-        @Schema(description = "레시피 음식 재료 PK", example = "1")
-        Long id,
+        @Schema(description = "요리 기록 음식 재료 PK", example = "1")
+        Long cookingRecordFoodIngredientId,
+        @Schema(description = "음식 재료 PK", example = "1")
+        Long foodIngredientId,
         @Schema(description = "음식 재료 이름", example = "계란")
         String name,
         @Schema(description = "요리 전 사용자 보유 주 단위 음식 재료 양", example = "80")
@@ -30,7 +32,8 @@ public record CookingRecordFoodIngredientAmountResDto(
 ) {
 
     public static CookingRecordFoodIngredientAmountResDto create(
-            Long id,
+            Long cookingRecordFoodIngredientId,
+            Long foodIngredientId,
             String name,
             Double prevPrimaryAmountValue,
             Double currentPrimaryAmountValue,
@@ -40,7 +43,8 @@ public record CookingRecordFoodIngredientAmountResDto(
             SecondaryUnit secondaryUnit
     ) {
         return CookingRecordFoodIngredientAmountResDto.builder()
-                .id(id)
+                .cookingRecordFoodIngredientId(cookingRecordFoodIngredientId)
+                .foodIngredientId(foodIngredientId)
                 .name(name)
                 .prevPrimaryAmountValue(prevPrimaryAmountValue)
                 .currentPrimaryAmountValue(currentPrimaryAmountValue)

@@ -96,7 +96,8 @@ public class CookingRecordMapper {
                                     )
                                     : null;
                             return CookingRecordFoodIngredientAmountResDto.create(
-                                    recipeFoodIngredient.getId(),
+                                    cookingRecordFoodIngredient.getId(),
+                                    foodIngredientId,
                                     recipeFoodIngredient.getFoodIngredient().getName(),
                                     prevPrimaryAmountValue,
                                     currentPrimaryAmountValue,

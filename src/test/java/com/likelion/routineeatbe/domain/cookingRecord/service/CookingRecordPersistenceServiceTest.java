@@ -12,6 +12,7 @@ import static org.mockito.Mockito.never;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
@@ -56,8 +57,8 @@ class CookingRecordPersistenceServiceTest {
     @Mock private UserFoodIngredientRepository userFoodIngredientRepository;
 
     @Test
-    @DisplayName("완료된 요리 기록에 회고와 이미지 URL을 저장한다")
-    void 완료된_요리_기록_회고_이미지_URL_저장_성공() {
+    @DisplayName("수정 목록이 비어 있으면 초기 사용량으로 재고를 차감한다")
+    void 수정_목록_비어있음_초기_사용량_차감_성공() {
         // given
         CookingRecord cookingRecord = CookingRecord.builder().id(10L).build();
         FoodIngredient foodIngredient = FoodIngredient.builder().id(20L).build();
@@ -98,6 +99,7 @@ class CookingRecordPersistenceServiceTest {
                 10L,
                 TasteRating.LEVEL_3,
                 DifficultyLevel.LEVEL_2,
+                List.of(),
                 "https://api-img.nahjjun.cloud/1/10/result.jpg"
         );
 
@@ -110,6 +112,149 @@ class CookingRecordPersistenceServiceTest {
                 .isEqualTo(CookingSessionStatus.TERMINATED);
         assertThat(ownedFoodIngredient.getPrimaryAmountValue()).isEqualTo(200.0);
         assertThat(ownedFoodIngredient.getSecondaryAmountValue()).isEqualTo(2.0);
+    }
+
+    @Test
+    @DisplayName("수정된 주 단위 사용량과 기존 보조 단위 사용량으로 재고를 차감한다")
+    void 수정된_사용량_기준_재고_차감_성공() {
+        // given
+        CookingRecord cookingRecord = CookingRecord.builder().id(10L).build();
+        FoodIngredient foodIngredient = FoodIngredient.builder().id(20L).build();
+        CookingRecordFoodIngredient usedFoodIngredient =
+                CookingRecordFoodIngredient.builder()
+                        .id(40L)
+                        .primaryUsedAmountValue(100.0)
+                        .secondaryUsedAmountValue(1.0)
+                        .cookingRecord(cookingRecord)
+                        .foodIngredient(foodIngredient)
+                        .build();
+        cookingRecord.addFoodIngredient(usedFoodIngredient);
+        CookingSession cookingSession = CookingSession.builder()
+                .id(100L)
+                .status(CookingSessionStatus.COMPLETED)
+                .cookingRecord(cookingRecord)
+                .build();
+        cookingRecord.assignCookingSession(cookingSession);
+        UserFoodIngredient ownedFoodIngredient = UserFoodIngredient.builder()
+                .id(30L)
+                .relationType(UserFoodIngredientType.OWN)
+                .primaryAmountValue(300.0)
+                .secondaryAmountValue(3.0)
+                .foodIngredient(foodIngredient)
+                .build();
+        given(cookingRecordRepository.findByIdAndUserIdForUpdate(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+        given(userFoodIngredientRepository
+                .findAllForUpdateByUserIdAndRelationTypeAndFoodIngredientIds(
+                        1L,
+                        UserFoodIngredientType.OWN,
+                        List.of(20L)
+                ))
+                .willReturn(List.of(ownedFoodIngredient));
+
+        // when
+        persistenceService.saveCookingResult(
+                1L,
+                10L,
+                TasteRating.LEVEL_3,
+                DifficultyLevel.LEVEL_2,
+                List.of(new ModifiedCookingRecordFoodIngredientReqDto(
+                        40L,
+                        120.0,
+                        null
+                )),
+                null
+        );
+
+        // then
+        assertThat(usedFoodIngredient.getPrimaryUsedAmountValue()).isEqualTo(120.0);
+        assertThat(usedFoodIngredient.getSecondaryUsedAmountValue()).isEqualTo(1.0);
+        assertThat(ownedFoodIngredient.getPrimaryAmountValue()).isEqualTo(180.0);
+        assertThat(ownedFoodIngredient.getSecondaryAmountValue()).isEqualTo(2.0);
+    }
+
+    @Test
+    @DisplayName("현재 요리 기록에 속하지 않은 음식 재료 수정은 실패한다")
+    void 음식_재료_사용량_수정_실패_현재_요리_기록에_속하지_않음() {
+        // given
+        CookingRecord cookingRecord = CookingRecord.builder().id(10L).build();
+        FoodIngredient foodIngredient = FoodIngredient.builder().id(20L).build();
+        CookingRecordFoodIngredient usedFoodIngredient =
+                CookingRecordFoodIngredient.builder()
+                        .id(40L)
+                        .primaryUsedAmountValue(100.0)
+                        .cookingRecord(cookingRecord)
+                        .foodIngredient(foodIngredient)
+                        .build();
+        cookingRecord.addFoodIngredient(usedFoodIngredient);
+        CookingSession cookingSession = CookingSession.builder()
+                .id(100L)
+                .status(CookingSessionStatus.COMPLETED)
+                .cookingRecord(cookingRecord)
+                .build();
+        cookingRecord.assignCookingSession(cookingSession);
+        given(cookingRecordRepository.findByIdAndUserIdForUpdate(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+
+        // when & then
+        assertThatThrownBy(() -> persistenceService.saveCookingResult(
+                1L,
+                10L,
+                TasteRating.LEVEL_3,
+                DifficultyLevel.LEVEL_2,
+                List.of(new ModifiedCookingRecordFoodIngredientReqDto(
+                        99L,
+                        120.0,
+                        null
+                )),
+                null
+        )).isInstanceOf(CustomException.class)
+                .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
+                        .isEqualTo(CookingRecordErrorCode
+                                .COOKING_RECORD_FOOD_INGREDIENT_NOT_FOUND));
+        assertThat(usedFoodIngredient.getPrimaryUsedAmountValue()).isEqualTo(100.0);
+        then(userFoodIngredientRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("동일한 요리 기록 음식 재료가 중복되면 수정에 실패한다")
+    void 음식_재료_사용량_수정_실패_중복_ID() {
+        // given
+        CookingRecord cookingRecord = CookingRecord.builder().id(10L).build();
+        FoodIngredient foodIngredient = FoodIngredient.builder().id(20L).build();
+        CookingRecordFoodIngredient usedFoodIngredient =
+                CookingRecordFoodIngredient.builder()
+                        .id(40L)
+                        .primaryUsedAmountValue(100.0)
+                        .cookingRecord(cookingRecord)
+                        .foodIngredient(foodIngredient)
+                        .build();
+        cookingRecord.addFoodIngredient(usedFoodIngredient);
+        CookingSession cookingSession = CookingSession.builder()
+                .id(100L)
+                .status(CookingSessionStatus.COMPLETED)
+                .cookingRecord(cookingRecord)
+                .build();
+        cookingRecord.assignCookingSession(cookingSession);
+        given(cookingRecordRepository.findByIdAndUserIdForUpdate(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+        ModifiedCookingRecordFoodIngredientReqDto modifiedFoodIngredient =
+                new ModifiedCookingRecordFoodIngredientReqDto(40L, 120.0, null);
+
+        // when & then
+        assertThatThrownBy(() -> persistenceService.saveCookingResult(
+                1L,
+                10L,
+                TasteRating.LEVEL_3,
+                DifficultyLevel.LEVEL_2,
+                List.of(modifiedFoodIngredient, modifiedFoodIngredient),
+                null
+        )).isInstanceOf(CustomException.class)
+                .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
+                        .isEqualTo(CookingRecordErrorCode
+                                .DUPLICATE_COOKING_RECORD_FOOD_INGREDIENT));
+        assertThat(usedFoodIngredient.getPrimaryUsedAmountValue()).isEqualTo(100.0);
+        then(userFoodIngredientRepository).shouldHaveNoInteractions();
     }
 
     @Test
@@ -137,6 +282,7 @@ class CookingRecordPersistenceServiceTest {
                 10L,
                 TasteRating.LEVEL_2,
                 DifficultyLevel.LEVEL_1,
+                List.of(),
                 null
         );
 
@@ -169,6 +315,7 @@ class CookingRecordPersistenceServiceTest {
                 10L,
                 TasteRating.LEVEL_1,
                 DifficultyLevel.LEVEL_5,
+                List.of(),
                 null
         )).isInstanceOf(CustomException.class)
                 .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())

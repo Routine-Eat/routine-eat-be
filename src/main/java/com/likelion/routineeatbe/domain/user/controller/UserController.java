@@ -5,6 +5,7 @@ import com.likelion.routineeatbe.domain.user.dto.request.*;
 import com.likelion.routineeatbe.domain.user.dto.response.UserFoodIngredientResponse;
 import com.likelion.routineeatbe.domain.user.dto.response.UserOnboardingResponse;
 import com.likelion.routineeatbe.domain.user.dto.response.UserResponse;
+import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.domain.user.service.UserCookingEquipmentService;
 import com.likelion.routineeatbe.domain.user.service.UserFoodIngredientService;
@@ -95,5 +96,11 @@ public class UserController implements UserControllerDocs {
         UserOnboardingResponse userOnboardingResponse=userOnboardingService.saveOnboardingData(userId,request);
 
         return GlobalResponse.success(201,"사용자 온보딩 데이터 저장에 성공했습니다.",userOnboardingResponse);
+    }
+
+    @Override
+    public GlobalResponse<UserResponse> getUserByLoginNumber(String loginNumber){
+        UserResponse user=userService.getUserByLoginNumber(loginNumber);
+        return GlobalResponse.success(200,"사용자 단일 조회에 성공했습니다.",user);
     }
 }

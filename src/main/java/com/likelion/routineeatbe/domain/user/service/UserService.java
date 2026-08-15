@@ -68,4 +68,11 @@ public class UserService {
 
         return UserResponse.fromUserEntity(user);
     }
+
+    @Transactional
+    public UserResponse getUserByLoginNumber(String loginNUmber){
+        User user=userRepository.findByLoginNumber(loginNUmber)
+                .orElseThrow(()->new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER));
+        return UserResponse.fromUserEntity(user);
+    }
 }

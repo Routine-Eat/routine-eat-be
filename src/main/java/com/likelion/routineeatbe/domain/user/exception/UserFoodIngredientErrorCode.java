@@ -9,7 +9,8 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum UserFoodIngredientErrorCode implements BaseErrorCode {
     NOT_EXIST_USER("USERFOODINGREDIENT4041", "존재하지 않는 사용자입니다.", HttpStatus.NOT_FOUND),
-    NOT_EXIST_FOODINGREDIENT("USERFOODINGREDIENT4042", "존재하지 않는 식재료가 있습니다.", HttpStatus.NOT_FOUND);
+    NOT_EXIST_FOODINGREDIENT("USERFOODINGREDIENT4042", "존재하지 않는 식재료가 있습니다.", HttpStatus.NOT_FOUND),
+    ALREADY_EXIST_USER_FOOD_INGREDIENT("USERFOODINGREDIENT4001","이미 추가된 식재료는 다시 추가할 수 없습니다.",HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;

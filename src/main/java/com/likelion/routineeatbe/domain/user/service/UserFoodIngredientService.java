@@ -65,6 +65,16 @@ public class UserFoodIngredientService {
         if (foodIngredients.size() != uniqueRequestedCount) {
             throw new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_FOODINGREDIENT);
         }
+
+        /* 2-4. 이미 동일한 관계(relationType)로 등록된 식재료가 있는지 확인 */
+        boolean isDuplicateExist = userFoodIngredientRepository.existsByUserIdAndFoodIngredientIdInAndRelationType(
+                userId, requestedIds, request.relationType()
+        );
+
+        if (isDuplicateExist) {
+            throw new CustomException(UserFoodIngredientErrorCode.ALREADY_EXIST_USER_FOOD_INGREDIENT); // 적절한 에러코드로 변경
+        }
+
         /* 3. UserFoodIngredient 리스트로 빌드 */
         List<UserFoodIngredient> userFoodIngredients = request.foodIngredientList().stream()
                 .map(itemDto -> UserFoodIngredient.createUserFoodIngredient(

@@ -63,8 +63,8 @@ public class MenuAndRecipeGeminiService {
         // 메뉴별 sequence 값은 메뉴명 앞에 붙어있는 메뉴 번호를 사용한다.
         for (int index = 0; index < batches.size(); index++) {
             List<MenuAndRecipeCrawlingDto> batch = batches.get(index);
-            MenuAndRecipeMetaDataBatchDto response = callBatchWithRetry(batch, index + 1);
-            mergeBatchResult(batch, response, result);
+            Map<Integer, MenuMetaData> metaDataBySequence = callBatchWithRetry(batch, index + 1);
+            mergeBatchResult(batch, metaDataBySequence, result);
         }
 
         log.info(
@@ -104,13 +104,13 @@ public class MenuAndRecipeGeminiService {
     }
 
     /**
-     * 단일 배치를 Gemini로 호출하고 429 오류가 발생한 경우에만 재시도합니다.
+     * 단일 배치를 Gemini로 호출하고 호출 한도 초과, 응답 시간 초과 또는 응답 검증 실패 시 재시도합니다.
      *
      * @param batch Gemini에 전달할 메뉴 배치
      * @param batchNumber 로그에 사용할 배치 순번
-     * @return Gemini가 생성한 배치 메타데이터
+     * @return 메뉴 순번 기준으로 구성한 검증 완료 메타데이터 Map
      */
-    private MenuAndRecipeMetaDataBatchDto callBatchWithRetry(
+    private Map<Integer, MenuMetaData> callBatchWithRetry(
             List<MenuAndRecipeCrawlingDto> batch,
             int batchNumber
     ) {
@@ -123,28 +123,41 @@ public class MenuAndRecipeGeminiService {
         int maxAttempts = properties.retry().maxAttempts();
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
-                MenuAndRecipeMetaDataBatchDto result = geminiUtil.callFunction(
+                MenuAndRecipeMetaDataBatchDto response = geminiUtil.callFunction(
                         properties.menuAnalyzeModel(),
                         createBatchPrompt(batch),
                         MenuAndRecipeGeminiFunctionDeclarationDto.create(batch.size()),
                         MenuAndRecipeMetaDataBatchDto.class
                 );
+                Map<Integer, MenuMetaData> result = validateBatchResponse(batch, response);
                 log.debug(
-                        "[MenuAndRecipeGeminiService] Gemini 배치 호출 종료 | callBatchWithRetry() - END | batchNumber: {}, attempt: {}",
+                        "[MenuAndRecipeGeminiService] Gemini 배치 호출 및 검증 종료 | callBatchWithRetry() - END | batchNumber: {}, attempt: {}, resultSize: {}",
                         batchNumber,
-                        attempt
+                        attempt,
+                        result.size()
                 );
                 return result;
             } catch (CustomException exception) {
                 boolean rateLimited = exception.getErrorCode() == GeminiErrorCode.RATE_LIMIT_EXCEEDED;
-                if (!rateLimited || attempt == maxAttempts) {
+                boolean apiTimedOut = exception.getErrorCode() == GeminiErrorCode.API_TIMEOUT;
+                boolean invalidMetadata = exception.getErrorCode() == GeminiErrorCode.INVALID_METADATA;
+                boolean retryable = rateLimited || apiTimedOut || invalidMetadata;
+                if (!retryable || attempt == maxAttempts) {
+                    log.warn(
+                            "[MenuAndRecipeGeminiService] Gemini 배치 호출 실패 | callBatchWithRetry() | batchNumber: {}, attempt: {}, maxAttempts: {}, errorCode: {}",
+                            batchNumber,
+                            attempt,
+                            maxAttempts,
+                            exception.getErrorCode().getCode()
+                    );
                     throw exception;
                 }
                 log.warn(
-                        "[MenuAndRecipeGeminiService] Gemini 배치 재시도 | batchNumber: {}, attempt: {}, maxAttempts: {}",
+                        "[MenuAndRecipeGeminiService] Gemini 배치 재시도 | callBatchWithRetry() | batchNumber: {}, attempt: {}, nextAttempt: {}, errorCode: {}",
                         batchNumber,
                         attempt,
-                        maxAttempts
+                        attempt + 1,
+                        exception.getErrorCode().getCode()
                 );
                 retryDelayStrategy.waitBeforeRetry(attempt);
             }
@@ -242,15 +255,15 @@ public class MenuAndRecipeGeminiService {
     }
 
     /**
-     * Gemini 배치 응답을 검증하고 원본 메뉴 순서대로 결과 Map에 병합합니다.
+     * 검증된 Gemini 배치 응답을 원본 메뉴 순서대로 결과 Map에 병합합니다.
      *
      * @param batch 원본 메뉴 배치
-     * @param response Gemini 배치 응답
+     * @param metaDataBySequence 메뉴 순번 기준으로 구성한 검증 완료 메타데이터 Map
      * @param result 전체 결과 Map
      */
     private void mergeBatchResult(
             List<MenuAndRecipeCrawlingDto> batch,
-            MenuAndRecipeMetaDataBatchDto response,
+            Map<Integer, MenuMetaData> metaDataBySequence,
             Map<String, MenuAndRecipeMetaDataDto> result
     ) {
         log.debug(
@@ -258,7 +271,6 @@ public class MenuAndRecipeGeminiService {
                 batch.size()
         );
 
-        Map<Integer, MenuMetaData> metaDataBySequence = validateBatchResponse(batch, response);
         for (int index = 0; index < batch.size(); index++) {
             MenuAndRecipeCrawlingDto crawlingDto = batch.get(index);
             MenuMetaData metaData = metaDataBySequence.get(index + 1);

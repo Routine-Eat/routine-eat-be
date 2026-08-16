@@ -58,7 +58,7 @@ public class CookingRecord {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "difficulty_rating")
-    private DifficultyLevel difficultyRating;
+    private DifficultyLevel difficultyLevel;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -111,7 +111,7 @@ public class CookingRecord {
             String photoUrl
     ) {
         this.tasteRating = tasteRating;
-        this.difficultyRating = difficultyLevel;
+        this.difficultyLevel = difficultyLevel;
         if (photoUrl != null) {
             this.photoUrl = photoUrl;
         }

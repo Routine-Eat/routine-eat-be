@@ -2,6 +2,7 @@ package com.likelion.routineeatbe.domain.recipe.controller;
 
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeDetailReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeReRecommendRequest;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.AiRecipeRecommendResponse;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
@@ -15,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -68,5 +71,11 @@ public class RecipeController implements RecipeControllerDocs {
     public GlobalResponse<AiRecipeRecommendResponse> getAiRecipeRecommendSingle(Long userId){
         AiRecipeRecommendResponse response=recipeAiRecommendService.recommendSingleRecipe(userId);
         return GlobalResponse.success(200,"레시피 단일 추천을 성공했습니다.",response);
+    }
+
+    @Override
+    public GlobalResponse<List<AiRecipeRecommendResponse>> getAiRecipeRecommendThree(Long userId, RecipeReRecommendRequest request){
+        List<AiRecipeRecommendResponse> responseList=recipeAiRecommendService.reRecommendRecipes(userId,request);
+        return GlobalResponse.success(200,"레시피 재추천에 성공했습니다",responseList);
     }
 }

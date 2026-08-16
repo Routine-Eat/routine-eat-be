@@ -2,6 +2,7 @@ package com.likelion.routineeatbe.domain.recipe.controller;
 
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeDetailReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeReRecommendRequest;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.AiRecipeRecommendResponse;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
@@ -17,11 +18,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Tag(name = "Recipe", description = "레시피 조회 API")
 @RequestMapping("/api/v1/recipes")
@@ -129,6 +130,33 @@ public interface RecipeControllerDocs {
     @GetMapping("/ai-recommend/{userId}")
     GlobalResponse<AiRecipeRecommendResponse> getAiRecipeRecommendSingle(
             @PathVariable Long userId
+    );
+
+    @Operation(
+            summary = "AI 레시피 재추천 API",
+            description = """
+                    AI 레시피 재추천 API \n
+                    필터링 조건 \n
+                        난이도 - LEVEL_1/LEVEL_2/LEVEL_3/LEVEL_4/LEVEL_5 \n
+                        요리 열정(=걸리는 시간) - QUICK/MEDIUM/LONG \n
+                        희망 재료 아이디 리스트 - [1,2,3] \n
+                    모든 조건은 선택사항임 \n
+                    메뉴 id,이름,썸네일 url/레시피 id/추천 이유 리스트 반환
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "AI 레시피 재추천 성공",
+                    content = @Content(schema = @Schema(implementation = CursorSliceResponse.class))
+            ),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음", content = @Content)
+    })
+    @GetMapping("/ai-recommend/again/{userId}")
+    GlobalResponse<List<AiRecipeRecommendResponse>> getAiRecipeRecommendThree(
+            @PathVariable Long userId,
+            @ParameterObject @ModelAttribute
+            RecipeReRecommendRequest request
     );
 
 }

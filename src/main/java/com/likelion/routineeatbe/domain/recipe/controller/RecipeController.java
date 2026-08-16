@@ -3,9 +3,11 @@ package com.likelion.routineeatbe.domain.recipe.controller;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeDetailReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.AiRecipeRecommendResponse;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
+import com.likelion.routineeatbe.domain.recipe.service.RecipeAiRecommendService;
 import com.likelion.routineeatbe.domain.recipe.service.RecipeService;
 import com.likelion.routineeatbe.global.response.CursorSliceResponse;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class RecipeController implements RecipeControllerDocs {
 
     private final RecipeService recipeService;
+    private final RecipeAiRecommendService recipeAiRecommendService;
 
     @Override
     public ResponseEntity<GlobalResponse<RecipeDetailResDto>> getRecipeDetail(
@@ -59,5 +62,11 @@ public class RecipeController implements RecipeControllerDocs {
                 "주어진 검색어로 레시피 검색에 성공했습니다.",
                 result
         ));
+    }
+
+    @Override
+    public GlobalResponse<AiRecipeRecommendResponse> getAiRecipeRecommendSingle(Long userId){
+        AiRecipeRecommendResponse response=recipeAiRecommendService.recommendSingleRecipe(userId);
+        return GlobalResponse.success(200,"레시피 단일 추천을 성공했습니다.",response);
     }
 }

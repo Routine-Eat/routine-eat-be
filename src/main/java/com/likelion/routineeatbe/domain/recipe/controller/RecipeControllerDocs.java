@@ -3,6 +3,7 @@ package com.likelion.routineeatbe.domain.recipe.controller;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeDetailReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.AiRecipeRecommendResponse;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
@@ -109,4 +110,25 @@ public interface RecipeControllerDocs {
     ResponseEntity<GlobalResponse<CursorSliceResponse<RecipeKeywordSearchResDto>>> searchRecipesByMenuName(
             @Valid @ModelAttribute RecipeKeywordSearchReqDto request
     );
+
+    @Operation(
+            summary = "AI 레시피 단일 추천 API",
+            description = """
+                    AI 레시피 단일 추천 API
+                    메뉴 id,이름,썸네일 url/레시피 id/추천 이유 반환
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "AI 레시피 단일 추천 성공",
+                    content = @Content(schema = @Schema(implementation = CursorSliceResponse.class))
+            ),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음", content = @Content)
+    })
+    @GetMapping("/ai-recommend/{userId}")
+    GlobalResponse<AiRecipeRecommendResponse> getAiRecipeRecommendSingle(
+            @PathVariable Long userId
+    );
+
 }

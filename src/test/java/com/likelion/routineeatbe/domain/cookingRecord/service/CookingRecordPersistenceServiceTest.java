@@ -39,7 +39,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -105,7 +104,7 @@ class CookingRecordPersistenceServiceTest {
 
         // then
         assertThat(result.getTasteRating()).isEqualTo(TasteRating.LEVEL_3);
-        assertThat(result.getDifficultyRating()).isEqualTo(DifficultyLevel.LEVEL_2);
+        assertThat(result.getDifficultyLevel()).isEqualTo(DifficultyLevel.LEVEL_2);
         assertThat(result.getPhotoUrl())
                 .isEqualTo("https://api-img.nahjjun.cloud/1/10/result.jpg");
         assertThat(result.getCookingSession().getStatus())

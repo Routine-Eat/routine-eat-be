@@ -210,6 +210,51 @@ class MenuAndRecipeGeminiServiceTest {
     }
 
     @Test
+    @DisplayName("Gemini 배치 응답의 순번이 중복된 후 다음 호출이 정상이면 재시도하여 성공한다")
+    void Gemini_배치_응답_순번_중복_백오프_재시도_성공() {
+        // given
+        List<MenuAndRecipeCrawlingDto> crawlingDtos = List.of(
+                createCrawlingDto("마파두부"),
+                createCrawlingDto("비빔밥")
+        );
+        MenuAndRecipeMetaDataBatchDto duplicatedSequenceResponse =
+                MenuAndRecipeMetaDataBatchDto.create(List.of(
+                        MenuMetaData.create(
+                                1,
+                                MenuType.KOREAN,
+                                RecommendationType.DEFAULT,
+                                30
+                        ),
+                        MenuMetaData.create(
+                                1,
+                                MenuType.KOREAN,
+                                RecommendationType.DEFAULT,
+                                20
+                        )
+                ));
+        given(geminiUtil.callFunction(
+                eq("menu-model"),
+                anyString(),
+                any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
+                eq(MenuAndRecipeMetaDataBatchDto.class)
+        )).willReturn(duplicatedSequenceResponse, createBatchResponse(2));
+
+        // when
+        Map<String, MenuAndRecipeMetaDataDto> result =
+                menuAndRecipeGeminiService.generateMetaData(crawlingDtos);
+
+        // then
+        assertThat(result.keySet()).containsExactly("마파두부", "비빔밥");
+        then(geminiUtil).should(times(2)).callFunction(
+                eq("menu-model"),
+                anyString(),
+                any(MenuAndRecipeGeminiFunctionDeclarationDto.class),
+                eq(MenuAndRecipeMetaDataBatchDto.class)
+        );
+        then(retryDelayStrategy).should().waitBeforeRetry(1);
+    }
+
+    @Test
     @DisplayName("429가 최대 시도 횟수까지 발생하면 RATE_LIMIT_EXCEEDED를 반환한다")
     void Gemini_429_최대_시도_초과_실패() {
         // given

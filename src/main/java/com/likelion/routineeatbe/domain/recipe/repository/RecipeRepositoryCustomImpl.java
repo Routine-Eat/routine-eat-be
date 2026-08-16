@@ -1,7 +1,9 @@
 package com.likelion.routineeatbe.domain.recipe.repository;
 
+import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeReRecommendRequest;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.enums.RecipeSortType;
@@ -516,5 +518,88 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
             result.put((Long) ownedAmount[0], ((Number) ownedAmount[1]).doubleValue());
         }
         return result;
+    }
+
+    @Override
+    public List<Recipe> findCandidateRecipesByDbFilter(
+            Set<Long> forbiddenIngredientIds,
+            Set<Long> ownedEquipmentIds,
+            DifficultyLevel difficultyLevel,
+            RecipeReRecommendRequest.CookingTimeFilter timeFilter,
+            List<Long> desiredIngredientIds
+    ) {
+        StringBuilder jpql = new StringBuilder("""
+            select distinct recipe
+            from Recipe recipe
+            join fetch recipe.menu menu
+            where recipe.type = com.likelion.routineeatbe.domain.recipe.enums.RecipeType.BASIC
+            """);
+
+        Map<String, Object> params = new HashMap<>();
+
+        // 1. 제외 식재료 DB 차단
+        if (forbiddenIngredientIds != null && !forbiddenIngredientIds.isEmpty()) {
+            jpql.append("""
+                and not exists (
+                    select 1 from RecipeFoodIngredient rfi
+                    where rfi.recipe = recipe
+                      and rfi.foodIngredient.id in :forbiddenIngredientIds
+                )
+                """);
+            params.put("forbiddenIngredientIds", forbiddenIngredientIds);
+        }
+
+        // 2. 미보유 조리도구 필요 레시피 DB 차단
+        if (ownedEquipmentIds == null || ownedEquipmentIds.isEmpty()) {
+            jpql.append("""
+                and not exists (
+                    select 1 from RecipeCookingEquipment rce
+                    where rce.recipe = recipe
+                )
+                """);
+        } else {
+            jpql.append("""
+                and not exists (
+                    select 1 from RecipeCookingEquipment rce
+                    where rce.recipe = recipe
+                      and rce.cookingEquipment.id not in :ownedEquipmentIds
+                )
+                """);
+            params.put("ownedEquipmentIds", ownedEquipmentIds);
+        }
+
+        // 3. 동적 필터: 난이도
+        if (difficultyLevel != null) {
+            jpql.append(" and menu.difficultyLevel = :difficultyLevel ");
+            params.put("difficultyLevel", difficultyLevel);
+        }
+
+        // 4. 동적 필터: 조리시간 3단계 (QUICK: ~15분, MEDIUM: 15~30분, LONG: 30분~)
+        if (timeFilter != null) {
+            switch (timeFilter) {
+                case QUICK -> jpql.append(" and menu.timeRequired <= 15 ");
+                case MEDIUM -> jpql.append(" and menu.timeRequired > 15 and menu.timeRequired <= 30 ");
+                case LONG -> jpql.append(" and menu.timeRequired > 30 ");
+            }
+        }
+
+        // 5. 동적 필터: 희망 식재료 목록 중 최소 1개 포함 조건
+        if (desiredIngredientIds != null && !desiredIngredientIds.isEmpty()) {
+            jpql.append("""
+                and exists (
+                    select 1 from RecipeFoodIngredient rfi
+                    where rfi.recipe = recipe
+                      and rfi.foodIngredient.id in :desiredIngredientIds
+                )
+                """);
+            params.put("desiredIngredientIds", desiredIngredientIds);
+        }
+
+        jpql.append(" order by recipe.cookingCount desc, recipe.id desc ");
+
+        TypedQuery<Recipe> query = entityManager.createQuery(jpql.toString(), Recipe.class);
+        params.forEach(query::setParameter);
+
+        return query.setMaxResults(40).getResultList();
     }
 }

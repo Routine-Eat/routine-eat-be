@@ -101,4 +101,11 @@ public interface UserFoodIngredientRepository extends JpaRepository<UserFoodIngr
             @Param("relationType") UserFoodIngredientType relationType,
             @Param("foodIngredientIds") List<Long> foodIngredientIds
     );
+
+    // 특정 유저, 식재료 ID 목록, 관계 타입에 해당하는 데이터가 이미 존재하는지 확인
+    boolean existsByUserIdAndFoodIngredientIdInAndRelationType(
+            Long userId,
+            List<Long> foodIngredientIds,
+            UserFoodIngredientType relationType
+    );
 }

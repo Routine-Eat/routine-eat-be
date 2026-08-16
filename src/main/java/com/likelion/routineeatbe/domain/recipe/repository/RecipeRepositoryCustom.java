@@ -1,7 +1,9 @@
 package com.likelion.routineeatbe.domain.recipe.repository;
 
+import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeReRecommendRequest;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import java.util.List;
@@ -62,5 +64,13 @@ public interface RecipeRepositoryCustom {
             Set<Long> targetFoodIngredientIds,
             int ingredientDifference,
             int limit
+    );
+
+    List<Recipe> findCandidateRecipesByDbFilter(
+            Set<Long> forbiddenIngredientIds,
+            Set<Long> ownedEquipmentIds,
+            DifficultyLevel difficultyLevel,
+            RecipeReRecommendRequest.CookingTimeFilter timeFilter,
+            List<Long> desiredIngredientIds
     );
 }

@@ -65,6 +65,11 @@ public enum CookingRecordErrorCode implements BaseErrorCode {
             "중복된 요리 기록 음식 재료가 요청되었습니다.",
             HttpStatus.BAD_REQUEST
     ),
+    INVALID_COOKING_STEP_LEVEL(
+            "CR4003",
+            "이동할 요리 단계 번호가 올바르지 않습니다.",
+            HttpStatus.BAD_REQUEST
+    ),
     COOKING_RECORD_IMAGE_UPLOAD_FAILED(
             "CR5021",
             "요리 결과 이미지 업로드에 실패했습니다.",

@@ -538,6 +538,77 @@ public class CookingRecordService {
     }
 
     /**
+     * (1) 작업 목적
+     * 사용자의 요리 세션을 지정한 요리 단계로 이동합니다.
+     *
+     * (2) 세부 작업 내용
+     * - 사용자 소유 요리 기록과 세션을 비관적 쓰기 잠금으로 조회합니다.
+     * - 진행 중 세션과 요청 단계 번호의 유효 범위를 검증합니다.
+     * - 현재 단계를 요청 단계로 변경하고 해당 단계 상세 정보를 반환합니다.
+     *
+     * @param cookingRecordId 요리 기록 PK
+     * @param userNumber 사용자 고유 식별번호
+     * @param targetLevel 이동할 요리 단계 번호
+     * @return 이동한 요리 단계 정보
+     */
+    @Transactional
+    public CookingStepNavigationResDto moveToCookingStep(
+            Long cookingRecordId,
+            String userNumber,
+            Integer targetLevel
+    ) {
+        log.info(
+                "[CookingRecordService] 특정 요리 단계 이동 시작 | moveToCookingStep() - START | cookingRecordId: {}, userNumber: {}, targetLevel: {}",
+                cookingRecordId,
+                userNumber,
+                targetLevel
+        );
+
+        User user = userRepository.findByLoginNumber(userNumber)
+                .orElseThrow(() -> new CustomException(CookingRecordErrorCode.USER_NOT_FOUND));
+        CookingRecord cookingRecord = cookingRecordRepository
+                .findByIdAndUserIdForUpdate(cookingRecordId, user.getId())
+                .orElseThrow(() -> new CustomException(
+                        CookingRecordErrorCode.COOKING_RECORD_NOT_FOUND
+                ));
+        CookingSession cookingSession = cookingRecord.getCookingSession();
+        if (cookingSession == null) {
+            throw new CustomException(CookingRecordErrorCode.COOKING_SESSION_NOT_FOUND);
+        }
+        if (cookingSession.getStatus() != CookingSessionStatus.IN_PROGRESS) {
+            throw new CustomException(
+                    CookingRecordErrorCode.COOKING_SESSION_NOT_IN_PROGRESS
+            );
+        }
+        validateCookingStepState(cookingSession);
+        if (targetLevel == null
+                || targetLevel < 1
+                || targetLevel > cookingSession.getCookingStepCount()) {
+            throw new CustomException(CookingRecordErrorCode.INVALID_COOKING_STEP_LEVEL);
+        }
+
+        cookingSession.moveToStep(targetLevel);
+        CookingStep cookingStep = cookingStepRepository.findByCookingSessionIdAndLevel(
+                        cookingSession.getId(),
+                        targetLevel.longValue()
+                )
+                .orElseThrow(() -> new CustomException(
+                        CookingRecordErrorCode.COOKING_STEP_NOT_FOUND
+                ));
+        CookingStepNavigationResDto result = cookingRecordMapper.toCookingStepNavigationResDto(
+                cookingSession,
+                cookingStep
+        );
+
+        log.info(
+                "[CookingRecordService] 특정 요리 단계 이동 종료 | moveToCookingStep() - END | cookingRecordId: {}, currentLevel: {}",
+                cookingRecordId,
+                result.currentCookingStep().level()
+        );
+        return result;
+    }
+
+    /**
      * 요리 세션의 전체 단계 수와 현재 단계 번호가 이동 가능한 범위인지 검증합니다.
      *
      * @param cookingSession 검증할 요리 세션

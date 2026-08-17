@@ -52,6 +52,8 @@ class CookingStepGenerateGeminiServiceTest {
         GeminiProperties properties = new GeminiProperties(
                 "https://example.com/interactions",
                 "test-key",
+                "cooking-generate-model",
+                "cooking-translate-model",
                 "menu-model",
                 "food-ingredient-model",
                 "cooking-equipment-model",

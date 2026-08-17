@@ -1,11 +1,13 @@
 package com.likelion.routineeatbe.domain.cookingRecord.controller;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingAiReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingAiMultipartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
@@ -25,6 +27,8 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpEntity;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -308,5 +312,64 @@ public interface CookingRecordControllerDocs {
             @Size(min = 4, max = 4, message = "사용자 고유 식별번호는 4자리여야 합니다.")
             @Pattern(regexp = "^[0-9]{4}$", message = "사용자 고유 식별번호는 숫자 4자리여야 합니다.")
             @RequestParam("userNumber") String userNumber
+    );
+
+    @Operation(
+            summary = "요리 중 AI에게 지시 또는 질문",
+            description = """
+                    사용자의 발화를 Gemini Tool Call로 분석합니다.
+                    단계 이동 명령이면 시스템 동작 결과를 반환하고,
+                    일반 발화이면 현재 메뉴, 요리 단계와 재료 정보를 기반으로 답변과 WAV 음성을 반환합니다.
+                    응답은 브라우저의 Response.formData()로 파트별 파싱할 수 있는 multipart/form-data 형식입니다.
+
+                    [Path Variable]
+                    - cookingRecordId: 요리 기록 PK
+
+                    [Query Parameter]
+                    - userNumber: 4자리 사용자 고유 식별번호
+
+                    [Response Part]
+                    - response: GlobalResponse JSON
+                    - audio: AI 텍스트 답변의 audio/wav 바이너리, 시스템 명령에서는 생략
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "시스템 동작 또는 AI 답변 생성 성공",
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(implementation = CookingAiMultipartResDto.class),
+                            encoding = {
+                                    @Encoding(
+                                            name = "response",
+                                            contentType = MediaType.APPLICATION_JSON_VALUE
+                                    ),
+                                    @Encoding(name = "audio", contentType = "audio/wav")
+                            }
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 값 또는 단계 번호", content = @Content),
+            @ApiResponse(responseCode = "404", description = "사용자, 요리 기록, 세션 또는 단계를 찾을 수 없음", content = @Content),
+            @ApiResponse(responseCode = "409", description = "진행 중인 요리 세션이 아님", content = @Content),
+            @ApiResponse(responseCode = "502", description = "Gemini 텍스트 또는 음성 응답 오류", content = @Content),
+            @ApiResponse(responseCode = "503", description = "Gemini 호출 한도 초과", content = @Content),
+            @ApiResponse(responseCode = "504", description = "Gemini 응답 시간 초과", content = @Content)
+    })
+    @PostMapping(
+            value = "/{cookingRecordId}/cooking-session/ai",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    ResponseEntity<MultiValueMap<String, HttpEntity<?>>> requestCookingAi(
+            @Parameter(description = "요리 기록 PK", required = true)
+            @Positive(message = "요리 기록 PK는 양수여야 합니다.")
+            @PathVariable("cookingRecordId") Long cookingRecordId,
+            @Parameter(description = "사용자 고유 식별번호", required = true)
+            @NotBlank(message = "사용자 고유 식별번호는 필수입니다.")
+            @Size(min = 4, max = 4, message = "사용자 고유 식별번호는 4자리여야 합니다.")
+            @Pattern(regexp = "^[0-9]{4}$", message = "사용자 고유 식별번호는 숫자 4자리여야 합니다.")
+            @RequestParam("userNumber") String userNumber,
+            @Valid @RequestBody CookingAiReqDto request
     );
 }

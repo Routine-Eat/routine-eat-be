@@ -50,4 +50,16 @@ public class CookingSessionLog {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cooking_session_id", nullable = false)
     private CookingSession cookingSession;
+
+    public static CookingSessionLog create(
+            CookingSession cookingSession,
+            CookingSessionLogType type,
+            String content
+    ) {
+        return CookingSessionLog.builder()
+                .cookingSession(cookingSession)
+                .type(type)
+                .content(content)
+                .build();
+    }
 }

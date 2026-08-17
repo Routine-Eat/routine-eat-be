@@ -724,6 +724,54 @@ class CookingRecordServiceTest {
                         .isEqualTo(CookingRecordErrorCode.COOKING_SESSION_NOT_IN_PROGRESS));
     }
 
+    @Test
+    @DisplayName("진행 중인 요리 세션을 특정 단계로 이동한다")
+    void 진행_중_요리_세션_특정_단계_이동_성공() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = createCookingRecord(10L, user, 1, 3);
+        CookingSession cookingSession = cookingRecord.getCookingSession();
+        CookingStep cookingStep = CookingStep.builder()
+                .id(21L)
+                .level(3L)
+                .title("완성")
+                .content("불을 끄고 완성하세요.")
+                .cookingSession(cookingSession)
+                .build();
+        CookingStepNavigationResDto expected = CookingStepNavigationResDto.create(
+                3,
+                2,
+                null,
+                CookingStepDetailResDto.create(
+                        21L,
+                        3L,
+                        "완성",
+                        null,
+                        "불을 끄고 완성하세요.",
+                        null,
+                        List.of()
+                )
+        );
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository.findByIdAndUserIdForUpdate(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+        given(cookingStepRepository.findByCookingSessionIdAndLevel(100L, 3L))
+                .willReturn(Optional.of(cookingStep));
+        given(cookingRecordMapper.toCookingStepNavigationResDto(cookingSession, cookingStep))
+                .willReturn(expected);
+
+        // when
+        CookingStepNavigationResDto result = cookingRecordService.moveToCookingStep(
+                10L,
+                "1234",
+                3
+        );
+
+        // then
+        assertThat(result).isSameAs(expected);
+        assertThat(cookingSession.getCurrentCookingStepLevel()).isEqualTo(3);
+    }
+
     private CookingRecord createCookingRecord(
             Long cookingRecordId,
             User user,

@@ -1,6 +1,7 @@
 package com.likelion.routineeatbe.domain.cookingRecord.mapper;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingAiContextDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingRecordSearchResult;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientAmountResDto;
@@ -28,6 +29,70 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class CookingRecordMapper {
+
+    /**
+     * 요리 기록과 단계, 재료 정보를 Gemini 요리 답변용 컨텍스트 DTO로 변환합니다.
+     *
+     * @param cookingRecord 사용자 소유 요리 기록
+     * @param cookingSteps 요리 세션에 저장된 실제 요리 단계 목록
+     * @param foodIngredients 레시피에 등록된 음식 재료 목록
+     * @return Gemini 프롬프트 생성에 사용할 요리 컨텍스트
+     */
+    public CookingAiContextDto toCookingAiContextDto(
+            CookingRecord cookingRecord,
+            List<CookingStep> cookingSteps,
+            List<RecipeFoodIngredient> foodIngredients
+    ) {
+        CookingSession cookingSession = cookingRecord.getCookingSession();
+        List<CookingAiContextDto.CookingStepContext> stepContexts = cookingSteps.stream()
+                .map(cookingStep -> new CookingAiContextDto.CookingStepContext(
+                        cookingStep.getLevel(),
+                        cookingStep.getTitle(),
+                        cookingStep.getContent(),
+                        cookingStep.getSubContent()
+                ))
+                .toList();
+        List<CookingAiContextDto.FoodIngredientContext> ingredientContexts =
+                foodIngredients.stream()
+                        .map(foodIngredient -> {
+                            Double secondaryAmount = foodIngredient
+                                    .getSecondaryNeedAmountValue() == null
+                                    ? null
+                                    : foodIngredient.getSecondaryNeedAmountValue()
+                                            * cookingRecord.getServings();
+                            return new CookingAiContextDto.FoodIngredientContext(
+                                    foodIngredient.getFoodIngredient().getName(),
+                                    foodIngredient.getPrimaryNeedAmountValue()
+                                            * cookingRecord.getServings(),
+                                    foodIngredient.getFoodIngredient()
+                                            .getPrimaryUnit()
+                                            .getDescription(),
+                                    secondaryAmount,
+                                    secondaryAmount == null
+                                            ? null
+                                            : foodIngredient.getFoodIngredient()
+                                                    .getSecondaryUnit()
+                                                    .getDescription()
+                            );
+                        })
+                        .toList();
+        return new CookingAiContextDto(
+                cookingRecord.getUser().getId(),
+                cookingRecord.getId(),
+                cookingSession.getId(),
+                cookingRecord.getRecipe().getId(),
+                cookingRecord.getServings(),
+                cookingSession.getCurrentCookingStepLevel(),
+                cookingSession.getCookingStepCount(),
+                cookingRecord.getRecipe().getMenu().getName(),
+                cookingRecord.getRecipe().getMenu().getType().name(),
+                cookingRecord.getRecipe().getMenu().getDifficultyLevel().name(),
+                cookingRecord.getRecipe().getMenu().getTimeRequired(),
+                cookingRecord.getRecipe().getMenu().getCalory(),
+                stepContexts,
+                ingredientContexts
+        );
+    }
 
     /**
      * 요리 기록 조회 결과를 목록 항목 응답 DTO로 변환합니다.

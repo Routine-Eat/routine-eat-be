@@ -1,6 +1,8 @@
 package com.likelion.routineeatbe.domain.cookingRecord.controller;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingAiReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingAiResult;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
@@ -10,10 +12,16 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResult
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingRecordService;
+import com.likelion.routineeatbe.domain.cookingRecord.service.CookingAiService;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.util.MultiValueMap;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,6 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class CookingRecordController implements CookingRecordControllerDocs {
 
     private final CookingRecordService cookingRecordService;
+    private final CookingAiService cookingAiService;
 
     @Override
     public ResponseEntity<GlobalResponse<CookingRecordListResDto>> getCookingRecords(
@@ -147,5 +156,42 @@ public class CookingRecordController implements CookingRecordControllerDocs {
                         message,
                         result
                 ));
+    }
+
+    @Override
+    public ResponseEntity<MultiValueMap<String, HttpEntity<?>>> requestCookingAi(
+            Long cookingRecordId,
+            String userNumber,
+            CookingAiReqDto request
+    ) {
+        CookingAiResult result = cookingAiService.interact(
+                cookingRecordId,
+                userNumber,
+                request
+        );
+        MultipartBodyBuilder bodyBuilder = new MultipartBodyBuilder();
+        bodyBuilder.part(
+                        "response",
+                        GlobalResponse.success(
+                                HttpStatus.CREATED.value(),
+                                result.message(),
+                                result.data()
+                        )
+                )
+                .contentType(MediaType.APPLICATION_JSON);
+        if (result.audio() != null) {
+            ByteArrayResource audioResource = new ByteArrayResource(result.audio()) {
+                @Override
+                public String getFilename() {
+                    return "cooking-ai-answer.wav";
+                }
+            };
+            bodyBuilder.part("audio", audioResource)
+                    .contentType(MediaType.parseMediaType("audio/wav"));
+        }
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(bodyBuilder.build());
     }
 }

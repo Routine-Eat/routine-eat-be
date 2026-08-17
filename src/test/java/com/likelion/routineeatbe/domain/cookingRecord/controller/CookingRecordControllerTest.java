@@ -1,17 +1,22 @@
 package com.likelion.routineeatbe.domain.cookingRecord.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingAiResult;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingAiReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingAiAnswerResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientAmountResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
@@ -23,10 +28,12 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDe
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTitleResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
+import com.likelion.routineeatbe.domain.cookingRecord.service.CookingAiService;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingRecordService;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
@@ -54,7 +61,63 @@ class CookingRecordControllerTest {
     private CookingRecordService cookingRecordService;
 
     @MockitoBean
+    private CookingAiService cookingAiService;
+
+    @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+
+    @Test
+    @DisplayName("요리 중 AI 질문 API 성공 - multipart 응답 반환")
+    void 요리_중_AI_질문_API_성공() throws Exception {
+        // given
+        CookingAiReqDto request = new CookingAiReqDto("조린다는 게 뭐야?");
+        CookingAiResult response = CookingAiResult.create(
+                "응답이 반환되었습니다.",
+                CookingAiAnswerResDto.create("약한 불에서 국물이 배도록 익히는 뜻이에요."),
+                new byte[]{1, 2, 3}
+        );
+        given(cookingAiService.interact(10L, "1234", request)).willReturn(response);
+
+        // when & then
+        mockMvc.perform(post(
+                        "/api/v1/cooking-records/{cookingRecordId}/cooking-session/ai",
+                        10L
+                )
+                        .param("userNumber", "1234")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(result -> {
+                    String multipartBody = result.getResponse()
+                            .getContentAsString(StandardCharsets.UTF_8);
+                    assertThat(multipartBody)
+                            .contains("name=\"response\"")
+                            .contains("Content-Type: application/json")
+                            .contains("약한 불에서 국물이 배도록 익히는 뜻이에요.")
+                            .contains("name=\"audio\"; filename=\"cooking-ai-answer.wav\"")
+                            .contains("Content-Type: audio/wav");
+                });
+        then(cookingAiService).should().interact(10L, "1234", request);
+    }
+
+    @Test
+    @DisplayName("요리 중 AI 질문 API 실패 - 빈 사용자 발화")
+    void 요리_중_AI_질문_API_실패_빈_사용자_발화() throws Exception {
+        // given
+        CookingAiReqDto request = new CookingAiReqDto(" ");
+
+        // when & then
+        mockMvc.perform(post(
+                        "/api/v1/cooking-records/{cookingRecordId}/cooking-session/ai",
+                        10L
+                )
+                        .param("userNumber", "1234")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        then(cookingAiService).shouldHaveNoInteractions();
+    }
 
     @Test
     @DisplayName("요리 기록 목록 조회 API 성공 - 기본 커서와 크기 적용")

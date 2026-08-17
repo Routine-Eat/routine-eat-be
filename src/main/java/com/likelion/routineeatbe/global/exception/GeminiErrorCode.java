@@ -19,6 +19,16 @@ public enum GeminiErrorCode implements BaseErrorCode {
             "GEM007",
             "Gemini가 생성한 요리 단계 데이터가 올바르지 않습니다.",
             HttpStatus.BAD_GATEWAY
+    ),
+    INVALID_AUDIO_RESPONSE(
+            "GEM008",
+            "Gemini 음성 응답 형식이 올바르지 않습니다.",
+            HttpStatus.BAD_GATEWAY
+    ),
+    AUDIO_GENERATION_FAILED(
+            "GEM009",
+            "Gemini 음성 생성에 실패했습니다.",
+            HttpStatus.BAD_GATEWAY
     );
 
     private final String code;

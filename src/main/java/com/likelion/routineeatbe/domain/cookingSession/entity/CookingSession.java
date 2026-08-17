@@ -109,6 +109,10 @@ public class CookingSession {
         this.currentCookingStepLevel--;
     }
 
+    public void moveToStep(Integer level) {
+        this.currentCookingStepLevel = level;
+    }
+
     public void complete() {
         this.status = CookingSessionStatus.COMPLETED;
     }

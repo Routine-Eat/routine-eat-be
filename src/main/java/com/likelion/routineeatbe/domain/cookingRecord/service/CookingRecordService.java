@@ -1,10 +1,13 @@
 package com.likelion.routineeatbe.domain.cookingRecord.service;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingRecordSearchResult;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
@@ -35,6 +38,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -58,6 +62,65 @@ public class CookingRecordService {
     private final CookingRecordPersistenceService persistenceService;
     private final CookingRecordImageStorageService imageStorageService;
     private final CookingRecordMapper cookingRecordMapper;
+
+    /**
+     * (1) 작업 목적
+     * 사용자의 회고 저장까지 종료된 요리 기록을 최신순으로 조회합니다.
+     *
+     * (2) 세부 작업 내용
+     * - 사용자 고유 식별번호로 사용자를 조회합니다.
+     * - 종료 상태와 사용자 난이도가 저장된 요리 기록을 위치 커서 기반 조회합니다.
+     * - 다음 조회 위치를 계산하고 요리 기록 목록 응답으로 변환합니다.
+     *
+     * @param request 사용자 식별번호와 커서 조회 조건
+     * @return 요리 기록 목록과 다음 커서 정보
+     */
+    @Transactional(readOnly = true)
+    public CookingRecordListResDto getCookingRecords(CookingRecordSearchReqDto request) {
+        log.info(
+                "[CookingRecordService] 요리 기록 목록 조회 시작 | getCookingRecords() - START | userNumber: {}, cursor: {}, size: {}",
+                request.userNumber(),
+                request.cursor(),
+                request.size()
+        );
+
+        /*
+            1. 사용자 조회
+            - 사용자 고유 식별번호가 존재하지 않으면 USER_NOT_FOUND 예외를 발생시킵니다.
+         */
+        User user = userRepository.findByLoginNumber(request.userNumber())
+                .orElseThrow(() -> new CustomException(CookingRecordErrorCode.USER_NOT_FOUND));
+
+        /*
+            2. 종료 요리 기록 조회
+            - 회고 저장까지 종료된 요리 기록을 최신순으로 위치 커서 조회합니다.
+         */
+        Slice<CookingRecordSearchResult> cookingRecordSlice = cookingRecordRepository
+                .searchTerminatedCookingRecords(
+                        user.getId(),
+                        request.cursor(),
+                        request.size()
+                );
+
+        /*
+            3. 요리 기록 목록 응답 변환
+            - 다음 데이터가 존재하면 다음 조회 위치를 계산하고 Mapper로 응답을 생성합니다.
+         */
+        Integer nextCursor = cookingRecordSlice.hasNext()
+                ? request.cursor() + request.size()
+                : null;
+        CookingRecordListResDto result = cookingRecordMapper.toCookingRecordListResDto(
+                cookingRecordSlice,
+                nextCursor
+        );
+
+        log.info(
+                "[CookingRecordService] 요리 기록 목록 조회 종료 | getCookingRecords() - END | resultSize: {}, nextCursor: {}",
+                result.content().size(),
+                result.nextCursor()
+        );
+        return result;
+    }
 
     /**
      * (1) 작업 목적

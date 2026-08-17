@@ -1,9 +1,12 @@
 package com.likelion.routineeatbe.domain.cookingRecord.mapper;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingRecordSearchResult;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientAmountResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
@@ -20,10 +23,48 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Component;
 
 @Component
 public class CookingRecordMapper {
+
+    /**
+     * 요리 기록 조회 결과를 목록 항목 응답 DTO로 변환합니다.
+     *
+     * @param result 변환할 요리 기록 조회 결과
+     * @return 요리 기록 목록 항목 응답
+     */
+    public CookingRecordListItemResDto toCookingRecordListItemResDto(
+            CookingRecordSearchResult result
+    ) {
+        return CookingRecordListItemResDto.create(
+                result.recipeId(),
+                result.menuName(),
+                result.thumbnailUrl(),
+                result.favoriteRecipe(),
+                result.createdAt().toLocalDate(),
+                result.userDifficultyLevel(),
+                result.usedFoodIngredientCount()
+        );
+    }
+
+    /**
+     * 요리 기록 Slice와 다음 커서를 목록 응답 DTO로 변환합니다.
+     *
+     * @param slice 요리 기록 조회 결과 Slice
+     * @param nextCursor 다음 조회에 사용할 위치 커서
+     * @return 요리 기록 목록과 다음 커서 정보
+     */
+    public CookingRecordListResDto toCookingRecordListResDto(
+            Slice<CookingRecordSearchResult> slice,
+            Integer nextCursor
+    ) {
+        List<CookingRecordListItemResDto> content = slice.getContent().stream()
+                .map(this::toCookingRecordListItemResDto)
+                .toList();
+        return CookingRecordListResDto.create(content, slice.hasNext(), nextCursor);
+    }
 
     /**
      * CookingRecord Entity와 연결된 메뉴 정보를 요리 기록 상세 응답 DTO로 변환합니다.

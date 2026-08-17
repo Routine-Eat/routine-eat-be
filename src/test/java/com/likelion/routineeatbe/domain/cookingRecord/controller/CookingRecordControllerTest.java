@@ -9,11 +9,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientAmountResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
@@ -25,6 +28,7 @@ import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import java.util.List;
+import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +55,62 @@ class CookingRecordControllerTest {
 
     @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+
+    @Test
+    @DisplayName("요리 기록 목록 조회 API 성공 - 기본 커서와 크기 적용")
+    void 요리_기록_목록_조회_API_성공() throws Exception {
+        // given
+        CookingRecordListResDto response = CookingRecordListResDto.create(
+                List.of(CookingRecordListItemResDto.create(
+                        659L,
+                        "감자미역국",
+                        "https://example.com/menu.jpg",
+                        true,
+                        LocalDate.of(2026, 8, 15),
+                        DifficultyLevel.LEVEL_1,
+                        8L
+                )),
+                true,
+                11
+        );
+        given(cookingRecordService.getCookingRecords(
+                new CookingRecordSearchReqDto("1234", 1, 10)
+        )).willReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/cooking-records")
+                        .param("userNumber", "1234"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message")
+                        .value("요리 기록(회고록) 조회에 성공했습니다."))
+                .andExpect(jsonPath("$.data.content[0].recipeId").value(659))
+                .andExpect(jsonPath("$.data.content[0].menuName").value("감자미역국"))
+                .andExpect(jsonPath("$.data.content[0].thumbnailUrl")
+                        .value("https://example.com/menu.jpg"))
+                .andExpect(jsonPath("$.data.content[0].isFavoriteRecipe").value(true))
+                .andExpect(jsonPath("$.data.content[0].completedAt").value("2026-08-15"))
+                .andExpect(jsonPath("$.data.content[0].userDifficultyLevel")
+                        .value("LEVEL_1"))
+                .andExpect(jsonPath("$.data.content[0].usedFoodIngredientCount").value(8))
+                .andExpect(jsonPath("$.data.hasNext").value(true))
+                .andExpect(jsonPath("$.data.nextCursor").value(11));
+        then(cookingRecordService).should().getCookingRecords(
+                new CookingRecordSearchReqDto("1234", 1, 10)
+        );
+    }
+
+    @Test
+    @DisplayName("요리 기록 목록 조회 API 실패 - 커서가 1 미만")
+    void 요리_기록_목록_조회_API_실패_잘못된_커서() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/v1/cooking-records")
+                        .param("userNumber", "1234")
+                        .param("cursor", "0"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
+    }
 
     @Test
     @DisplayName("요리 기록 상세 조회 API 성공 - 200 반환")

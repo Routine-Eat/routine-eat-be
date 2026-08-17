@@ -10,7 +10,9 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface CookingRecordRepository extends JpaRepository<CookingRecord, Long> {
+public interface CookingRecordRepository extends
+        JpaRepository<CookingRecord, Long>,
+        CookingRecordRepositoryCustom {
 
     /**
      * 사용자와 세션 상태에 해당하는 가장 최근 요리 기록을 조회합니다.

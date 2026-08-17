@@ -9,11 +9,14 @@ import static org.mockito.BDDMockito.then;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingRecordSearchResult;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
@@ -54,6 +57,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.SliceImpl;
 
 @ExtendWith(MockitoExtension.class)
 class CookingRecordServiceTest {
@@ -72,6 +77,53 @@ class CookingRecordServiceTest {
     @Mock private CookingRecordImageStorageService imageStorageService;
     @Mock private CookingRecordMapper cookingRecordMapper;
     @Mock private UserFoodIngredientRepository userFoodIngredientRepository;
+
+    @Test
+    @DisplayName("종료된 요리 기록 목록을 조회한다")
+    void 종료된_요리_기록_목록_조회_성공() {
+        // given
+        CookingRecordSearchReqDto request = new CookingRecordSearchReqDto("1234", 1, 10);
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        SliceImpl<CookingRecordSearchResult> slice = new SliceImpl<>(
+                List.of(),
+                PageRequest.of(0, 10),
+                true
+        );
+        CookingRecordListResDto expected = CookingRecordListResDto.create(
+                List.of(),
+                true,
+                11
+        );
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository.searchTerminatedCookingRecords(1L, 1, 10))
+                .willReturn(slice);
+        given(cookingRecordMapper.toCookingRecordListResDto(slice, 11))
+                .willReturn(expected);
+
+        // when
+        CookingRecordListResDto result = cookingRecordService.getCookingRecords(request);
+
+        // then
+        assertThat(result).isSameAs(expected);
+        then(cookingRecordRepository).should().searchTerminatedCookingRecords(1L, 1, 10);
+        then(cookingRecordMapper).should().toCookingRecordListResDto(slice, 11);
+    }
+
+    @Test
+    @DisplayName("요리 기록 목록 조회에 실패한다 - 사용자가 존재하지 않음")
+    void 요리_기록_목록_조회_실패_사용자_미존재() {
+        // given
+        CookingRecordSearchReqDto request = new CookingRecordSearchReqDto("9999", null, null);
+        given(userRepository.findByLoginNumber("9999")).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> cookingRecordService.getCookingRecords(request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(CookingRecordErrorCode.USER_NOT_FOUND);
+        then(cookingRecordRepository).shouldHaveNoInteractions();
+        then(cookingRecordMapper).shouldHaveNoInteractions();
+    }
 
     @Test
     @DisplayName("사용자 소유 요리 기록 상세 정보를 조회한다")

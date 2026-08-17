@@ -4,8 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingRecordSearchResult;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
@@ -24,13 +27,54 @@ import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.SliceImpl;
 
 class CookingRecordMapperTest {
 
     private final CookingRecordMapper cookingRecordMapper = new CookingRecordMapper();
+
+    @Test
+    @DisplayName("요리 기록 조회 결과를 목록 응답으로 변환한다")
+    void 요리_기록_목록_응답_변환_성공() {
+        // given
+        CookingRecordSearchResult searchResult = new CookingRecordSearchResult(
+                30L,
+                "감자미역국",
+                "https://example.com/menu.jpg",
+                true,
+                LocalDateTime.of(2026, 8, 15, 23, 10),
+                DifficultyLevel.LEVEL_4,
+                8L
+        );
+        SliceImpl<CookingRecordSearchResult> slice = new SliceImpl<>(
+                List.of(searchResult),
+                PageRequest.of(0, 10),
+                true
+        );
+
+        // when
+        CookingRecordListResDto result = cookingRecordMapper
+                .toCookingRecordListResDto(slice, 11);
+
+        // then
+        assertThat(result.hasNext()).isTrue();
+        assertThat(result.nextCursor()).isEqualTo(11);
+        assertThat(result.content()).singleElement().satisfies(item -> {
+            assertThat(item.recipeId()).isEqualTo(30L);
+            assertThat(item.menuName()).isEqualTo("감자미역국");
+            assertThat(item.thumbnailUrl()).isEqualTo("https://example.com/menu.jpg");
+            assertThat(item.isFavoriteRecipe()).isTrue();
+            assertThat(item.completedAt()).isEqualTo(LocalDate.of(2026, 8, 15));
+            assertThat(item.userDifficultyLevel()).isEqualTo(DifficultyLevel.LEVEL_4);
+            assertThat(item.usedFoodIngredientCount()).isEqualTo(8L);
+        });
+    }
 
     @Test
     @DisplayName("메뉴 난이도와 사용자 평가 난이도를 구분하여 상세 응답으로 변환한다")

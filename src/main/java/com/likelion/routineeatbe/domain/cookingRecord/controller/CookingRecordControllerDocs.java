@@ -1,9 +1,11 @@
 package com.likelion.routineeatbe.domain.cookingRecord.controller;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
@@ -24,6 +26,7 @@ import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -36,6 +39,33 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "Cooking Record", description = "요리 기록 API")
 @RequestMapping("/api/v1/cooking-records")
 public interface CookingRecordControllerDocs {
+
+    @Operation(
+            summary = "요리 기록 목록 조회",
+            description = """
+                    사용자의 회고 저장까지 종료된 요리 기록을 최신순으로 조회합니다.
+
+                    [Query Parameter]
+                    - userNumber: 4자리 사용자 고유 식별번호
+                    - cursor: 1부터 시작하는 조회 위치, 기본값 1
+                    - size: 한 번에 조회할 개수, 기본값 10, 최대 100
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "요리 기록 목록 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = CookingRecordListResDto.class)
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "잘못된 조회 조건", content = @Content),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음", content = @Content)
+    })
+    @GetMapping
+    ResponseEntity<GlobalResponse<CookingRecordListResDto>> getCookingRecords(
+            @Valid @ModelAttribute CookingRecordSearchReqDto request
+    );
 
     @Operation(
             summary = "요리 기록 상세 조회",

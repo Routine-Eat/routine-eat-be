@@ -11,12 +11,14 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGene
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingRecordSearchResult;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordSearchReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingSessionLogSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
@@ -30,8 +32,11 @@ import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRe
 import com.likelion.routineeatbe.domain.cookingRecord.service.gemini.CookingStepGenerateGeminiService;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingStepStage;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
+import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSessionLog;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
+import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionLogType;
+import com.likelion.routineeatbe.domain.cookingSession.repository.CookingSessionLogRepository;
 import com.likelion.routineeatbe.domain.cookingSession.repository.CookingStepRepository;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
@@ -71,6 +76,7 @@ class CookingRecordServiceTest {
     @Mock private RecipeStepRepository recipeStepRepository;
     @Mock private RecipeFoodIngredientRepository recipeFoodIngredientRepository;
     @Mock private CookingRecordRepository cookingRecordRepository;
+    @Mock private CookingSessionLogRepository cookingSessionLogRepository;
     @Mock private CookingStepRepository cookingStepRepository;
     @Mock private CookingStepGenerateGeminiService geminiService;
     @Mock private CookingRecordPersistenceService persistenceService;
@@ -107,6 +113,112 @@ class CookingRecordServiceTest {
         assertThat(result).isSameAs(expected);
         then(cookingRecordRepository).should().searchTerminatedCookingRecords(1L, 1, 10);
         then(cookingRecordMapper).should().toCookingRecordListResDto(slice, 11);
+    }
+
+    @Test
+    @DisplayName("사용자 소유 요리 기록의 AI 대화 기록을 조회한다")
+    void AI_대화_기록_조회_성공() {
+        // given
+        CookingSessionLogSearchReqDto request =
+                new CookingSessionLogSearchReqDto("1234", 1, 10);
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = CookingRecord.builder().id(10L).user(user).build();
+        CookingSession cookingSession = CookingSession.builder()
+                .id(20L)
+                .cookingRecord(cookingRecord)
+                .build();
+        cookingRecord.assignCookingSession(cookingSession);
+        CookingSessionLog userLog = CookingSessionLog.builder()
+                .id(30L)
+                .type(CookingSessionLogType.USER)
+                .content("굴소스가 부족해요.")
+                .cookingSession(cookingSession)
+                .build();
+        SliceImpl<CookingSessionLog> slice = new SliceImpl<>(
+                List.of(userLog),
+                PageRequest.of(0, 10),
+                true
+        );
+        CookingSessionLogListResDto expected = CookingSessionLogListResDto.create(
+                List.of(),
+                true,
+                11
+        );
+
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository.findByIdAndUserIdWithCookingSession(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+        given(cookingSessionLogRepository.searchByCookingSessionId(20L, 1, 10))
+                .willReturn(slice);
+        given(cookingRecordMapper.toCookingSessionLogListResDto(slice, 11))
+                .willReturn(expected);
+
+        // when
+        CookingSessionLogListResDto result = cookingRecordService.getCookingSessionLogs(
+                10L,
+                request
+        );
+
+        // then
+        assertThat(result).isSameAs(expected);
+        then(cookingSessionLogRepository).should().searchByCookingSessionId(20L, 1, 10);
+        then(cookingRecordMapper).should().toCookingSessionLogListResDto(slice, 11);
+    }
+
+    @Test
+    @DisplayName("AI 대화 기록 조회에 실패한다 - 사용자가 존재하지 않음")
+    void AI_대화_기록_조회_실패_사용자_미존재() {
+        // given
+        CookingSessionLogSearchReqDto request =
+                new CookingSessionLogSearchReqDto("9999", null, null);
+        given(userRepository.findByLoginNumber("9999")).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> cookingRecordService.getCookingSessionLogs(10L, request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(CookingRecordErrorCode.USER_NOT_FOUND);
+        then(cookingRecordRepository).shouldHaveNoInteractions();
+        then(cookingSessionLogRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("AI 대화 기록 조회에 실패한다 - 사용자 소유 요리 기록이 없음")
+    void AI_대화_기록_조회_실패_요리_기록_미존재() {
+        // given
+        CookingSessionLogSearchReqDto request =
+                new CookingSessionLogSearchReqDto("1234", 1, 10);
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository.findByIdAndUserIdWithCookingSession(10L, 1L))
+                .willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> cookingRecordService.getCookingSessionLogs(10L, request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(CookingRecordErrorCode.COOKING_RECORD_NOT_FOUND);
+        then(cookingSessionLogRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("AI 대화 기록 조회에 실패한다 - 요리 세션이 없음")
+    void AI_대화_기록_조회_실패_요리_세션_미존재() {
+        // given
+        CookingSessionLogSearchReqDto request =
+                new CookingSessionLogSearchReqDto("1234", 1, 10);
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = CookingRecord.builder().id(10L).user(user).build();
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository.findByIdAndUserIdWithCookingSession(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+
+        // when & then
+        assertThatThrownBy(() -> cookingRecordService.getCookingSessionLogs(10L, request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(CookingRecordErrorCode.COOKING_SESSION_NOT_FOUND);
+        then(cookingSessionLogRepository).shouldHaveNoInteractions();
     }
 
     @Test

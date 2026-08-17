@@ -14,6 +14,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingAiResult;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingAiReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordSearchReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingSessionLogSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingAiAnswerResDto;
@@ -22,6 +23,8 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecord
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogItemResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
@@ -30,6 +33,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTi
 import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingAiService;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingRecordService;
+import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionLogType;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
@@ -162,6 +166,70 @@ class CookingRecordControllerTest {
         then(cookingRecordService).should().getCookingRecords(
                 new CookingRecordSearchReqDto("1234", 1, 10)
         );
+    }
+
+    @Test
+    @DisplayName("AI 대화 기록 조회 API 성공 - 기본 커서와 크기 적용")
+    void AI_대화_기록_조회_API_성공() throws Exception {
+        // given
+        CookingSessionLogListResDto response = CookingSessionLogListResDto.create(
+                List.of(
+                        CookingSessionLogItemResDto.create(
+                                10L,
+                                CookingSessionLogType.USER,
+                                "굴소스가 한 스푼밖에 없는데 어떡해?"
+                        ),
+                        CookingSessionLogItemResDto.create(
+                                11L,
+                                CookingSessionLogType.AI,
+                                "간장을 반 스푼 추가해보세요."
+                        )
+                ),
+                true,
+                11
+        );
+        given(cookingRecordService.getCookingSessionLogs(
+                10L,
+                new CookingSessionLogSearchReqDto("1234", 1, 10)
+        )).willReturn(response);
+
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/cooking-records/{cookingRecordId}/cooking-session/ai",
+                        10L
+                ).param("userNumber", "1234"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message")
+                        .value("AI 대화 기록 조회에 성공했습니다."))
+                .andExpect(jsonPath("$.data.content[0].cookingSessionLogId").value(10))
+                .andExpect(jsonPath("$.data.content[0].cookingSessionLogType")
+                        .value("USER"))
+                .andExpect(jsonPath("$.data.content[0].cookingSessionLogContent")
+                        .value("굴소스가 한 스푼밖에 없는데 어떡해?"))
+                .andExpect(jsonPath("$.data.content[1].cookingSessionLogType")
+                        .value("AI"))
+                .andExpect(jsonPath("$.data.hasNext").value(true))
+                .andExpect(jsonPath("$.data.nextCursor").value(11));
+        then(cookingRecordService).should().getCookingSessionLogs(
+                10L,
+                new CookingSessionLogSearchReqDto("1234", 1, 10)
+        );
+    }
+
+    @Test
+    @DisplayName("AI 대화 기록 조회 API 실패 - 커서가 1 미만")
+    void AI_대화_기록_조회_API_실패_잘못된_커서() throws Exception {
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/cooking-records/{cookingRecordId}/cooking-session/ai",
+                        10L
+                )
+                        .param("userNumber", "1234")
+                        .param("cursor", "0"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
     }
 
     @Test

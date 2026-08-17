@@ -9,6 +9,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecord
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
@@ -16,8 +17,10 @@ import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
+import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSessionLog;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
+import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionLogType;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingStepStage;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
@@ -74,6 +77,43 @@ class CookingRecordMapperTest {
             assertThat(item.userDifficultyLevel()).isEqualTo(DifficultyLevel.LEVEL_4);
             assertThat(item.usedFoodIngredientCount()).isEqualTo(8L);
         });
+    }
+
+    @Test
+    @DisplayName("요리 세션 로그 조회 결과를 AI 대화 기록 목록 응답으로 변환한다")
+    void AI_대화_기록_목록_응답_변환_성공() {
+        // given
+        CookingSessionLog userLog = CookingSessionLog.builder()
+                .id(10L)
+                .type(CookingSessionLogType.USER)
+                .content("굴소스가 한 스푼밖에 없는데 어떡해?")
+                .build();
+        CookingSessionLog aiLog = CookingSessionLog.builder()
+                .id(11L)
+                .type(CookingSessionLogType.AI)
+                .content("간장을 조금 추가해보세요.")
+                .build();
+        SliceImpl<CookingSessionLog> slice = new SliceImpl<>(
+                List.of(userLog, aiLog),
+                PageRequest.of(0, 2),
+                true
+        );
+
+        // when
+        CookingSessionLogListResDto result = cookingRecordMapper
+                .toCookingSessionLogListResDto(slice, 3);
+
+        // then
+        assertThat(result.hasNext()).isTrue();
+        assertThat(result.nextCursor()).isEqualTo(3);
+        assertThat(result.content()).hasSize(2);
+        assertThat(result.content().get(0).cookingSessionLogId()).isEqualTo(10L);
+        assertThat(result.content().get(0).cookingSessionLogType())
+                .isEqualTo(CookingSessionLogType.USER);
+        assertThat(result.content().get(0).cookingSessionLogContent())
+                .isEqualTo("굴소스가 한 스푼밖에 없는데 어떡해?");
+        assertThat(result.content().get(1).cookingSessionLogType())
+                .isEqualTo(CookingSessionLogType.AI);
     }
 
     @Test

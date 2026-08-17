@@ -8,6 +8,8 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecord
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogItemResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
@@ -16,6 +18,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNa
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
+import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSessionLog;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
@@ -129,6 +132,39 @@ public class CookingRecordMapper {
                 .map(this::toCookingRecordListItemResDto)
                 .toList();
         return CookingRecordListResDto.create(content, slice.hasNext(), nextCursor);
+    }
+
+    /**
+     * CookingSessionLog Entity를 AI 대화 기록 항목 응답 DTO로 변환합니다.
+     *
+     * @param cookingSessionLog 변환할 요리 세션 로그
+     * @return 요리 세션 로그 PK, 타입과 내용이 포함된 응답 항목
+     */
+    public CookingSessionLogItemResDto toCookingSessionLogItemResDto(
+            CookingSessionLog cookingSessionLog
+    ) {
+        return CookingSessionLogItemResDto.create(
+                cookingSessionLog.getId(),
+                cookingSessionLog.getType(),
+                cookingSessionLog.getContent()
+        );
+    }
+
+    /**
+     * 요리 세션 로그 Slice와 다음 커서를 AI 대화 기록 목록 응답 DTO로 변환합니다.
+     *
+     * @param slice 요리 세션 로그 조회 결과 Slice
+     * @param nextCursor 다음 조회에 사용할 위치 커서
+     * @return AI 대화 기록 목록과 다음 커서 정보
+     */
+    public CookingSessionLogListResDto toCookingSessionLogListResDto(
+            Slice<CookingSessionLog> slice,
+            Integer nextCursor
+    ) {
+        List<CookingSessionLogItemResDto> content = slice.getContent().stream()
+                .map(this::toCookingSessionLogItemResDto)
+                .toList();
+        return CookingSessionLogListResDto.create(content, slice.hasNext(), nextCursor);
     }
 
     /**

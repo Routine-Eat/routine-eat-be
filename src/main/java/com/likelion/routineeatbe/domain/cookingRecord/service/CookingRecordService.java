@@ -3,11 +3,13 @@ package com.likelion.routineeatbe.domain.cookingRecord.service;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingRecordSearchResult;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordSearchReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingSessionLogSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
@@ -18,8 +20,10 @@ import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRe
 import com.likelion.routineeatbe.domain.cookingRecord.service.gemini.CookingStepGenerateGeminiService;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
+import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSessionLog;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
 import com.likelion.routineeatbe.domain.cookingSession.repository.CookingStepRepository;
+import com.likelion.routineeatbe.domain.cookingSession.repository.CookingSessionLogRepository;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.entity.RecipeStep;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
@@ -56,6 +60,7 @@ public class CookingRecordService {
     private final RecipeStepRepository recipeStepRepository;
     private final RecipeFoodIngredientRepository recipeFoodIngredientRepository;
     private final CookingRecordRepository cookingRecordRepository;
+    private final CookingSessionLogRepository cookingSessionLogRepository;
     private final CookingStepRepository cookingStepRepository;
     private final UserFoodIngredientRepository userFoodIngredientRepository;
     private final CookingStepGenerateGeminiService geminiService;
@@ -116,6 +121,78 @@ public class CookingRecordService {
 
         log.info(
                 "[CookingRecordService] 요리 기록 목록 조회 종료 | getCookingRecords() - END | resultSize: {}, nextCursor: {}",
+                result.content().size(),
+                result.nextCursor()
+        );
+        return result;
+    }
+
+    /**
+     * (1) 작업 목적
+     * 사용자 소유 요리 기록에 저장된 AI 대화 기록을 생성 순서대로 조회합니다.
+     *
+     * (2) 세부 작업 내용
+     * - 사용자 고유 식별번호와 요리 기록 PK로 소유권을 검증합니다.
+     * - 연결된 요리 세션의 USER, AI, SYSTEM 로그를 위치 커서 기반으로 조회합니다.
+     * - 다음 조회 위치를 계산하고 AI 대화 기록 목록 응답으로 변환합니다.
+     *
+     * @param cookingRecordId 조회할 요리 기록 PK
+     * @param request 사용자 식별번호와 커서 조회 조건
+     * @return AI 대화 기록 목록과 다음 커서 정보
+     */
+    @Transactional(readOnly = true)
+    public CookingSessionLogListResDto getCookingSessionLogs(
+            Long cookingRecordId,
+            CookingSessionLogSearchReqDto request
+    ) {
+        log.info(
+                "[CookingRecordService] AI 대화 기록 조회 시작 | getCookingSessionLogs() - START | cookingRecordId: {}, userNumber: {}, cursor: {}, size: {}",
+                cookingRecordId,
+                request.userNumber(),
+                request.cursor(),
+                request.size()
+        );
+
+        /*
+            1. 사용자와 사용자 소유 요리 기록 조회
+            - 사용자 고유 식별번호가 없거나 다른 사용자의 요리 기록이면 조회를 중단합니다.
+         */
+        User user = userRepository.findByLoginNumber(request.userNumber())
+                .orElseThrow(() -> new CustomException(CookingRecordErrorCode.USER_NOT_FOUND));
+        CookingRecord cookingRecord = cookingRecordRepository
+                .findByIdAndUserIdWithCookingSession(cookingRecordId, user.getId())
+                .orElseThrow(() -> new CustomException(
+                        CookingRecordErrorCode.COOKING_RECORD_NOT_FOUND
+                ));
+
+        /*
+            2. 요리 세션과 대화 로그 조회
+            - 세션 상태와 관계없이 연결된 세션의 전체 로그 타입을 생성 순서대로 조회합니다.
+         */
+        CookingSession cookingSession = cookingRecord.getCookingSession();
+        if (cookingSession == null) {
+            throw new CustomException(CookingRecordErrorCode.COOKING_SESSION_NOT_FOUND);
+        }
+        Slice<CookingSessionLog> cookingSessionLogSlice = cookingSessionLogRepository
+                .searchByCookingSessionId(
+                        cookingSession.getId(),
+                        request.cursor(),
+                        request.size()
+                );
+
+        /*
+            3. 대화 기록 목록 응답 변환
+            - 다음 데이터가 존재하면 다음 조회에 사용할 위치 커서를 계산합니다.
+         */
+        Integer nextCursor = cookingSessionLogSlice.hasNext()
+                ? request.cursor() + request.size()
+                : null;
+        CookingSessionLogListResDto result = cookingRecordMapper
+                .toCookingSessionLogListResDto(cookingSessionLogSlice, nextCursor);
+
+        log.info(
+                "[CookingRecordService] AI 대화 기록 조회 종료 | getCookingSessionLogs() - END | cookingRecordId: {}, resultSize: {}, nextCursor: {}",
+                cookingRecordId,
                 result.content().size(),
                 result.nextCursor()
         );

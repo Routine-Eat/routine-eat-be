@@ -89,6 +89,25 @@ public interface CookingRecordRepository extends
     );
 
     /**
+     * 사용자 소유 요리 기록을 요리 세션과 함께 조회합니다.
+     *
+     * @param cookingRecordId 조회할 요리 기록 PK
+     * @param userId 요리 기록 소유 사용자 PK
+     * @return 요리 세션이 함께 조회된 사용자 소유 요리 기록
+     */
+    @Query("""
+            select cookingRecord
+            from CookingRecord cookingRecord
+            left join fetch cookingRecord.cookingSession cookingSession
+            where cookingRecord.id = :cookingRecordId
+              and cookingRecord.user.id = :userId
+            """)
+    Optional<CookingRecord> findByIdAndUserIdWithCookingSession(
+            @Param("cookingRecordId") Long cookingRecordId,
+            @Param("userId") Long userId
+    );
+
+    /**
      * 사용자 소유 요리 기록을 레시피, 사용 음식 재료와 함께 조회합니다.
      *
      * @param cookingRecordId 조회할 요리 기록 PK

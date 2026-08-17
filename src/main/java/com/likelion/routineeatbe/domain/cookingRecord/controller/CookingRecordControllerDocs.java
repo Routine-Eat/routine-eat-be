@@ -3,10 +3,12 @@ package com.likelion.routineeatbe.domain.cookingRecord.controller;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingAiReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordSearchReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingSessionLogSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingAiMultipartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
@@ -312,6 +314,48 @@ public interface CookingRecordControllerDocs {
             @Size(min = 4, max = 4, message = "사용자 고유 식별번호는 4자리여야 합니다.")
             @Pattern(regexp = "^[0-9]{4}$", message = "사용자 고유 식별번호는 숫자 4자리여야 합니다.")
             @RequestParam("userNumber") String userNumber
+    );
+
+    @Operation(
+            summary = "AI 대화 기록 조회",
+            description = """
+                    사용자 소유 요리 기록의 USER, AI, SYSTEM 대화 로그를 생성 순서대로 조회합니다.
+                    cursor는 로그 PK가 아니라 1부터 시작하는 조회 위치이며,
+                    다음 요청에는 응답의 nextCursor를 사용합니다.
+
+                    [Path Variable]
+                    - cookingRecordId: 요리 기록 PK
+
+                    [Query Parameter]
+                    - userNumber: 4자리 사용자 고유 식별번호
+                    - cursor: 1부터 시작하는 조회 위치, 기본값 1
+                    - size: 한 번에 조회할 개수, 기본값 10, 최대 100
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "AI 대화 기록 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = CookingSessionLogListResDto.class)
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 값", content = @Content),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자, 요리 기록 또는 요리 세션을 찾을 수 없음",
+                    content = @Content
+            )
+    })
+    @GetMapping(
+            value = "/{cookingRecordId}/cooking-session/ai",
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    ResponseEntity<GlobalResponse<CookingSessionLogListResDto>> getCookingSessionLogs(
+            @Parameter(description = "요리 기록 PK", required = true)
+            @Positive(message = "요리 기록 PK는 양수여야 합니다.")
+            @PathVariable("cookingRecordId") Long cookingRecordId,
+            @Valid @ModelAttribute CookingSessionLogSearchReqDto request
     );
 
     @Operation(

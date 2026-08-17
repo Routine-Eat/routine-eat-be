@@ -4,10 +4,12 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultS
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingAiReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingAiResult;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordSearchReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingSessionLogSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
@@ -156,6 +158,22 @@ public class CookingRecordController implements CookingRecordControllerDocs {
                         message,
                         result
                 ));
+    }
+
+    @Override
+    public ResponseEntity<GlobalResponse<CookingSessionLogListResDto>> getCookingSessionLogs(
+            Long cookingRecordId,
+            CookingSessionLogSearchReqDto request
+    ) {
+        CookingSessionLogListResDto result = cookingRecordService.getCookingSessionLogs(
+                cookingRecordId,
+                request
+        );
+        return ResponseEntity.ok(GlobalResponse.success(
+                HttpStatus.OK.value(),
+                "AI 대화 기록 조회에 성공했습니다.",
+                result
+        ));
     }
 
     @Override

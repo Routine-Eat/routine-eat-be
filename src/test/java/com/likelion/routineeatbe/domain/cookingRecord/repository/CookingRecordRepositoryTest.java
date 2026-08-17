@@ -349,6 +349,31 @@ class CookingRecordRepositoryTest {
     }
 
     @Test
+    @DisplayName("사용자 소유 요리 기록을 요리 세션과 함께 조회한다")
+    void 사용자_소유_요리_기록_세션_조회_성공() {
+        // given
+        User user = entityManager.persist(User.builder().loginNumber("1122").build());
+        User otherUser = entityManager.persist(User.builder().loginNumber("3344").build());
+        Recipe recipe = persistRecipe();
+        CookingRecord cookingRecord = CookingRecord.create(user, recipe, 1);
+        CookingSession expectedSession = CookingSession.create(cookingRecord, 1);
+        CookingRecord saved = cookingRecordRepository.saveAndFlush(cookingRecord);
+        entityManager.clear();
+
+        // when
+        CookingRecord result = cookingRecordRepository
+                .findByIdAndUserIdWithCookingSession(saved.getId(), user.getId())
+                .orElseThrow();
+
+        // then
+        assertThat(result.getCookingSession().getId()).isEqualTo(expectedSession.getId());
+        assertThat(cookingRecordRepository.findByIdAndUserIdWithCookingSession(
+                saved.getId(),
+                otherUser.getId()
+        )).isEmpty();
+    }
+
+    @Test
     @DisplayName("사용자 소유 요리 기록과 세션을 조회하고 양수 단계만 조회한다")
     void 사용자_소유_요리_기록_세션_단계_조회_성공() {
         // given

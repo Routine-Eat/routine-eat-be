@@ -20,7 +20,7 @@ public record CookingStepDetailResDto(
         @Schema(description = "초보자용 요리 단계 부연 설명")
         String subContent,
         @Schema(description = "요리 단계 팁 목록")
-        List<CookingStepTipResDto> stepTips
+        List<CookingStepTipResDto> tips
 ) {
 
     public static CookingStepDetailResDto create(
@@ -30,7 +30,7 @@ public record CookingStepDetailResDto(
             String thumbnailUrl,
             String content,
             String subContent,
-            List<CookingStepTipResDto> stepTips
+            List<CookingStepTipResDto> tips
     ) {
         return CookingStepDetailResDto.builder()
                 .cookingStepId(cookingStepId)
@@ -39,7 +39,7 @@ public record CookingStepDetailResDto(
                 .thumbnailUrl(thumbnailUrl)
                 .content(content)
                 .subContent(subContent)
-                .stepTips(List.copyOf(stepTips))
+                .tips(List.copyOf(tips))
                 .build();
     }
 }

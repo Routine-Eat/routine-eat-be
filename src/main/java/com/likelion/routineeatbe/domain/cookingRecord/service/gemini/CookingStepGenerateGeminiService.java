@@ -4,6 +4,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGene
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingStepStage;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingTip;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.entity.RecipeStep;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
@@ -20,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -42,12 +44,14 @@ public class CookingStepGenerateGeminiService {
      *
      * (2) 세부 작업 내용
      * - 메뉴, 인분별 재료량, 기존 레시피 단계를 Gemini 프롬프트에 포함합니다.
+     * - 선택 가능한 요리 팁 PK와 제목을 전달하고 단계별 관련 팁 PK를 생성합니다.
      * - Gemini Function Calling 응답을 검증하고 일시적 오류 또는 잘못된 응답을 재시도합니다.
      *
      * @param user 요리를 시작하는 사용자
      * @param recipe 요리할 레시피
      * @param ingredients 레시피 필요 재료 목록
      * @param recipeSteps 기존 레시피 단계 목록
+     * @param cookingTips 선택 가능한 전체 요리 팁
      * @param servings 요청 인분 수
      * @return 검증된 체크리스트와 요리 단계
      */
@@ -56,6 +60,7 @@ public class CookingStepGenerateGeminiService {
             Recipe recipe,
             List<RecipeFoodIngredient> ingredients,
             List<RecipeStep> recipeSteps,
+            List<CookingTip> cookingTips,
             int servings
     ) {
         log.info(
@@ -65,7 +70,17 @@ public class CookingStepGenerateGeminiService {
                 servings
         );
 
-        String prompt = createPrompt(user, recipe, ingredients, recipeSteps, servings);
+        String prompt = createPrompt(
+                user,
+                recipe,
+                ingredients,
+                recipeSteps,
+                cookingTips,
+                servings
+        );
+        Set<Long> availableCookingTipIds = cookingTips.stream()
+                .map(CookingTip::getId)
+                .collect(Collectors.toUnmodifiableSet());
         int maxAttempts = properties.retry().maxAttempts();
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
@@ -77,7 +92,8 @@ public class CookingStepGenerateGeminiService {
                 );
                 CookingStepGenerateGeminiResponseDto result = validateAndNormalize(
                         response,
-                        user.getSkillLevel() == SkillLevel.BEGINNER
+                        user.getSkillLevel() == SkillLevel.BEGINNER,
+                        availableCookingTipIds
                 );
                 log.info(
                         "[CookingStepGenerateGeminiService] 요리 단계 생성 종료 | generate() - END | cookingStepCount: {}",
@@ -106,6 +122,7 @@ public class CookingStepGenerateGeminiService {
      * @param recipe 요리할 레시피
      * @param ingredients 레시피 필요 재료 목록
      * @param recipeSteps 기존 레시피 단계 목록
+     * @param cookingTips 선택 가능한 전체 요리 팁
      * @param servings 요청 인분 수
      * @return Gemini 입력 프롬프트
      */
@@ -114,6 +131,7 @@ public class CookingStepGenerateGeminiService {
             Recipe recipe,
             List<RecipeFoodIngredient> ingredients,
             List<RecipeStep> recipeSteps,
+            List<CookingTip> cookingTips,
             int servings
     ) {
         log.debug(
@@ -130,6 +148,9 @@ public class CookingStepGenerateGeminiService {
                 title은 300자 이하, content와 subContent는 각각 500자 이하로 작성하세요.
                 사용자 숙련도가 BEGINNER이면 모든 cookingSteps의 subContent에 구체적인 부연 설명을 작성하세요.
                 체크리스트는 cookingSteps에 중복해서 포함하지 마세요.
+                각 cookingSteps의 cookingTipIds에는 해당 단계와 직접 관련 있는 요리 팁 PK만 작성하세요.
+                cookingTipIds는 아래 제공된 PK만 사용할 수 있고 같은 단계에 중복해서 넣지 마세요.
+                관련 있는 요리 팁이 없으면 cookingTipIds를 빈 배열로 작성하세요.
 
                 [사용자]
                 skillLevel: %s
@@ -177,6 +198,13 @@ public class CookingStepGenerateGeminiService {
                         .append(recipeStep.getContents())
                         .append(System.lineSeparator()));
 
+        prompt.append("\n[선택 가능한 요리 팁]\n");
+        cookingTips.forEach(cookingTip -> prompt.append("- cookingTipId=")
+                .append(cookingTip.getId())
+                .append(", title=")
+                .append(cookingTip.getTitle())
+                .append(System.lineSeparator()));
+
         String result = prompt.toString();
         log.debug(
                 "[CookingStepGenerateGeminiService] 프롬프트 생성 종료 | createPrompt() - END | promptLength: {}",
@@ -190,11 +218,13 @@ public class CookingStepGenerateGeminiService {
      *
      * @param response Gemini 요리 단계 응답
      * @param beginner 초보 사용자 여부
+     * @param availableCookingTipIds 선택 가능한 요리 팁 PK 집합
      * @return level 오름차순으로 정규화된 응답
      */
     private CookingStepGenerateGeminiResponseDto validateAndNormalize(
             CookingStepGenerateGeminiResponseDto response,
-            boolean beginner
+            boolean beginner,
+            Set<Long> availableCookingTipIds
     ) {
         log.debug(
                 "[CookingStepGenerateGeminiService] Gemini 응답 검증 시작 | validateAndNormalize() - START | beginner: {}",
@@ -229,6 +259,10 @@ public class CookingStepGenerateGeminiService {
                     || cookingStep.stage() == null
                     || isBlankOrTooLong(cookingStep.title(), TITLE_MAX_LENGTH)
                     || isBlankOrTooLong(cookingStep.content(), CONTENT_MAX_LENGTH)
+                    || !hasValidCookingTipIds(
+                            cookingStep.cookingTipIds(),
+                            availableCookingTipIds
+                    )
                     || (beginner && isBlankOrTooLong(cookingStep.subContent(), CONTENT_MAX_LENGTH))
                     || (!beginner && cookingStep.subContent() != null
                             && cookingStep.subContent().length() > CONTENT_MAX_LENGTH)) {
@@ -245,6 +279,32 @@ public class CookingStepGenerateGeminiService {
         log.debug(
                 "[CookingStepGenerateGeminiService] Gemini 응답 검증 종료 | validateAndNormalize() - END | cookingStepCount: {}",
                 cookingSteps.size()
+        );
+        return result;
+    }
+
+    /**
+     * Gemini가 반환한 단계별 요리 팁 PK가 제공 목록에 포함되며 중복되지 않는지 확인합니다.
+     *
+     * @param cookingTipIds Gemini가 선택한 요리 팁 PK 목록
+     * @param availableCookingTipIds 선택 가능한 요리 팁 PK 집합
+     * @return 유효한 요리 팁 PK 목록 여부
+     */
+    private boolean hasValidCookingTipIds(
+            List<Long> cookingTipIds,
+            Set<Long> availableCookingTipIds
+    ) {
+        log.debug(
+                "[CookingStepGenerateGeminiService] 요리 팁 PK 검증 시작 | hasValidCookingTipIds() - START | cookingTipIds: {}",
+                cookingTipIds
+        );
+        boolean result = cookingTipIds != null
+                && cookingTipIds.stream().noneMatch(Objects::isNull)
+                && new HashSet<>(cookingTipIds).size() == cookingTipIds.size()
+                && availableCookingTipIds.containsAll(cookingTipIds);
+        log.debug(
+                "[CookingStepGenerateGeminiService] 요리 팁 PK 검증 종료 | hasValidCookingTipIds() - END | result: {}",
+                result
         );
         return result;
     }

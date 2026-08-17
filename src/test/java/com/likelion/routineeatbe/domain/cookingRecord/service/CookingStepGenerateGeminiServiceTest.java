@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingTip;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiFunctionDeclarationDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -91,6 +93,7 @@ class CookingStepGenerateGeminiServiceTest {
                 createRecipe(),
                 List.of(createIngredient()),
                 List.of(createRecipeStep()),
+                List.of(createCookingTip()),
                 2
         );
 
@@ -98,6 +101,15 @@ class CookingStepGenerateGeminiServiceTest {
         assertThat(result.cookingSteps())
                 .extracting(GeneratedCookingStep::subContent)
                 .allMatch(subContent -> subContent != null && !subContent.isBlank());
+        ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+        then(geminiUtil).should().callFunction(
+                eq("cooking-step-model"),
+                promptCaptor.capture(),
+                any(CookingStepGenerateGeminiFunctionDeclarationDto.class),
+                eq(CookingStepGenerateGeminiResponseDto.class)
+        );
+        assertThat(promptCaptor.getValue())
+                .contains("cookingTipId=10", "대파 써는 법");
     }
 
     @Test
@@ -118,6 +130,36 @@ class CookingStepGenerateGeminiServiceTest {
                 createRecipe(),
                 List.of(createIngredient()),
                 List.of(createRecipeStep()),
+                List.of(createCookingTip()),
+                1
+        )).isInstanceOf(CustomException.class)
+                .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
+                        .isEqualTo(GeminiErrorCode.INVALID_COOKING_STEP_METADATA));
+        then(retryDelayStrategy).should().waitBeforeRetry(1);
+    }
+
+    @Test
+    @DisplayName("제공되지 않은 요리 팁 PK를 반환하면 재시도 후 실패한다")
+    void 제공되지_않은_요리_팁_PK_실패() {
+        // given
+        CookingStepGenerateGeminiResponseDto invalidResponse = responseWithTipIds(
+                true,
+                List.of(999L)
+        );
+        given(geminiUtil.callFunction(
+                eq("cooking-step-model"),
+                anyString(),
+                any(CookingStepGenerateGeminiFunctionDeclarationDto.class),
+                eq(CookingStepGenerateGeminiResponseDto.class)
+        )).willReturn(invalidResponse);
+
+        // when & then
+        assertThatThrownBy(() -> geminiService.generate(
+                createUser(SkillLevel.BEGINNER),
+                createRecipe(),
+                List.of(createIngredient()),
+                List.of(createRecipeStep()),
+                List.of(createCookingTip()),
                 1
         )).isInstanceOf(CustomException.class)
                 .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
@@ -154,19 +196,33 @@ class CookingStepGenerateGeminiServiceTest {
         return RecipeStep.builder().level(1L).contents("계란을 볶는다.").build();
     }
 
+    private CookingTip createCookingTip() {
+        return CookingTip.builder().id(10L).title("대파 써는 법").build();
+    }
+
     private CookingStepGenerateGeminiResponseDto validResponse(boolean includeSubContent) {
+        return responseWithTipIds(includeSubContent, List.of(10L));
+    }
+
+    private CookingStepGenerateGeminiResponseDto responseWithTipIds(
+            boolean includeSubContent,
+            List<Long> cookingTipIds
+    ) {
         String subContent = includeSubContent ? "불을 약하게 조절하세요." : null;
         return CookingStepGenerateGeminiResponseDto.create(
                 List.of("손을 씻으세요."),
                 List.of(
                         GeneratedCookingStep.create(
-                                1, CookingStepStage.PREPARATION, "재료 준비", "계란을 준비한다.", subContent
+                                1, CookingStepStage.PREPARATION, "재료 준비", "계란을 준비한다.",
+                                subContent, cookingTipIds
                         ),
                         GeneratedCookingStep.create(
-                                2, CookingStepStage.COOKING, "계란 볶기", "계란을 볶는다.", subContent
+                                2, CookingStepStage.COOKING, "계란 볶기", "계란을 볶는다.",
+                                subContent, cookingTipIds
                         ),
                         GeneratedCookingStep.create(
-                                3, CookingStepStage.FINISH, "요리 종료", "불을 끈다.", subContent
+                                3, CookingStepStage.FINISH, "요리 종료", "불을 끈다.",
+                                subContent, cookingTipIds
                         )
                 )
         );

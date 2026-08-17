@@ -13,6 +13,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessio
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTipResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTitleResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
@@ -20,9 +21,13 @@ import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIn
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSessionLog;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingStepTip;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingTip;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingTipContent;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -298,13 +303,15 @@ public class CookingRecordMapper {
      * @param recipe 요리를 시작한 레시피
      * @param generated Gemini가 생성한 체크리스트와 요리 단계
      * @param firstCookingStep 저장된 첫 번째 요리 단계
+     * @param firstCookingStepTips 첫 단계에 연결된 요리 팁과 콘텐츠
      * @return 요리 시작 응답 DTO
      */
     public CookingStartResDto toCookingStartResDto(
             CookingRecord cookingRecord,
             Recipe recipe,
             CookingStepGenerateGeminiResponseDto generated,
-            CookingStep firstCookingStep
+            CookingStep firstCookingStep,
+            List<CookingStepTip> firstCookingStepTips
     ) {
         CookingSession cookingSession = cookingRecord.getCookingSession();
         Integer currentLevel = cookingSession.getCurrentCookingStepLevel();
@@ -326,7 +333,10 @@ public class CookingRecordMapper {
                 .cookingStepCount(cookingSession.getCookingStepCount())
                 .prevCookingStepLevel(currentLevel - 1)
                 .nextCookingStepLevel(nextLevel)
-                .currentCookingStep(toCookingStepDetailResDto(firstCookingStep))
+                .currentCookingStep(toCookingStepDetailResDto(
+                        firstCookingStep,
+                        firstCookingStepTips
+                ))
                 .cookingStepTitles(cookingStepTitles)
                 .build();
     }
@@ -336,11 +346,13 @@ public class CookingRecordMapper {
      *
      * @param cookingSession 단계 이동이 완료된 요리 세션
      * @param cookingStep 현재 요리 단계
+     * @param cookingStepTips 현재 단계에 연결된 요리 팁과 콘텐츠
      * @return 단계 이동 응답 DTO
      */
     public CookingStepNavigationResDto toCookingStepNavigationResDto(
             CookingSession cookingSession,
-            CookingStep cookingStep
+            CookingStep cookingStep,
+            List<CookingStepTip> cookingStepTips
     ) {
         Integer currentLevel = cookingSession.getCurrentCookingStepLevel();
         Integer nextLevel = currentLevel < cookingSession.getCookingStepCount()
@@ -350,17 +362,38 @@ public class CookingRecordMapper {
                 .cookingStepCount(cookingSession.getCookingStepCount())
                 .prevCookingStepLevel(currentLevel - 1)
                 .nextCookingStepLevel(nextLevel)
-                .currentCookingStep(toCookingStepDetailResDto(cookingStep))
+                .currentCookingStep(toCookingStepDetailResDto(cookingStep, cookingStepTips))
                 .build();
     }
 
     /**
-     * CookingStep Entity를 빈 팁 목록을 포함한 현재 요리 단계 상세 DTO로 변환합니다.
+     * CookingStep과 연결된 요리 팁 콘텐츠를 현재 요리 단계 상세 DTO로 변환합니다.
      *
      * @param cookingStep 변환할 요리 단계
+     * @param cookingStepTips 현재 단계에 연결된 요리 팁과 콘텐츠
      * @return 현재 요리 단계 상세 DTO
      */
-    public CookingStepDetailResDto toCookingStepDetailResDto(CookingStep cookingStep) {
+    public CookingStepDetailResDto toCookingStepDetailResDto(
+            CookingStep cookingStep,
+            List<CookingStepTip> cookingStepTips
+    ) {
+        List<CookingStepTipResDto> tips = cookingStepTips.stream()
+                .sorted(Comparator.comparing(
+                        cookingStepTip -> cookingStepTip.getCookingTip().getId()
+                ))
+                .flatMap(cookingStepTip -> {
+                    CookingTip cookingTip = cookingStepTip.getCookingTip();
+                    return cookingTip.getContents().stream()
+                            .sorted(Comparator.comparing(CookingTipContent::getSortOrder))
+                            .map(content -> CookingStepTipResDto.create(
+                                    cookingTip.getId(),
+                                    content.getSortOrder(),
+                                    cookingTip.getTitle(),
+                                    content.getContent(),
+                                    content.getType()
+                            ));
+                })
+                .toList();
         return CookingStepDetailResDto.builder()
                 .cookingStepId(cookingStep.getId())
                 .level(cookingStep.getLevel())
@@ -368,7 +401,7 @@ public class CookingRecordMapper {
                 .thumbnailUrl(cookingStep.getThumbnailUrl())
                 .content(cookingStep.getContent())
                 .subContent(cookingStep.getSubContent())
-                .stepTips(List.of())
+                .tips(tips)
                 .build();
     }
 }

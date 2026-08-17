@@ -24,6 +24,10 @@ import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSessionLog;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
 import com.likelion.routineeatbe.domain.cookingSession.repository.CookingStepRepository;
 import com.likelion.routineeatbe.domain.cookingSession.repository.CookingSessionLogRepository;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingStepTip;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingTip;
+import com.likelion.routineeatbe.domain.cookingTip.repository.CookingStepTipRepository;
+import com.likelion.routineeatbe.domain.cookingTip.repository.CookingTipRepository;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.entity.RecipeStep;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
@@ -63,6 +67,8 @@ public class CookingRecordService {
     private final CookingSessionLogRepository cookingSessionLogRepository;
     private final CookingStepRepository cookingStepRepository;
     private final UserFoodIngredientRepository userFoodIngredientRepository;
+    private final CookingTipRepository cookingTipRepository;
+    private final CookingStepTipRepository cookingStepTipRepository;
     private final CookingStepGenerateGeminiService geminiService;
     private final CookingRecordPersistenceService persistenceService;
     private final CookingRecordImageStorageService imageStorageService;
@@ -393,8 +399,9 @@ public class CookingRecordService {
      *
      * (2) 세부 작업 내용
      * - 사용자, 레시피, 재료와 기존 단계를 조회하고 중복 요리 시작 여부를 확인합니다.
-     * - Gemini로 체크리스트와 요리 단계를 생성한 후 하나의 트랜잭션으로 저장합니다.
-     * - 저장된 1번 단계의 상세 정보와 생성 데이터를 요리 시작 응답 DTO로 변환합니다.
+     * - 전체 요리 팁을 Gemini에 전달해 단계별 관련 팁 PK를 포함한 요리 단계를 생성합니다.
+     * - 체크리스트, 요리 단계와 단계별 요리 팁 연결을 하나의 트랜잭션으로 저장합니다.
+     * - 저장된 1번 단계와 요리 팁 상세 정보를 요리 시작 응답 DTO로 변환합니다.
      *
      * @param userNumber 사용자 고유 식별번호
      * @param request 레시피 PK와 요청 인분 수
@@ -433,12 +440,17 @@ public class CookingRecordService {
         if (recipeSteps.isEmpty()) {
             throw new CustomException(CookingRecordErrorCode.RECIPE_STEP_EMPTY);
         }
+        List<CookingTip> cookingTips = cookingTipRepository.findAllByOrderByIdAsc();
+        if (cookingTips.isEmpty()) {
+            throw new CustomException(CookingRecordErrorCode.COOKING_TIP_EMPTY);
+        }
 
         CookingStepGenerateGeminiResponseDto generated = geminiService.generate(
                 user,
                 recipe,
                 ingredients,
                 recipeSteps,
+                cookingTips,
                 request.servings()
         );
         CookingRecord cookingRecord = persistenceService.save(
@@ -453,11 +465,14 @@ public class CookingRecordService {
                 .orElseThrow(() -> new CustomException(
                         CookingRecordErrorCode.COOKING_STEP_NOT_FOUND
                 ));
+        List<CookingStepTip> firstCookingStepTips = cookingStepTipRepository
+                .findAllWithCookingTipAndContentsByCookingStepId(firstCookingStep.getId());
         CookingStartResDto result = cookingRecordMapper.toCookingStartResDto(
                 cookingRecord,
                 recipe,
                 generated,
-                firstCookingStep
+                firstCookingStep,
+                firstCookingStepTips
         );
 
         log.info(
@@ -474,7 +489,7 @@ public class CookingRecordService {
      * (2) 세부 작업 내용
      * - 사용자 소유 요리 기록과 세션을 비관적 쓰기 잠금으로 조회합니다.
      * - 진행 중 세션의 현재 단계가 마지막이면 완료 상태로 변경합니다.
-     * - 마지막 단계가 아니면 현재 단계를 증가시키고 다음 단계 상세 정보를 반환합니다.
+     * - 마지막 단계가 아니면 현재 단계를 증가시키고 연결된 요리 팁을 포함한 다음 단계 상세 정보를 반환합니다.
      *
      * @param cookingRecordId 요리 기록 PK
      * @param userNumber 사용자 고유 식별번호
@@ -527,9 +542,12 @@ public class CookingRecordService {
                 .orElseThrow(() -> new CustomException(
                         CookingRecordErrorCode.COOKING_STEP_NOT_FOUND
                 ));
+        List<CookingStepTip> cookingStepTips = cookingStepTipRepository
+                .findAllWithCookingTipAndContentsByCookingStepId(cookingStep.getId());
         CookingStepNavigationResDto result = cookingRecordMapper.toCookingStepNavigationResDto(
                 cookingSession,
-                cookingStep
+                cookingStep,
+                cookingStepTips
         );
 
         log.info(
@@ -548,7 +566,7 @@ public class CookingRecordService {
      * (2) 세부 작업 내용
      * - 사용자 소유 요리 기록과 세션을 비관적 쓰기 잠금으로 조회합니다.
      * - 진행 중 세션의 현재 단계가 1이면 변경하지 않고 null을 반환합니다.
-     * - 현재 단계가 2 이상이면 단계를 감소시키고 이전 단계 상세 정보를 반환합니다.
+     * - 현재 단계가 2 이상이면 단계를 감소시키고 연결된 요리 팁을 포함한 이전 단계 상세 정보를 반환합니다.
      *
      * @param cookingRecordId 요리 기록 PK
      * @param userNumber 사용자 고유 식별번호
@@ -599,10 +617,13 @@ public class CookingRecordService {
                 .orElseThrow(() -> new CustomException(
                         CookingRecordErrorCode.COOKING_STEP_NOT_FOUND
                 ));
+        List<CookingStepTip> cookingStepTips = cookingStepTipRepository
+                .findAllWithCookingTipAndContentsByCookingStepId(cookingStep.getId());
         CookingStepNavigationResDto result =
                 cookingRecordMapper.toCookingStepNavigationResDto(
                         cookingSession,
-                        cookingStep
+                        cookingStep,
+                        cookingStepTips
                 );
 
         log.info(
@@ -672,9 +693,12 @@ public class CookingRecordService {
                 .orElseThrow(() -> new CustomException(
                         CookingRecordErrorCode.COOKING_STEP_NOT_FOUND
                 ));
+        List<CookingStepTip> cookingStepTips = cookingStepTipRepository
+                .findAllWithCookingTipAndContentsByCookingStepId(cookingStep.getId());
         CookingStepNavigationResDto result = cookingRecordMapper.toCookingStepNavigationResDto(
                 cookingSession,
-                cookingStep
+                cookingStep,
+                cookingStepTips
         );
 
         log.info(

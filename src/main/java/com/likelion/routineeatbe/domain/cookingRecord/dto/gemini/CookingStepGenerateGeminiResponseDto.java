@@ -26,7 +26,8 @@ public record CookingStepGenerateGeminiResponseDto(
             CookingStepStage stage,
             String title,
             String content,
-            String subContent
+            String subContent,
+            List<Long> cookingTipIds
     ) {
 
         public static GeneratedCookingStep create(
@@ -34,7 +35,8 @@ public record CookingStepGenerateGeminiResponseDto(
                 CookingStepStage stage,
                 String title,
                 String content,
-                String subContent
+                String subContent,
+                List<Long> cookingTipIds
         ) {
             return GeneratedCookingStep.builder()
                     .level(level)
@@ -42,6 +44,7 @@ public record CookingStepGenerateGeminiResponseDto(
                     .title(title)
                     .content(content)
                     .subContent(subContent)
+                    .cookingTipIds(List.copyOf(cookingTipIds))
                     .build();
         }
     }

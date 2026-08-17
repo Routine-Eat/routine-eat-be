@@ -214,6 +214,8 @@ public interface CookingRecordControllerDocs {
             summary = "요리 시작",
             description = """
                     사용자와 레시피 정보를 기반으로 맞춤 요리 단계와 세션을 생성합니다.
+                    초기화된 요리 팁 중 각 단계와 관련 있는 팁을 Gemini가 선택하고
+                    단계별 팁 연결과 팁 콘텐츠를 현재 단계 응답에 포함합니다.
 
                     [Query Parameter]
                     - userNumber: 4자리 사용자 고유 식별번호
@@ -230,8 +232,8 @@ public interface CookingRecordControllerDocs {
                     content = @Content(schema = @Schema(implementation = CookingStartResDto.class))
             ),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 값", content = @Content),
-            @ApiResponse(responseCode = "404", description = "사용자 또는 레시피를 찾을 수 없음", content = @Content),
-            @ApiResponse(responseCode = "409", description = "진행 중 또는 완료된 요리 존재", content = @Content),
+            @ApiResponse(responseCode = "404", description = "사용자, 레시피 또는 요리 팁을 찾을 수 없음", content = @Content),
+            @ApiResponse(responseCode = "409", description = "진행 중 또는 완료된 요리 존재, 요리 팁 기준 데이터 없음", content = @Content),
             @ApiResponse(responseCode = "502", description = "Gemini 응답 오류", content = @Content),
             @ApiResponse(responseCode = "503", description = "Gemini 호출 한도 초과", content = @Content),
             @ApiResponse(responseCode = "504", description = "Gemini 응답 시간 초과", content = @Content)
@@ -250,7 +252,10 @@ public interface CookingRecordControllerDocs {
             summary = "다음 요리 단계로 이동",
             description = """
                     진행 중인 요리 세션을 다음 단계로 이동하고 해당 단계의 상세 정보를 반환합니다.
+                    현재 단계 상세 정보에는 단계 PK, 번호, 제목, 이미지, 본문, 부연 설명과
+                    연결된 요리 팁 콘텐츠가 팁 PK 및 sortNum 순서와 함께 포함됩니다.
                     현재 단계가 마지막 단계이면 요리 세션을 완료 상태로 변경합니다.
+                    이 경우 응답 data는 null입니다.
 
                     [Path Variable]
                     - cookingRecordId: 요리 기록 PK
@@ -285,7 +290,10 @@ public interface CookingRecordControllerDocs {
             summary = "이전 요리 단계로 이동",
             description = """
                     진행 중인 요리 세션을 이전 단계로 이동하고 해당 단계의 상세 정보를 반환합니다.
+                    현재 단계 상세 정보에는 단계 PK, 번호, 제목, 이미지, 본문, 부연 설명과
+                    연결된 요리 팁 콘텐츠가 팁 PK 및 sortNum 순서와 함께 포함됩니다.
                     현재 단계가 1이면 단계를 변경하지 않습니다.
+                    이 경우 응답 data는 null입니다.
 
                     [Path Variable]
                     - cookingRecordId: 요리 기록 PK

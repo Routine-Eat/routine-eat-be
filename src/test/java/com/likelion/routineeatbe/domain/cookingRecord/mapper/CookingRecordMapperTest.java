@@ -1,6 +1,7 @@
 package com.likelion.routineeatbe.domain.cookingRecord.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.groups.Tuple.tuple;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
@@ -16,6 +17,10 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNa
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingStepTip;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingTip;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingTipContent;
+import com.likelion.routineeatbe.domain.cookingTip.enums.CookingTipContentType;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSessionLog;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
@@ -294,6 +299,23 @@ class CookingRecordMapperTest {
                 .subContent("가위를 사용해도 괜찮아요.")
                 .cookingSession(cookingSession)
                 .build();
+        CookingTip cookingTip = CookingTip.builder()
+                .id(5L)
+                .title("대파 써는 법")
+                .build();
+        CookingTipContent.create(
+                cookingTip,
+                CookingTipContentType.IMAGE,
+                "https://api-img.nahjjun.cloud/tip/5/2",
+                2
+        );
+        CookingTipContent.create(
+                cookingTip,
+                CookingTipContentType.TEXT,
+                "대파를 세로로 고정해 주세요.",
+                1
+        );
+        CookingStepTip cookingStepTip = CookingStepTip.create(firstCookingStep, cookingTip);
         Recipe recipe = Recipe.builder()
                 .menu(Menu.builder()
                         .name("계란 대파 볶음밥")
@@ -310,21 +332,24 @@ class CookingRecordMapperTest {
                                         CookingStepStage.PREPARATION,
                                         "재료 준비",
                                         "대파를 잘라주세요.",
-                                        "가위를 사용해도 괜찮아요."
+                                        "가위를 사용해도 괜찮아요.",
+                                        List.of(5L)
                                 ),
                                 GeneratedCookingStep.create(
                                         2,
                                         CookingStepStage.COOKING,
                                         "조리",
                                         "볶아주세요.",
-                                        null
+                                        null,
+                                        List.of()
                                 ),
                                 GeneratedCookingStep.create(
                                         3,
                                         CookingStepStage.FINISH,
                                         "완료",
                                         "불을 꺼주세요.",
-                                        null
+                                        null,
+                                        List.of()
                                 )
                         )
                 );
@@ -334,7 +359,8 @@ class CookingRecordMapperTest {
                 cookingRecord,
                 recipe,
                 generated,
-                firstCookingStep
+                firstCookingStep,
+                List.of(cookingStepTip)
         );
 
         // then
@@ -343,7 +369,30 @@ class CookingRecordMapperTest {
         assertThat(result.nextCookingStepLevel()).isEqualTo(2);
         assertThat(result.currentCookingStep().cookingStepId()).isEqualTo(19L);
         assertThat(result.currentCookingStep().level()).isEqualTo(1L);
-        assertThat(result.currentCookingStep().stepTips()).isEmpty();
+        assertThat(result.currentCookingStep().tips())
+                .extracting(
+                        tip -> tip.cookingTipId(),
+                        tip -> tip.sortNum(),
+                        tip -> tip.cookingTipTitle(),
+                        tip -> tip.cookingTipContent(),
+                        tip -> tip.cookingTipType()
+                )
+                .containsExactly(
+                        tuple(
+                                5L,
+                                1,
+                                "대파 써는 법",
+                                "대파를 세로로 고정해 주세요.",
+                                CookingTipContentType.TEXT
+                        ),
+                        tuple(
+                                5L,
+                                2,
+                                "대파 써는 법",
+                                "https://api-img.nahjjun.cloud/tip/5/2",
+                                CookingTipContentType.IMAGE
+                        )
+                );
         assertThat(result.cookingStepTitles()).hasSize(3);
     }
 
@@ -366,10 +415,31 @@ class CookingRecordMapperTest {
                 .subContent("가위를 사용해도 괜찮아요.")
                 .cookingSession(cookingSession)
                 .build();
+        CookingTip cookingTip = CookingTip.builder()
+                .id(1L)
+                .title("칼로 써는 방법 배워볼래요.")
+                .build();
+        CookingTipContent.create(
+                cookingTip,
+                CookingTipContentType.IMAGE,
+                "https://api-img.nahjjun.cloud/tip/1/2",
+                2
+        );
+        CookingTipContent.create(
+                cookingTip,
+                CookingTipContentType.TEXT,
+                "칼로 썰 때는 엄지를 안쪽으로 접어주세요.",
+                1
+        );
+        CookingStepTip cookingStepTip = CookingStepTip.create(cookingStep, cookingTip);
 
         // when
         CookingStepNavigationResDto result = cookingRecordMapper
-                .toCookingStepNavigationResDto(cookingSession, cookingStep);
+                .toCookingStepNavigationResDto(
+                        cookingSession,
+                        cookingStep,
+                        List.of(cookingStepTip)
+                );
 
         // then
         assertThat(result.cookingStepCount()).isEqualTo(3);
@@ -377,6 +447,29 @@ class CookingRecordMapperTest {
         assertThat(result.nextCookingStepLevel()).isEqualTo(2);
         assertThat(result.currentCookingStep().cookingStepId()).isEqualTo(19L);
         assertThat(result.currentCookingStep().level()).isEqualTo(1L);
-        assertThat(result.currentCookingStep().stepTips()).isEmpty();
+        assertThat(result.currentCookingStep().tips())
+                .extracting(
+                        tip -> tip.cookingTipId(),
+                        tip -> tip.sortNum(),
+                        tip -> tip.cookingTipTitle(),
+                        tip -> tip.cookingTipContent(),
+                        tip -> tip.cookingTipType()
+                )
+                .containsExactly(
+                        tuple(
+                                1L,
+                                1,
+                                "칼로 써는 방법 배워볼래요.",
+                                "칼로 썰 때는 엄지를 안쪽으로 접어주세요.",
+                                CookingTipContentType.TEXT
+                        ),
+                        tuple(
+                                1L,
+                                2,
+                                "칼로 써는 방법 배워볼래요.",
+                                "https://api-img.nahjjun.cloud/tip/1/2",
+                                CookingTipContentType.IMAGE
+                        )
+                );
     }
 }

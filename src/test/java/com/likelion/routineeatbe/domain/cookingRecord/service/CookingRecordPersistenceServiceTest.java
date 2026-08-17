@@ -18,6 +18,8 @@ import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIn
 import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
 import com.likelion.routineeatbe.domain.cookingRecord.exception.CookingRecordErrorCode;
 import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRepository;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingTip;
+import com.likelion.routineeatbe.domain.cookingTip.repository.CookingTipRepository;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
@@ -54,6 +56,7 @@ class CookingRecordPersistenceServiceTest {
     @Mock private RecipeFoodIngredientRepository recipeFoodIngredientRepository;
     @Mock private CookingRecordRepository cookingRecordRepository;
     @Mock private UserFoodIngredientRepository userFoodIngredientRepository;
+    @Mock private CookingTipRepository cookingTipRepository;
 
     @Test
     @DisplayName("수정 목록이 비어 있으면 초기 사용량으로 재고를 차감한다")
@@ -353,17 +356,43 @@ class CookingRecordPersistenceServiceTest {
         CookingStepGenerateGeminiResponseDto generated = CookingStepGenerateGeminiResponseDto.create(
                 List.of("손을 씻으세요.", "도구를 확인하세요."),
                 List.of(
-                        GeneratedCookingStep.create(1, CookingStepStage.PREPARATION, "준비", "준비", null),
-                        GeneratedCookingStep.create(2, CookingStepStage.COOKING, "조리", "조리", null),
-                        GeneratedCookingStep.create(3, CookingStepStage.FINISH, "완료", "완료", null)
+                        GeneratedCookingStep.create(
+                                1,
+                                CookingStepStage.PREPARATION,
+                                "준비",
+                                "준비",
+                                null,
+                                List.of(100L)
+                        ),
+                        GeneratedCookingStep.create(
+                                2,
+                                CookingStepStage.COOKING,
+                                "조리",
+                                "조리",
+                                null,
+                                List.of()
+                        ),
+                        GeneratedCookingStep.create(
+                                3,
+                                CookingStepStage.FINISH,
+                                "완료",
+                                "완료",
+                                null,
+                                List.of()
+                        )
                 )
         );
+        CookingTip cookingTip = CookingTip.builder()
+                .id(100L)
+                .title("대파 써는 법")
+                .build();
         given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(user));
         given(recipeRepository.findById(2L)).willReturn(Optional.of(recipe));
         given(cookingRecordRepository.existsBlockingSession(eq(1L), eq(2L), anyCollection()))
                 .willReturn(false);
         given(recipeFoodIngredientRepository.findAllByRecipeIdInWithFoodIngredient(List.of(2L)))
                 .willReturn(recipeFoodIngredients);
+        given(cookingTipRepository.findAllById(anyCollection())).willReturn(List.of(cookingTip));
         given(cookingRecordRepository.saveAndFlush(any(CookingRecord.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -379,6 +408,13 @@ class CookingRecordPersistenceServiceTest {
                 .filteredOn(cookingStep -> cookingStep.getLevel() == 0L)
                 .extracting(CookingStep::getContent)
                 .containsExactly("손을 씻으세요.", "도구를 확인하세요.");
+        assertThat(result.getCookingSession().getCookingSteps())
+                .filteredOn(cookingStep -> cookingStep.getLevel() == 1L)
+                .singleElement()
+                .satisfies(cookingStep -> assertThat(cookingStep.getCookingStepTips())
+                        .singleElement()
+                        .satisfies(cookingStepTip -> assertThat(cookingStepTip.getCookingTip())
+                                .isSameAs(cookingTip)));
         assertThat(result.getFoodIngredients()).hasSize(2);
         assertThat(result.getFoodIngredients())
                 .extracting(
@@ -392,6 +428,46 @@ class CookingRecordPersistenceServiceTest {
         assertThat(result.getFoodIngredients())
                 .extracting(foodIngredient -> foodIngredient.getFoodIngredient().getId())
                 .containsExactlyInAnyOrder(10L, 11L);
+    }
+
+    @Test
+    @DisplayName("Gemini가 선택한 요리 팁이 삭제되었으면 저장에 실패한다")
+    void 요리_팁_조회_실패() {
+        // given
+        User user = User.builder().id(1L).build();
+        Recipe recipe = Recipe.builder().id(2L).build();
+        FoodIngredient foodIngredient = FoodIngredient.builder().id(10L).build();
+        RecipeFoodIngredient recipeFoodIngredient = RecipeFoodIngredient.builder()
+                .recipe(recipe)
+                .foodIngredient(foodIngredient)
+                .primaryNeedAmountValue(50.0)
+                .build();
+        CookingStepGenerateGeminiResponseDto generated =
+                CookingStepGenerateGeminiResponseDto.create(
+                        List.of("손을 씻으세요."),
+                        List.of(GeneratedCookingStep.create(
+                                1,
+                                CookingStepStage.PREPARATION,
+                                "준비",
+                                "준비",
+                                null,
+                                List.of(999L)
+                        ))
+                );
+        given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(user));
+        given(recipeRepository.findById(2L)).willReturn(Optional.of(recipe));
+        given(cookingRecordRepository.existsBlockingSession(eq(1L), eq(2L), anyCollection()))
+                .willReturn(false);
+        given(recipeFoodIngredientRepository.findAllByRecipeIdInWithFoodIngredient(List.of(2L)))
+                .willReturn(List.of(recipeFoodIngredient));
+        given(cookingTipRepository.findAllById(anyCollection())).willReturn(List.of());
+
+        // when & then
+        assertThatThrownBy(() -> persistenceService.save(1L, 2L, 1, generated))
+                .isInstanceOf(CustomException.class)
+                .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
+                        .isEqualTo(CookingRecordErrorCode.COOKING_TIP_NOT_FOUND));
+        then(cookingRecordRepository).should(never()).saveAndFlush(any(CookingRecord.class));
     }
 
     @Test

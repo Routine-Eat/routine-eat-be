@@ -11,6 +11,9 @@ import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRe
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingStepTip;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingTip;
+import com.likelion.routineeatbe.domain.cookingTip.repository.CookingTipRepository;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
@@ -48,6 +51,7 @@ public class CookingRecordPersistenceService {
     private final RecipeFoodIngredientRepository recipeFoodIngredientRepository;
     private final CookingRecordRepository cookingRecordRepository;
     private final UserFoodIngredientRepository userFoodIngredientRepository;
+    private final CookingTipRepository cookingTipRepository;
 
     /**
      * (1) 작업 목적
@@ -217,6 +221,7 @@ public class CookingRecordPersistenceService {
      * - 같은 사용자와 레시피에 진행 중 또는 완료된 세션이 있으면 저장을 차단합니다.
      * - 레시피의 1인분 음식 재료 필요량에 요청 인분 수를 곱해 사용량으로 저장합니다.
      * - 체크리스트는 level 0, 실제 요리 단계는 level 1 이상으로 저장합니다.
+     * - Gemini가 선택한 요리 팁을 단계별 CookingStepTip으로 연결합니다.
      *
      * @param userId 사용자 PK
      * @param recipeId 레시피 PK
@@ -250,6 +255,16 @@ public class CookingRecordPersistenceService {
             throw new CustomException(CookingRecordErrorCode.RECIPE_FOOD_INGREDIENT_EMPTY);
         }
 
+        Set<Long> cookingTipIds = generated.cookingSteps().stream()
+                .flatMap(cookingStep -> cookingStep.cookingTipIds().stream())
+                .collect(Collectors.toSet());
+        Map<Long, CookingTip> cookingTipMap = cookingTipRepository.findAllById(cookingTipIds)
+                .stream()
+                .collect(Collectors.toMap(CookingTip::getId, Function.identity()));
+        if (cookingTipMap.size() != cookingTipIds.size()) {
+            throw new CustomException(CookingRecordErrorCode.COOKING_TIP_NOT_FOUND);
+        }
+
         CookingRecord cookingRecord = CookingRecord.create(user, recipe, servings);
         for (RecipeFoodIngredient recipeFoodIngredient : recipeFoodIngredients) {
             Double secondaryUsedAmountValue =
@@ -274,13 +289,16 @@ public class CookingRecordPersistenceService {
                 content,
                 null
         ));
-        for (GeneratedCookingStep cookingStep : generated.cookingSteps()) {
-            CookingStep.create(
+        for (GeneratedCookingStep generatedCookingStep : generated.cookingSteps()) {
+            CookingStep cookingStep = CookingStep.create(
                     cookingSession,
-                    cookingStep.level().longValue(),
-                    cookingStep.title(),
-                    cookingStep.content(),
-                    cookingStep.subContent()
+                    generatedCookingStep.level().longValue(),
+                    generatedCookingStep.title(),
+                    generatedCookingStep.content(),
+                    generatedCookingStep.subContent()
+            );
+            generatedCookingStep.cookingTipIds().forEach(cookingTipId ->
+                    CookingStepTip.create(cookingStep, cookingTipMap.get(cookingTipId))
             );
         }
 

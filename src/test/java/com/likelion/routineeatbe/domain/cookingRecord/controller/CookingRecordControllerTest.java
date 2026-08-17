@@ -1,6 +1,7 @@
 package com.likelion.routineeatbe.domain.cookingRecord.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -29,11 +30,13 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResult
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTipResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTitleResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingAiService;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingRecordService;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionLogType;
+import com.likelion.routineeatbe.domain.cookingTip.enums.CookingTipContentType;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
@@ -532,7 +535,13 @@ class CookingRecordControllerTest {
                         null,
                         "대파를 잘라주세요.",
                         null,
-                        List.of()
+                        List.of(CookingStepTipResDto.create(
+                                5L,
+                                1,
+                                "대파 써는 법",
+                                "대파를 세로로 고정해 주세요.",
+                                CookingTipContentType.TEXT
+                        ))
                 ),
                 List.of(CookingStepTitleResDto.create(1L, "재료 준비"))
         );
@@ -555,7 +564,15 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.data.nextCookingStepLevel").doesNotExist())
                 .andExpect(jsonPath("$.data.currentCookingStep.cookingStepId").value(20))
                 .andExpect(jsonPath("$.data.currentCookingStep.level").value(1))
-                .andExpect(jsonPath("$.data.currentCookingStep.stepTips").isEmpty())
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipId").value(5))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].sortNum").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipTitle")
+                        .value("대파 써는 법"))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipContent")
+                        .value("대파를 세로로 고정해 주세요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipType")
+                        .value("TEXT"))
+                .andExpect(jsonPath("$.data.currentCookingStep.stepTips").doesNotExist())
                 .andExpect(jsonPath("$.data.cookingStepTitles[0].stepLevel").value(1));
         then(cookingRecordService).should().startCooking("1234", request);
     }
@@ -605,7 +622,7 @@ class CookingRecordControllerTest {
                         "https://example.com/step.jpg",
                         "대파를 잘라주세요.",
                         "가위를 사용해도 괜찮아요.",
-                        List.of()
+                        createNavigationTips()
                 )
         );
         given(cookingRecordService.moveToNextCookingStep(10L, "1234"))
@@ -626,7 +643,27 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.data.nextCookingStepLevel").value(3))
                 .andExpect(jsonPath("$.data.currentCookingStep.cookingStepId").value(20))
                 .andExpect(jsonPath("$.data.currentCookingStep.level").value(2))
-                .andExpect(jsonPath("$.data.currentCookingStep.stepTips").isEmpty());
+                .andExpect(jsonPath("$.data.currentCookingStep.title").value("대파 준비하기"))
+                .andExpect(jsonPath("$.data.currentCookingStep.thumbnailUrl")
+                        .value("https://example.com/step.jpg"))
+                .andExpect(jsonPath("$.data.currentCookingStep.content")
+                        .value("대파를 잘라주세요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.subContent")
+                        .value("가위를 사용해도 괜찮아요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipId").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].sortNum").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipTitle")
+                        .value("칼로 써는 방법 배워볼래요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipContent")
+                        .value("칼로 썰 때는 엄지를 안쪽으로 접어주세요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipType")
+                        .value("TEXT"))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipId").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].sortNum").value(2))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipContent")
+                        .value("https://api-img.nahjjun.cloud/tip/1/2"))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipType")
+                        .value("IMAGE"));
         then(cookingRecordService).should().moveToNextCookingStep(10L, "1234");
     }
 
@@ -646,7 +683,7 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value(201))
                 .andExpect(jsonPath("$.message").value("요리가 종료되었습니다."))
-                .andExpect(jsonPath("$.data").doesNotExist());
+                .andExpect(jsonPath("$.data").value(nullValue()));
     }
 
     @Test
@@ -676,7 +713,7 @@ class CookingRecordControllerTest {
                         "https://example.com/step.jpg",
                         "대파를 잘라주세요.",
                         "가위를 사용해도 괜찮아요.",
-                        List.of()
+                        createNavigationTips()
                 )
         );
         given(cookingRecordService.moveToPreviousCookingStep(10L, "1234"))
@@ -697,7 +734,27 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.data.nextCookingStepLevel").value(2))
                 .andExpect(jsonPath("$.data.currentCookingStep.cookingStepId").value(19))
                 .andExpect(jsonPath("$.data.currentCookingStep.level").value(1))
-                .andExpect(jsonPath("$.data.currentCookingStep.stepTips").isEmpty());
+                .andExpect(jsonPath("$.data.currentCookingStep.title").value("대파 준비하기"))
+                .andExpect(jsonPath("$.data.currentCookingStep.thumbnailUrl")
+                        .value("https://example.com/step.jpg"))
+                .andExpect(jsonPath("$.data.currentCookingStep.content")
+                        .value("대파를 잘라주세요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.subContent")
+                        .value("가위를 사용해도 괜찮아요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipId").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].sortNum").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipTitle")
+                        .value("칼로 써는 방법 배워볼래요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipContent")
+                        .value("칼로 썰 때는 엄지를 안쪽으로 접어주세요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipType")
+                        .value("TEXT"))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipId").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].sortNum").value(2))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipContent")
+                        .value("https://api-img.nahjjun.cloud/tip/1/2"))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipType")
+                        .value("IMAGE"));
         then(cookingRecordService).should().moveToPreviousCookingStep(10L, "1234");
     }
 
@@ -717,7 +774,26 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value(201))
                 .andExpect(jsonPath("$.message").value("1 이전 단계로 이동할 수 없습니다."))
-                .andExpect(jsonPath("$.data").doesNotExist());
+                .andExpect(jsonPath("$.data").value(nullValue()));
         then(cookingRecordService).should().moveToPreviousCookingStep(10L, "1234");
+    }
+
+    private List<CookingStepTipResDto> createNavigationTips() {
+        return List.of(
+                CookingStepTipResDto.create(
+                        1L,
+                        1,
+                        "칼로 써는 방법 배워볼래요.",
+                        "칼로 썰 때는 엄지를 안쪽으로 접어주세요.",
+                        CookingTipContentType.TEXT
+                ),
+                CookingStepTipResDto.create(
+                        1L,
+                        2,
+                        "칼로 써는 방법 배워볼래요.",
+                        "https://api-img.nahjjun.cloud/tip/1/2",
+                        CookingTipContentType.IMAGE
+                )
+        );
     }
 }

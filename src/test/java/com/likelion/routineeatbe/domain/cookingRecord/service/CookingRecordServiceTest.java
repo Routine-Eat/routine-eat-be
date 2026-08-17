@@ -38,6 +38,10 @@ import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatu
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionLogType;
 import com.likelion.routineeatbe.domain.cookingSession.repository.CookingSessionLogRepository;
 import com.likelion.routineeatbe.domain.cookingSession.repository.CookingStepRepository;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingStepTip;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingTip;
+import com.likelion.routineeatbe.domain.cookingTip.repository.CookingStepTipRepository;
+import com.likelion.routineeatbe.domain.cookingTip.repository.CookingTipRepository;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
@@ -78,6 +82,8 @@ class CookingRecordServiceTest {
     @Mock private CookingRecordRepository cookingRecordRepository;
     @Mock private CookingSessionLogRepository cookingSessionLogRepository;
     @Mock private CookingStepRepository cookingStepRepository;
+    @Mock private CookingTipRepository cookingTipRepository;
+    @Mock private CookingStepTipRepository cookingStepTipRepository;
     @Mock private CookingStepGenerateGeminiService geminiService;
     @Mock private CookingRecordPersistenceService persistenceService;
     @Mock private CookingRecordImageStorageService imageStorageService;
@@ -584,6 +590,7 @@ class CookingRecordServiceTest {
         Recipe recipe = Recipe.builder().id(2L).menu(Menu.builder().name("볶음밥").build()).build();
         RecipeFoodIngredient ingredient = RecipeFoodIngredient.builder().build();
         RecipeStep recipeStep = RecipeStep.builder().level(1L).build();
+        CookingTip cookingTip = CookingTip.builder().id(10L).title("재료 준비하는 법").build();
         CookingStartReqDto request = new CookingStartReqDto(2L, 2);
         CookingStepGenerateGeminiResponseDto generated = generatedResponse();
         CookingRecord saved = createCookingRecord(3L, user, 1, 3);
@@ -623,16 +630,28 @@ class CookingRecordServiceTest {
                 .willReturn(List.of(ingredient));
         given(recipeStepRepository.findAllByRecipeIdOrderByLevelAsc(2L))
                 .willReturn(List.of(recipeStep));
-        given(geminiService.generate(user, recipe, List.of(ingredient), List.of(recipeStep), 2))
+        given(cookingTipRepository.findAllByOrderByIdAsc()).willReturn(List.of(cookingTip));
+        given(geminiService.generate(
+                user,
+                recipe,
+                List.of(ingredient),
+                List.of(recipeStep),
+                List.of(cookingTip),
+                2
+        ))
                 .willReturn(generated);
         given(persistenceService.save(1L, 2L, 2, generated)).willReturn(saved);
         given(cookingStepRepository.findByCookingSessionIdAndLevel(100L, 1L))
                 .willReturn(Optional.of(firstCookingStep));
+        given(cookingStepTipRepository
+                .findAllWithCookingTipAndContentsByCookingStepId(20L))
+                .willReturn(List.of());
         given(cookingRecordMapper.toCookingStartResDto(
                 saved,
                 recipe,
                 generated,
-                firstCookingStep
+                firstCookingStep,
+                List.of()
         ))
                 .willReturn(expected);
 
@@ -642,6 +661,35 @@ class CookingRecordServiceTest {
         // then
         assertThat(result).isSameAs(expected);
         then(persistenceService).should().save(1L, 2L, 2, generated);
+    }
+
+    @Test
+    @DisplayName("요리 팁 기준 데이터가 없으면 요리 시작에 실패한다")
+    void 요리_팁_기준_데이터_없음_요리_시작_실패() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        Recipe recipe = Recipe.builder().id(2L).build();
+        RecipeFoodIngredient ingredient = RecipeFoodIngredient.builder().build();
+        RecipeStep recipeStep = RecipeStep.builder().level(1L).build();
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(recipeRepository.findByIdWithMenu(2L)).willReturn(Optional.of(recipe));
+        given(cookingRecordRepository.existsBlockingSession(eq(1L), eq(2L), anyCollection()))
+                .willReturn(false);
+        given(recipeFoodIngredientRepository.findAllByRecipeIdInWithFoodIngredient(List.of(2L)))
+                .willReturn(List.of(ingredient));
+        given(recipeStepRepository.findAllByRecipeIdOrderByLevelAsc(2L))
+                .willReturn(List.of(recipeStep));
+        given(cookingTipRepository.findAllByOrderByIdAsc()).willReturn(List.of());
+
+        // when & then
+        assertThatThrownBy(() -> cookingRecordService.startCooking(
+                "1234",
+                new CookingStartReqDto(2L, 1)
+        )).isInstanceOf(CustomException.class)
+                .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
+                        .isEqualTo(CookingRecordErrorCode.COOKING_TIP_EMPTY));
+        then(geminiService).shouldHaveNoInteractions();
+        then(persistenceService).shouldHaveNoInteractions();
     }
 
     @Test
@@ -680,6 +728,11 @@ class CookingRecordServiceTest {
                 .content("볶아주세요.")
                 .cookingSession(cookingSession)
                 .build();
+        CookingTip cookingTip = CookingTip.builder()
+                .id(1L)
+                .title("칼로 써는 방법 배워볼래요.")
+                .build();
+        CookingStepTip cookingStepTip = CookingStepTip.create(cookingStep, cookingTip);
         CookingStepNavigationResDto expected = CookingStepNavigationResDto.create(
                 3,
                 1,
@@ -693,7 +746,14 @@ class CookingRecordServiceTest {
                 .willReturn(Optional.of(cookingRecord));
         given(cookingStepRepository.findByCookingSessionIdAndLevel(100L, 2L))
                 .willReturn(Optional.of(cookingStep));
-        given(cookingRecordMapper.toCookingStepNavigationResDto(cookingSession, cookingStep))
+        given(cookingStepTipRepository
+                .findAllWithCookingTipAndContentsByCookingStepId(20L))
+                .willReturn(List.of(cookingStepTip));
+        given(cookingRecordMapper.toCookingStepNavigationResDto(
+                cookingSession,
+                cookingStep,
+                List.of(cookingStepTip)
+        ))
                 .willReturn(expected);
 
         // when
@@ -763,6 +823,11 @@ class CookingRecordServiceTest {
                 .content("대파를 잘라주세요.")
                 .cookingSession(cookingSession)
                 .build();
+        CookingTip cookingTip = CookingTip.builder()
+                .id(1L)
+                .title("칼로 써는 방법 배워볼래요.")
+                .build();
+        CookingStepTip cookingStepTip = CookingStepTip.create(cookingStep, cookingTip);
         CookingStepNavigationResDto expected = CookingStepNavigationResDto.create(
                 3,
                 0,
@@ -782,7 +847,14 @@ class CookingRecordServiceTest {
                 .willReturn(Optional.of(cookingRecord));
         given(cookingStepRepository.findByCookingSessionIdAndLevel(100L, 1L))
                 .willReturn(Optional.of(cookingStep));
-        given(cookingRecordMapper.toCookingStepNavigationResDto(cookingSession, cookingStep))
+        given(cookingStepTipRepository
+                .findAllWithCookingTipAndContentsByCookingStepId(19L))
+                .willReturn(List.of(cookingStepTip));
+        given(cookingRecordMapper.toCookingStepNavigationResDto(
+                cookingSession,
+                cookingStep,
+                List.of(cookingStepTip)
+        ))
                 .willReturn(expected);
 
         // when
@@ -869,7 +941,14 @@ class CookingRecordServiceTest {
                 .willReturn(Optional.of(cookingRecord));
         given(cookingStepRepository.findByCookingSessionIdAndLevel(100L, 3L))
                 .willReturn(Optional.of(cookingStep));
-        given(cookingRecordMapper.toCookingStepNavigationResDto(cookingSession, cookingStep))
+        given(cookingStepTipRepository
+                .findAllWithCookingTipAndContentsByCookingStepId(21L))
+                .willReturn(List.of());
+        given(cookingRecordMapper.toCookingStepNavigationResDto(
+                cookingSession,
+                cookingStep,
+                List.of()
+        ))
                 .willReturn(expected);
 
         // when
@@ -909,9 +988,15 @@ class CookingRecordServiceTest {
         return CookingStepGenerateGeminiResponseDto.create(
                 List.of("손을 씻으세요."),
                 List.of(
-                        GeneratedCookingStep.create(1, CookingStepStage.PREPARATION, "준비", "준비", null),
-                        GeneratedCookingStep.create(2, CookingStepStage.COOKING, "조리", "조리", null),
-                        GeneratedCookingStep.create(3, CookingStepStage.FINISH, "완료", "완료", null)
+                        GeneratedCookingStep.create(
+                                1, CookingStepStage.PREPARATION, "준비", "준비", null, List.of(10L)
+                        ),
+                        GeneratedCookingStep.create(
+                                2, CookingStepStage.COOKING, "조리", "조리", null, List.of()
+                        ),
+                        GeneratedCookingStep.create(
+                                3, CookingStepStage.FINISH, "완료", "완료", null, List.of()
+                        )
                 )
         );
     }

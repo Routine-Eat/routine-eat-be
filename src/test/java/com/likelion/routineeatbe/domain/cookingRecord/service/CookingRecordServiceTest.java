@@ -12,6 +12,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGene
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
@@ -71,6 +72,59 @@ class CookingRecordServiceTest {
     @Mock private CookingRecordImageStorageService imageStorageService;
     @Mock private CookingRecordMapper cookingRecordMapper;
     @Mock private UserFoodIngredientRepository userFoodIngredientRepository;
+
+    @Test
+    @DisplayName("사용자 소유 요리 기록 상세 정보를 조회한다")
+    void 사용자_소유_요리_기록_상세_조회_성공() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = CookingRecord.builder().id(10L).user(user).build();
+        CookingRecordDetailResDto expected = CookingRecordDetailResDto.create(
+                10L,
+                "감자미역국",
+                "https://example.com/menu.jpg",
+                20,
+                DifficultyLevel.LEVEL_2,
+                TasteRating.LEVEL_1,
+                DifficultyLevel.LEVEL_3,
+                "참기름을 조금 더 넣으면 맛있습니다.",
+                "https://api-img.nahjjun.cloud/1/10/result.jpg"
+        );
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository.findByIdAndUserIdWithRecipeAndMenu(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+        given(cookingRecordMapper.toCookingRecordDetailResDto(cookingRecord))
+                .willReturn(expected);
+
+        // when
+        CookingRecordDetailResDto result = cookingRecordService.getCookingRecordDetail(
+                10L,
+                "1234"
+        );
+
+        // then
+        assertThat(result).isSameAs(expected);
+        then(cookingRecordRepository).should()
+                .findByIdAndUserIdWithRecipeAndMenu(10L, 1L);
+        then(cookingRecordMapper).should().toCookingRecordDetailResDto(cookingRecord);
+    }
+
+    @Test
+    @DisplayName("다른 사용자의 요리 기록이면 상세 조회에 실패한다")
+    void 요리_기록_상세_조회_실패_다른_사용자_기록() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository.findByIdAndUserIdWithRecipeAndMenu(10L, 1L))
+                .willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> cookingRecordService.getCookingRecordDetail(10L, "1234"))
+                .isInstanceOf(CustomException.class)
+                .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
+                        .isEqualTo(CookingRecordErrorCode.COOKING_RECORD_NOT_FOUND));
+        then(cookingRecordMapper).shouldHaveNoInteractions();
+    }
 
     @Test
     @DisplayName("레시피 기본 필요량과 요리 기록 사용량을 조회한다")
@@ -185,6 +239,7 @@ class CookingRecordServiceTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_3,
                 DifficultyLevel.LEVEL_2,
+                "참기름을 조금 더 넣으면 맛있습니다.",
                 List.of()
         );
         CookingResultSaveResDto expected = CookingResultSaveResDto.create(10L);
@@ -200,6 +255,7 @@ class CookingRecordServiceTest {
                 10L,
                 TasteRating.LEVEL_3,
                 DifficultyLevel.LEVEL_2,
+                "참기름을 조금 더 넣으면 맛있습니다.",
                 List.of(),
                 null
         )).willReturn(cookingRecord);
@@ -228,6 +284,7 @@ class CookingRecordServiceTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_2,
                 DifficultyLevel.LEVEL_3,
+                null,
                 List.of(new ModifiedCookingRecordFoodIngredientReqDto(
                         40L,
                         80.0,
@@ -255,6 +312,7 @@ class CookingRecordServiceTest {
                 10L,
                 TasteRating.LEVEL_2,
                 DifficultyLevel.LEVEL_3,
+                null,
                 request.modifiedCookingRecordFoodIngredients(),
                 photoUrl
         )).willReturn(cookingRecord);
@@ -282,6 +340,7 @@ class CookingRecordServiceTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_2,
                 DifficultyLevel.LEVEL_2,
+                null,
                 List.of()
         );
         given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
@@ -316,6 +375,7 @@ class CookingRecordServiceTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_1,
                 DifficultyLevel.LEVEL_4,
+                null,
                 List.of()
         );
         MockMultipartFile image = new MockMultipartFile(
@@ -338,6 +398,7 @@ class CookingRecordServiceTest {
                 10L,
                 TasteRating.LEVEL_1,
                 DifficultyLevel.LEVEL_4,
+                null,
                 List.of(),
                 photoUrl
         )).willThrow(new CustomException(CookingRecordErrorCode.COOKING_RECORD_NOT_FOUND));

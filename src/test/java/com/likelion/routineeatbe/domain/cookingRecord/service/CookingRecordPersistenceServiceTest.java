@@ -98,6 +98,7 @@ class CookingRecordPersistenceServiceTest {
                 10L,
                 TasteRating.LEVEL_3,
                 DifficultyLevel.LEVEL_2,
+                "참기름을 조금 더 넣으면 맛있습니다.",
                 List.of(),
                 "https://api-img.nahjjun.cloud/1/10/result.jpg"
         );
@@ -105,6 +106,7 @@ class CookingRecordPersistenceServiceTest {
         // then
         assertThat(result.getTasteRating()).isEqualTo(TasteRating.LEVEL_3);
         assertThat(result.getDifficultyLevel()).isEqualTo(DifficultyLevel.LEVEL_2);
+        assertThat(result.getCookingTip()).isEqualTo("참기름을 조금 더 넣으면 맛있습니다.");
         assertThat(result.getPhotoUrl())
                 .isEqualTo("https://api-img.nahjjun.cloud/1/10/result.jpg");
         assertThat(result.getCookingSession().getStatus())
@@ -157,6 +159,7 @@ class CookingRecordPersistenceServiceTest {
                 10L,
                 TasteRating.LEVEL_3,
                 DifficultyLevel.LEVEL_2,
+                null,
                 List.of(new ModifiedCookingRecordFoodIngredientReqDto(
                         40L,
                         120.0,
@@ -201,6 +204,7 @@ class CookingRecordPersistenceServiceTest {
                 10L,
                 TasteRating.LEVEL_3,
                 DifficultyLevel.LEVEL_2,
+                null,
                 List.of(new ModifiedCookingRecordFoodIngredientReqDto(
                         99L,
                         120.0,
@@ -246,6 +250,7 @@ class CookingRecordPersistenceServiceTest {
                 10L,
                 TasteRating.LEVEL_3,
                 DifficultyLevel.LEVEL_2,
+                null,
                 List.of(modifiedFoodIngredient, modifiedFoodIngredient),
                 null
         )).isInstanceOf(CustomException.class)
@@ -281,6 +286,7 @@ class CookingRecordPersistenceServiceTest {
                 10L,
                 TasteRating.LEVEL_2,
                 DifficultyLevel.LEVEL_1,
+                null,
                 List.of(),
                 null
         );
@@ -314,6 +320,7 @@ class CookingRecordPersistenceServiceTest {
                 10L,
                 TasteRating.LEVEL_1,
                 DifficultyLevel.LEVEL_5,
+                null,
                 List.of(),
                 null
         )).isInstanceOf(CustomException.class)

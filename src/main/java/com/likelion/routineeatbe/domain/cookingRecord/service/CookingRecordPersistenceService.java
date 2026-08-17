@@ -64,6 +64,7 @@ public class CookingRecordPersistenceService {
      * @param cookingRecordId 요리 기록 PK
      * @param tasteRating 맛 평가
      * @param difficultyLevel 실제 요리 난이도
+     * @param cookingTip 사용자가 작성한 요리 팁
      * @param modifiedFoodIngredients 실제 사용량을 수정할 요리 기록 음식 재료 목록
      * @param photoUrl 선택 이미지의 CloudFront URL
      * @return 요리 결과가 저장된 요리 기록
@@ -74,6 +75,7 @@ public class CookingRecordPersistenceService {
             Long cookingRecordId,
             TasteRating tasteRating,
             DifficultyLevel difficultyLevel,
+            String cookingTip,
             List<ModifiedCookingRecordFoodIngredientReqDto> modifiedFoodIngredients,
             String photoUrl
     ) {
@@ -99,7 +101,7 @@ public class CookingRecordPersistenceService {
         List<CookingRecordFoodIngredient> usedFoodIngredients =
                 cookingRecord.getFoodIngredients();
         updateUsedFoodIngredientAmounts(usedFoodIngredients, modifiedFoodIngredients);
-        cookingRecord.saveCookingResult(tasteRating, difficultyLevel, photoUrl);
+        cookingRecord.saveCookingResult(tasteRating, difficultyLevel, cookingTip, photoUrl);
         if (!usedFoodIngredients.isEmpty()) {
             Map<Long, Double> remainingPrimaryAmounts = usedFoodIngredients.stream()
                     .collect(Collectors.toMap(

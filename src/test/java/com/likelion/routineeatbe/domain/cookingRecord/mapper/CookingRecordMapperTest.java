@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
+import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
@@ -18,6 +20,7 @@ import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
+import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
@@ -28,6 +31,43 @@ import org.junit.jupiter.api.Test;
 class CookingRecordMapperTest {
 
     private final CookingRecordMapper cookingRecordMapper = new CookingRecordMapper();
+
+    @Test
+    @DisplayName("메뉴 난이도와 사용자 평가 난이도를 구분하여 상세 응답으로 변환한다")
+    void 요리_기록_상세_응답_난이도_구분_변환_성공() {
+        // given
+        Menu menu = Menu.builder()
+                .name("감자미역국")
+                .thumbnailUrl("https://example.com/menu.jpg")
+                .timeRequired(20)
+                .difficultyLevel(DifficultyLevel.LEVEL_2)
+                .build();
+        Recipe recipe = Recipe.builder().id(30L).menu(menu).build();
+        CookingRecord cookingRecord = CookingRecord.builder()
+                .id(10L)
+                .recipe(recipe)
+                .tasteRating(TasteRating.LEVEL_1)
+                .difficultyLevel(DifficultyLevel.LEVEL_4)
+                .cookingTip("참기름을 조금 더 넣으면 맛있습니다.")
+                .photoUrl("https://api-img.nahjjun.cloud/1/10/result.jpg")
+                .build();
+
+        // when
+        CookingRecordDetailResDto result = cookingRecordMapper
+                .toCookingRecordDetailResDto(cookingRecord);
+
+        // then
+        assertThat(result.cookingRecordId()).isEqualTo(10L);
+        assertThat(result.menuName()).isEqualTo("감자미역국");
+        assertThat(result.thumbnailUrl()).isEqualTo("https://example.com/menu.jpg");
+        assertThat(result.timeRequired()).isEqualTo(20);
+        assertThat(result.difficultyLevel()).isEqualTo(DifficultyLevel.LEVEL_2);
+        assertThat(result.userTasteRating()).isEqualTo(TasteRating.LEVEL_1);
+        assertThat(result.userDifficultyLevel()).isEqualTo(DifficultyLevel.LEVEL_4);
+        assertThat(result.cookingTip()).isEqualTo("참기름을 조금 더 넣으면 맛있습니다.");
+        assertThat(result.userCookingRecordPhotoUrl())
+                .isEqualTo("https://api-img.nahjjun.cloud/1/10/result.jpg");
+    }
 
     @Test
     @DisplayName("현재 사용자 보유량에서 요리 사용량을 차감한 예상량을 응답으로 변환한다")

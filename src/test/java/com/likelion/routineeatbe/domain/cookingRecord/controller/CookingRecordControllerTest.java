@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientAmountResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
@@ -50,6 +51,57 @@ class CookingRecordControllerTest {
 
     @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+
+    @Test
+    @DisplayName("요리 기록 상세 조회 API 성공 - 200 반환")
+    void 요리_기록_상세_조회_API_성공() throws Exception {
+        // given
+        CookingRecordDetailResDto response = CookingRecordDetailResDto.create(
+                10L,
+                "감자미역국",
+                "https://example.com/menu.jpg",
+                20,
+                DifficultyLevel.LEVEL_2,
+                TasteRating.LEVEL_1,
+                DifficultyLevel.LEVEL_3,
+                "참기름을 조금 더 넣으면 맛있습니다.",
+                "https://api-img.nahjjun.cloud/1/10/result.jpg"
+        );
+        given(cookingRecordService.getCookingRecordDetail(10L, "1234"))
+                .willReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/cooking-records/{cookingRecordId}", 10L)
+                        .param("userNumber", "1234"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message")
+                        .value("요리 기록(회고록) 상세 조회에 성공하였습니다."))
+                .andExpect(jsonPath("$.data.cookingRecordId").value(10))
+                .andExpect(jsonPath("$.data.menuName").value("감자미역국"))
+                .andExpect(jsonPath("$.data.thumbnailUrl")
+                        .value("https://example.com/menu.jpg"))
+                .andExpect(jsonPath("$.data.timeRequired").value(20))
+                .andExpect(jsonPath("$.data.difficultyLevel").value("LEVEL_2"))
+                .andExpect(jsonPath("$.data.userTasteRating").value("LEVEL_1"))
+                .andExpect(jsonPath("$.data.userDifficultyLevel").value("LEVEL_3"))
+                .andExpect(jsonPath("$.data.cookingTip")
+                        .value("참기름을 조금 더 넣으면 맛있습니다."))
+                .andExpect(jsonPath("$.data.userCookingRecordPhotoUrl")
+                        .value("https://api-img.nahjjun.cloud/1/10/result.jpg"));
+        then(cookingRecordService).should().getCookingRecordDetail(10L, "1234");
+    }
+
+    @Test
+    @DisplayName("요리 기록 상세 조회 API 실패 - 잘못된 사용자 번호")
+    void 요리_기록_상세_조회_API_실패_잘못된_사용자_번호() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/v1/cooking-records/{cookingRecordId}", 10L)
+                        .param("userNumber", "12AB"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
+    }
 
     @Test
     @DisplayName("이번 요리에 사용한 음식 재료 양 조회 API 성공 - 200 반환")
@@ -124,6 +176,7 @@ class CookingRecordControllerTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_3,
                 DifficultyLevel.LEVEL_2,
+                "참기름을 조금 더 넣으면 맛있습니다.",
                 List.of(new ModifiedCookingRecordFoodIngredientReqDto(
                         1L,
                         80.0,
@@ -166,6 +219,7 @@ class CookingRecordControllerTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_2,
                 DifficultyLevel.LEVEL_1,
+                null,
                 List.of()
         );
         CookingResultSaveResDto response = CookingResultSaveResDto.create(10L);
@@ -194,6 +248,7 @@ class CookingRecordControllerTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 null,
                 DifficultyLevel.LEVEL_1,
+                null,
                 List.of()
         );
         MockMultipartFile requestPart = new MockMultipartFile(
@@ -218,11 +273,37 @@ class CookingRecordControllerTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_2,
                 DifficultyLevel.LEVEL_1,
+                null,
                 List.of(new ModifiedCookingRecordFoodIngredientReqDto(
                         1L,
                         -1.0,
                         null
                 ))
+        );
+        MockMultipartFile requestPart = new MockMultipartFile(
+                "request",
+                "request.json",
+                MediaType.APPLICATION_JSON_VALUE,
+                objectMapper.writeValueAsBytes(request)
+        );
+
+        // when & then
+        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/v1/cooking-records")
+                        .file(requestPart)
+                        .param("userNumber", "1234"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("요리 결과 저장 API 실패 - 요리 팁 500자 초과")
+    void 요리_결과_저장_API_실패_요리_팁_길이_초과() throws Exception {
+        // given
+        CookingResultSaveReqDto request = new CookingResultSaveReqDto(
+                TasteRating.LEVEL_2,
+                DifficultyLevel.LEVEL_1,
+                "가".repeat(501),
+                List.of()
         );
         MockMultipartFile requestPart = new MockMultipartFile(
                 "request",

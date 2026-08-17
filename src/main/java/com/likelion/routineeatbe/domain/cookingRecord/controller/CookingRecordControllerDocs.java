@@ -2,6 +2,7 @@ package com.likelion.routineeatbe.domain.cookingRecord.controller;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
@@ -35,6 +36,46 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "Cooking Record", description = "요리 기록 API")
 @RequestMapping("/api/v1/cooking-records")
 public interface CookingRecordControllerDocs {
+
+    @Operation(
+            summary = "요리 기록 상세 조회",
+            description = """
+                    사용자 소유 요리 기록의 메뉴 정보와 저장된 회고를 상세 조회합니다.
+                    메뉴 난이도와 사용자가 평가한 실제 요리 난이도를 구분하여 반환합니다.
+
+                    [Path Variable]
+                    - cookingRecordId: 요리 기록 PK
+
+                    [Query Parameter]
+                    - userNumber: 4자리 사용자 고유 식별번호
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "요리 기록 상세 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = CookingRecordDetailResDto.class)
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 값", content = @Content),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자 또는 요리 기록을 찾을 수 없음",
+                    content = @Content
+            )
+    })
+    @GetMapping("/{cookingRecordId}")
+    ResponseEntity<GlobalResponse<CookingRecordDetailResDto>> getCookingRecordDetail(
+            @Parameter(description = "요리 기록 PK", required = true)
+            @Positive(message = "요리 기록 PK는 양수여야 합니다.")
+            @PathVariable("cookingRecordId") Long cookingRecordId,
+            @Parameter(description = "사용자 고유 식별번호", required = true)
+            @NotBlank(message = "사용자 고유 식별번호는 필수입니다.")
+            @Size(min = 4, max = 4, message = "사용자 고유 식별번호는 4자리여야 합니다.")
+            @Pattern(regexp = "^[0-9]{4}$", message = "사용자 고유 식별번호는 숫자 4자리여야 합니다.")
+            @RequestParam("userNumber") String userNumber
+    );
 
     @Operation(
             summary = "이번 요리에 사용한 음식 재료 양 조회",

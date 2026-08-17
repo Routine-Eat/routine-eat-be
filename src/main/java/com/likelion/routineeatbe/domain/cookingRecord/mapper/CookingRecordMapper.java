@@ -1,6 +1,7 @@
 package com.likelion.routineeatbe.domain.cookingRecord.mapper;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientAmountResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
@@ -23,6 +24,28 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class CookingRecordMapper {
+
+    /**
+     * CookingRecord Entity와 연결된 메뉴 정보를 요리 기록 상세 응답 DTO로 변환합니다.
+     *
+     * @param cookingRecord 상세 조회할 사용자 소유 요리 기록
+     * @return 메뉴 정보와 사용자 회고가 포함된 상세 응답
+     */
+    public CookingRecordDetailResDto toCookingRecordDetailResDto(
+            CookingRecord cookingRecord
+    ) {
+        return CookingRecordDetailResDto.create(
+                cookingRecord.getId(),
+                cookingRecord.getRecipe().getMenu().getName(),
+                cookingRecord.getRecipe().getMenu().getThumbnailUrl(),
+                cookingRecord.getRecipe().getMenu().getTimeRequired(),
+                cookingRecord.getRecipe().getMenu().getDifficultyLevel(),
+                cookingRecord.getTasteRating(),
+                cookingRecord.getDifficultyLevel(),
+                cookingRecord.getCookingTip(),
+                cookingRecord.getPhotoUrl()
+        );
+    }
 
     /**
      * 사용자 보유량과 요리 시작 시 저장된 사용량을 차감 전후 예상량으로 변환합니다.

@@ -2,6 +2,7 @@ package com.likelion.routineeatbe.domain.cookingRecord.controller;
 
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
@@ -21,6 +22,22 @@ import org.springframework.web.multipart.MultipartFile;
 public class CookingRecordController implements CookingRecordControllerDocs {
 
     private final CookingRecordService cookingRecordService;
+
+    @Override
+    public ResponseEntity<GlobalResponse<CookingRecordDetailResDto>> getCookingRecordDetail(
+            Long cookingRecordId,
+            String userNumber
+    ) {
+        CookingRecordDetailResDto result = cookingRecordService.getCookingRecordDetail(
+                cookingRecordId,
+                userNumber
+        );
+        return ResponseEntity.ok(GlobalResponse.success(
+                HttpStatus.OK.value(),
+                "요리 기록(회고록) 상세 조회에 성공하였습니다.",
+                result
+        ));
+    }
 
     @Override
     public ResponseEntity<GlobalResponse<CookingRecordFoodIngredientsResDto>> getFoodIngredients(

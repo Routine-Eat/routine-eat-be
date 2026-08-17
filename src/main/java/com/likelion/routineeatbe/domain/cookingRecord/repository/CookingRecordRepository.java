@@ -67,6 +67,26 @@ public interface CookingRecordRepository extends JpaRepository<CookingRecord, Lo
     );
 
     /**
+     * 사용자 소유 요리 기록을 레시피와 메뉴까지 함께 조회합니다.
+     *
+     * @param cookingRecordId 조회할 요리 기록 PK
+     * @param userId 요리 기록 소유 사용자 PK
+     * @return 레시피와 메뉴가 함께 조회된 사용자 소유 요리 기록
+     */
+    @Query("""
+            select cookingRecord
+            from CookingRecord cookingRecord
+            join fetch cookingRecord.recipe recipe
+            join fetch recipe.menu menu
+            where cookingRecord.id = :cookingRecordId
+              and cookingRecord.user.id = :userId
+            """)
+    Optional<CookingRecord> findByIdAndUserIdWithRecipeAndMenu(
+            @Param("cookingRecordId") Long cookingRecordId,
+            @Param("userId") Long userId
+    );
+
+    /**
      * 사용자 소유 요리 기록을 레시피, 사용 음식 재료와 함께 조회합니다.
      *
      * @param cookingRecordId 조회할 요리 기록 PK

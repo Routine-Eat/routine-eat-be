@@ -3,6 +3,7 @@ package com.likelion.routineeatbe.domain.cookingRecord.service;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
@@ -57,6 +58,47 @@ public class CookingRecordService {
     private final CookingRecordPersistenceService persistenceService;
     private final CookingRecordImageStorageService imageStorageService;
     private final CookingRecordMapper cookingRecordMapper;
+
+    /**
+     * (1) 작업 목적
+     * 사용자 소유 요리 기록의 메뉴 정보와 저장된 회고를 상세 조회합니다.
+     *
+     * (2) 세부 작업 내용
+     * - 사용자 고유 식별번호로 사용자를 조회합니다.
+     * - 사용자 소유 요리 기록을 레시피와 메뉴까지 함께 조회합니다.
+     * - 메뉴 난이도와 사용자가 평가한 난이도를 구분하여 상세 응답으로 변환합니다.
+     *
+     * @param cookingRecordId 조회할 요리 기록 PK
+     * @param userNumber 사용자 고유 식별번호
+     * @return 메뉴 정보와 사용자 회고가 포함된 요리 기록 상세 응답
+     */
+    @Transactional(readOnly = true)
+    public CookingRecordDetailResDto getCookingRecordDetail(
+            Long cookingRecordId,
+            String userNumber
+    ) {
+        log.info(
+                "[CookingRecordService] 요리 기록 상세 조회 시작 | getCookingRecordDetail() - START | cookingRecordId: {}, userNumber: {}",
+                cookingRecordId,
+                userNumber
+        );
+
+        User user = userRepository.findByLoginNumber(userNumber)
+                .orElseThrow(() -> new CustomException(CookingRecordErrorCode.USER_NOT_FOUND));
+        CookingRecord cookingRecord = cookingRecordRepository
+                .findByIdAndUserIdWithRecipeAndMenu(cookingRecordId, user.getId())
+                .orElseThrow(() -> new CustomException(
+                        CookingRecordErrorCode.COOKING_RECORD_NOT_FOUND
+                ));
+        CookingRecordDetailResDto result = cookingRecordMapper
+                .toCookingRecordDetailResDto(cookingRecord);
+
+        log.info(
+                "[CookingRecordService] 요리 기록 상세 조회 종료 | getCookingRecordDetail() - END | cookingRecordId: {}",
+                result.cookingRecordId()
+        );
+        return result;
+    }
 
     /**
      * (1) 작업 목적
@@ -181,6 +223,7 @@ public class CookingRecordService {
                     cookingRecord.getId(),
                     request.tasteRating(),
                     request.difficultyLevel(),
+                    request.cookingTip(),
                     request.modifiedCookingRecordFoodIngredients(),
                     photoUrl
             );

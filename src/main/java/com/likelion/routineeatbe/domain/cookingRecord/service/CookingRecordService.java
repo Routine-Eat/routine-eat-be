@@ -14,9 +14,11 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResult
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
+import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingStepFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingRecord.exception.CookingRecordErrorCode;
 import com.likelion.routineeatbe.domain.cookingRecord.mapper.CookingRecordMapper;
 import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRepository;
+import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingStepFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.cookingRecord.service.gemini.CookingStepGenerateGeminiService;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
@@ -69,6 +71,7 @@ public class CookingRecordService {
     private final UserFoodIngredientRepository userFoodIngredientRepository;
     private final CookingTipRepository cookingTipRepository;
     private final CookingStepTipRepository cookingStepTipRepository;
+    private final CookingStepFoodIngredientRepository cookingStepFoodIngredientRepository;
     private final CookingStepGenerateGeminiService geminiService;
     private final CookingRecordPersistenceService persistenceService;
     private final CookingRecordImageStorageService imageStorageService;
@@ -400,8 +403,8 @@ public class CookingRecordService {
      * (2) 세부 작업 내용
      * - 사용자, 레시피, 재료와 기존 단계를 조회하고 중복 요리 시작 여부를 확인합니다.
      * - 전체 요리 팁을 Gemini에 전달해 단계별 관련 팁 PK를 포함한 요리 단계를 생성합니다.
-     * - 체크리스트, 요리 단계와 단계별 요리 팁 연결을 하나의 트랜잭션으로 저장합니다.
-     * - 저장된 1번 단계와 요리 팁 상세 정보를 요리 시작 응답 DTO로 변환합니다.
+     * - 단계별 사용 음식 재료 PK를 생성해 요리 기록 음식 재료와 함께 저장합니다.
+     * - 저장된 1번 단계의 요리 팁과 음식 재료 상세 정보를 요리 시작 응답 DTO로 변환합니다.
      *
      * @param userNumber 사용자 고유 식별번호
      * @param request 레시피 PK와 요청 인분 수
@@ -467,12 +470,18 @@ public class CookingRecordService {
                 ));
         List<CookingStepTip> firstCookingStepTips = cookingStepTipRepository
                 .findAllWithCookingTipAndContentsByCookingStepId(firstCookingStep.getId());
+        List<CookingStepFoodIngredient> firstCookingStepFoodIngredients =
+                cookingStepFoodIngredientRepository
+                        .findAllWithCookingRecordFoodIngredientByCookingStepId(
+                                firstCookingStep.getId()
+                        );
         CookingStartResDto result = cookingRecordMapper.toCookingStartResDto(
                 cookingRecord,
                 recipe,
                 generated,
                 firstCookingStep,
-                firstCookingStepTips
+                firstCookingStepTips,
+                firstCookingStepFoodIngredients
         );
 
         log.info(
@@ -489,7 +498,7 @@ public class CookingRecordService {
      * (2) 세부 작업 내용
      * - 사용자 소유 요리 기록과 세션을 비관적 쓰기 잠금으로 조회합니다.
      * - 진행 중 세션의 현재 단계가 마지막이면 완료 상태로 변경합니다.
-     * - 마지막 단계가 아니면 현재 단계를 증가시키고 연결된 요리 팁을 포함한 다음 단계 상세 정보를 반환합니다.
+     * - 마지막 단계가 아니면 현재 단계를 증가시키고 요리 팁과 사용 음식 재료를 포함한 다음 단계 상세 정보를 반환합니다.
      *
      * @param cookingRecordId 요리 기록 PK
      * @param userNumber 사용자 고유 식별번호
@@ -544,10 +553,16 @@ public class CookingRecordService {
                 ));
         List<CookingStepTip> cookingStepTips = cookingStepTipRepository
                 .findAllWithCookingTipAndContentsByCookingStepId(cookingStep.getId());
+        List<CookingStepFoodIngredient> cookingStepFoodIngredients =
+                cookingStepFoodIngredientRepository
+                        .findAllWithCookingRecordFoodIngredientByCookingStepId(
+                                cookingStep.getId()
+                        );
         CookingStepNavigationResDto result = cookingRecordMapper.toCookingStepNavigationResDto(
                 cookingSession,
                 cookingStep,
-                cookingStepTips
+                cookingStepTips,
+                cookingStepFoodIngredients
         );
 
         log.info(
@@ -566,7 +581,7 @@ public class CookingRecordService {
      * (2) 세부 작업 내용
      * - 사용자 소유 요리 기록과 세션을 비관적 쓰기 잠금으로 조회합니다.
      * - 진행 중 세션의 현재 단계가 1이면 변경하지 않고 null을 반환합니다.
-     * - 현재 단계가 2 이상이면 단계를 감소시키고 연결된 요리 팁을 포함한 이전 단계 상세 정보를 반환합니다.
+     * - 현재 단계가 2 이상이면 단계를 감소시키고 요리 팁과 사용 음식 재료를 포함한 이전 단계 상세 정보를 반환합니다.
      *
      * @param cookingRecordId 요리 기록 PK
      * @param userNumber 사용자 고유 식별번호
@@ -619,11 +634,17 @@ public class CookingRecordService {
                 ));
         List<CookingStepTip> cookingStepTips = cookingStepTipRepository
                 .findAllWithCookingTipAndContentsByCookingStepId(cookingStep.getId());
+        List<CookingStepFoodIngredient> cookingStepFoodIngredients =
+                cookingStepFoodIngredientRepository
+                        .findAllWithCookingRecordFoodIngredientByCookingStepId(
+                                cookingStep.getId()
+                        );
         CookingStepNavigationResDto result =
                 cookingRecordMapper.toCookingStepNavigationResDto(
                         cookingSession,
                         cookingStep,
-                        cookingStepTips
+                        cookingStepTips,
+                        cookingStepFoodIngredients
                 );
 
         log.info(
@@ -642,7 +663,7 @@ public class CookingRecordService {
      * (2) 세부 작업 내용
      * - 사용자 소유 요리 기록과 세션을 비관적 쓰기 잠금으로 조회합니다.
      * - 진행 중 세션과 요청 단계 번호의 유효 범위를 검증합니다.
-     * - 현재 단계를 요청 단계로 변경하고 해당 단계 상세 정보를 반환합니다.
+     * - 현재 단계를 요청 단계로 변경하고 요리 팁과 사용 음식 재료를 포함한 단계 상세 정보를 반환합니다.
      *
      * @param cookingRecordId 요리 기록 PK
      * @param userNumber 사용자 고유 식별번호
@@ -695,10 +716,16 @@ public class CookingRecordService {
                 ));
         List<CookingStepTip> cookingStepTips = cookingStepTipRepository
                 .findAllWithCookingTipAndContentsByCookingStepId(cookingStep.getId());
+        List<CookingStepFoodIngredient> cookingStepFoodIngredients =
+                cookingStepFoodIngredientRepository
+                        .findAllWithCookingRecordFoodIngredientByCookingStepId(
+                                cookingStep.getId()
+                        );
         CookingStepNavigationResDto result = cookingRecordMapper.toCookingStepNavigationResDto(
                 cookingSession,
                 cookingStep,
-                cookingStepTips
+                cookingStepTips,
+                cookingStepFoodIngredients
         );
 
         log.info(

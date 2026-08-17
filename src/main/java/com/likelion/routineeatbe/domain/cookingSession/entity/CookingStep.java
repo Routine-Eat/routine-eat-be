@@ -1,5 +1,6 @@
 package com.likelion.routineeatbe.domain.cookingSession.entity;
 
+import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingStepFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingTip.entity.CookingStepTip;
 import com.likelion.routineeatbe.global.common.BaseTimeEntity;
 import jakarta.persistence.AttributeOverride;
@@ -74,6 +75,15 @@ public class CookingStep extends BaseTimeEntity {
     )
     private List<CookingStepTip> cookingStepTips = new ArrayList<>();
 
+    @Builder.Default
+    @OneToMany(
+            mappedBy = "cookingStep",
+            fetch = FetchType.LAZY,
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<CookingStepFoodIngredient> cookingStepFoodIngredients = new ArrayList<>();
+
     public static CookingStep create(
             CookingSession cookingSession,
             Long level,
@@ -94,5 +104,11 @@ public class CookingStep extends BaseTimeEntity {
 
     public void addCookingStepTip(CookingStepTip cookingStepTip) {
         this.cookingStepTips.add(cookingStepTip);
+    }
+
+    public void addCookingStepFoodIngredient(
+            CookingStepFoodIngredient cookingStepFoodIngredient
+    ) {
+        this.cookingStepFoodIngredients.add(cookingStepFoodIngredient);
     }
 }

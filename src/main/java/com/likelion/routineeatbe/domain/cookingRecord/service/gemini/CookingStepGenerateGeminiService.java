@@ -45,6 +45,7 @@ public class CookingStepGenerateGeminiService {
      * (2) 세부 작업 내용
      * - 메뉴, 인분별 재료량, 기존 레시피 단계를 Gemini 프롬프트에 포함합니다.
      * - 선택 가능한 요리 팁 PK와 제목을 전달하고 단계별 관련 팁 PK를 생성합니다.
+     * - 레시피 음식 재료 PK를 전달하고 단계별 사용 음식 재료 PK를 생성합니다.
      * - Gemini Function Calling 응답을 검증하고 일시적 오류 또는 잘못된 응답을 재시도합니다.
      *
      * @param user 요리를 시작하는 사용자
@@ -81,6 +82,9 @@ public class CookingStepGenerateGeminiService {
         Set<Long> availableCookingTipIds = cookingTips.stream()
                 .map(CookingTip::getId)
                 .collect(Collectors.toUnmodifiableSet());
+        Set<Long> availableFoodIngredientIds = ingredients.stream()
+                .map(ingredient -> ingredient.getFoodIngredient().getId())
+                .collect(Collectors.toUnmodifiableSet());
         int maxAttempts = properties.retry().maxAttempts();
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
@@ -93,7 +97,8 @@ public class CookingStepGenerateGeminiService {
                 CookingStepGenerateGeminiResponseDto result = validateAndNormalize(
                         response,
                         user.getSkillLevel() == SkillLevel.BEGINNER,
-                        availableCookingTipIds
+                        availableCookingTipIds,
+                        availableFoodIngredientIds
                 );
                 log.info(
                         "[CookingStepGenerateGeminiService] 요리 단계 생성 종료 | generate() - END | cookingStepCount: {}",
@@ -151,6 +156,11 @@ public class CookingStepGenerateGeminiService {
                 각 cookingSteps의 cookingTipIds에는 해당 단계와 직접 관련 있는 요리 팁 PK만 작성하세요.
                 cookingTipIds는 아래 제공된 PK만 사용할 수 있고 같은 단계에 중복해서 넣지 마세요.
                 관련 있는 요리 팁이 없으면 cookingTipIds를 빈 배열로 작성하세요.
+                각 cookingSteps의 foodIngredientIds에는 해당 단계에서 직접 사용하는 음식 재료 PK만 작성하세요.
+                foodIngredientIds는 아래 제공된 PK만 사용할 수 있고 같은 단계에 중복해서 넣지 마세요.
+                하나의 음식 재료가 여러 단계에서 사용되면 각 단계에 모두 포함할 수 있습니다.
+                모든 제공 음식 재료는 최소 하나의 cookingSteps에 포함되어야 합니다.
+                사용하는 음식 재료가 없는 단계는 foodIngredientIds를 빈 배열로 작성하세요.
 
                 [사용자]
                 skillLevel: %s
@@ -175,7 +185,9 @@ public class CookingStepGenerateGeminiService {
                 recipe.getMenu().getTimeRequired(),
                 servings
         ));
-        ingredients.forEach(ingredient -> prompt.append("- name=")
+        ingredients.forEach(ingredient -> prompt.append("- foodIngredientId=")
+                .append(ingredient.getFoodIngredient().getId())
+                .append(", name=")
                 .append(ingredient.getFoodIngredient().getName())
                 .append(", primaryAmount=")
                 .append(ingredient.getPrimaryNeedAmountValue() * servings)
@@ -219,12 +231,14 @@ public class CookingStepGenerateGeminiService {
      * @param response Gemini 요리 단계 응답
      * @param beginner 초보 사용자 여부
      * @param availableCookingTipIds 선택 가능한 요리 팁 PK 집합
+     * @param availableFoodIngredientIds 선택 가능한 음식 재료 PK 집합
      * @return level 오름차순으로 정규화된 응답
      */
     private CookingStepGenerateGeminiResponseDto validateAndNormalize(
             CookingStepGenerateGeminiResponseDto response,
             boolean beginner,
-            Set<Long> availableCookingTipIds
+            Set<Long> availableCookingTipIds,
+            Set<Long> availableFoodIngredientIds
     ) {
         log.debug(
                 "[CookingStepGenerateGeminiService] Gemini 응답 검증 시작 | validateAndNormalize() - START | beginner: {}",
@@ -250,6 +264,7 @@ public class CookingStepGenerateGeminiService {
 
         Set<Integer> levels = new HashSet<>();
         EnumSet<CookingStepStage> stages = EnumSet.noneOf(CookingStepStage.class);
+        Set<Long> selectedFoodIngredientIds = new HashSet<>();
         for (int index = 0; index < cookingSteps.size(); index++) {
             GeneratedCookingStep cookingStep = cookingSteps.get(index);
             if (cookingStep == null
@@ -263,14 +278,22 @@ public class CookingStepGenerateGeminiService {
                             cookingStep.cookingTipIds(),
                             availableCookingTipIds
                     )
+                    || !hasValidFoodIngredientIds(
+                            cookingStep.foodIngredientIds(),
+                            availableFoodIngredientIds
+                    )
                     || (beginner && isBlankOrTooLong(cookingStep.subContent(), CONTENT_MAX_LENGTH))
                     || (!beginner && cookingStep.subContent() != null
                             && cookingStep.subContent().length() > CONTENT_MAX_LENGTH)) {
                 throw new CustomException(GeminiErrorCode.INVALID_COOKING_STEP_METADATA);
             }
             stages.add(cookingStep.stage());
+            selectedFoodIngredientIds.addAll(cookingStep.foodIngredientIds());
         }
         if (!stages.containsAll(EnumSet.allOf(CookingStepStage.class))) {
+            throw new CustomException(GeminiErrorCode.INVALID_COOKING_STEP_METADATA);
+        }
+        if (!selectedFoodIngredientIds.containsAll(availableFoodIngredientIds)) {
             throw new CustomException(GeminiErrorCode.INVALID_COOKING_STEP_METADATA);
         }
 
@@ -304,6 +327,32 @@ public class CookingStepGenerateGeminiService {
                 && availableCookingTipIds.containsAll(cookingTipIds);
         log.debug(
                 "[CookingStepGenerateGeminiService] 요리 팁 PK 검증 종료 | hasValidCookingTipIds() - END | result: {}",
+                result
+        );
+        return result;
+    }
+
+    /**
+     * Gemini가 반환한 단계별 음식 재료 PK가 제공 목록에 포함되며 중복되지 않는지 확인합니다.
+     *
+     * @param foodIngredientIds Gemini가 선택한 음식 재료 PK 목록
+     * @param availableFoodIngredientIds 선택 가능한 음식 재료 PK 집합
+     * @return 유효한 음식 재료 PK 목록 여부
+     */
+    private boolean hasValidFoodIngredientIds(
+            List<Long> foodIngredientIds,
+            Set<Long> availableFoodIngredientIds
+    ) {
+        log.debug(
+                "[CookingStepGenerateGeminiService] 음식 재료 PK 검증 시작 | hasValidFoodIngredientIds() - START | foodIngredientIds: {}",
+                foodIngredientIds
+        );
+        boolean result = foodIngredientIds != null
+                && foodIngredientIds.stream().noneMatch(Objects::isNull)
+                && new HashSet<>(foodIngredientIds).size() == foodIngredientIds.size()
+                && availableFoodIngredientIds.containsAll(foodIngredientIds);
+        log.debug(
+                "[CookingStepGenerateGeminiService] 음식 재료 PK 검증 종료 | hasValidFoodIngredientIds() - END | result: {}",
                 result
         );
         return result;

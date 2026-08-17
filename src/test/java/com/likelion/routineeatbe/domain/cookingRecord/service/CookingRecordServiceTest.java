@@ -25,10 +25,12 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDe
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
+import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingStepFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
 import com.likelion.routineeatbe.domain.cookingRecord.exception.CookingRecordErrorCode;
 import com.likelion.routineeatbe.domain.cookingRecord.mapper.CookingRecordMapper;
 import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRepository;
+import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingStepFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.cookingRecord.service.gemini.CookingStepGenerateGeminiService;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingStepStage;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
@@ -52,6 +54,7 @@ import com.likelion.routineeatbe.domain.recipe.repository.RecipeStepRepository;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.repository.RecipeFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.entity.User;
+import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
@@ -84,6 +87,7 @@ class CookingRecordServiceTest {
     @Mock private CookingStepRepository cookingStepRepository;
     @Mock private CookingTipRepository cookingTipRepository;
     @Mock private CookingStepTipRepository cookingStepTipRepository;
+    @Mock private CookingStepFoodIngredientRepository cookingStepFoodIngredientRepository;
     @Mock private CookingStepGenerateGeminiService geminiService;
     @Mock private CookingRecordPersistenceService persistenceService;
     @Mock private CookingRecordImageStorageService imageStorageService;
@@ -588,7 +592,10 @@ class CookingRecordServiceTest {
         // given
         User user = User.builder().id(1L).loginNumber("1234").build();
         Recipe recipe = Recipe.builder().id(2L).menu(Menu.builder().name("볶음밥").build()).build();
-        RecipeFoodIngredient ingredient = RecipeFoodIngredient.builder().build();
+        FoodIngredient foodIngredient = FoodIngredient.builder().id(20L).name("대파").build();
+        RecipeFoodIngredient ingredient = RecipeFoodIngredient.builder()
+                .foodIngredient(foodIngredient)
+                .build();
         RecipeStep recipeStep = RecipeStep.builder().level(1L).build();
         CookingTip cookingTip = CookingTip.builder().id(10L).title("재료 준비하는 법").build();
         CookingStartReqDto request = new CookingStartReqDto(2L, 2);
@@ -601,6 +608,18 @@ class CookingRecordServiceTest {
                 .content("재료를 준비하세요.")
                 .cookingSession(saved.getCookingSession())
                 .build();
+        CookingRecordFoodIngredient recordFoodIngredient =
+                CookingRecordFoodIngredient.builder()
+                        .id(30L)
+                        .cookingRecord(saved)
+                        .foodIngredient(foodIngredient)
+                        .primaryUsedAmountValue(60.0)
+                        .build();
+        saved.addFoodIngredient(recordFoodIngredient);
+        CookingStepFoodIngredient stepFoodIngredient = CookingStepFoodIngredient.create(
+                firstCookingStep,
+                recordFoodIngredient
+        );
         CookingStartResDto expected = CookingStartResDto.create(
                 3L,
                 "볶음밥",
@@ -617,6 +636,7 @@ class CookingRecordServiceTest {
                         null,
                         "재료를 준비하세요.",
                         null,
+                        List.of(),
                         List.of()
                 ),
                 List.of()
@@ -646,12 +666,16 @@ class CookingRecordServiceTest {
         given(cookingStepTipRepository
                 .findAllWithCookingTipAndContentsByCookingStepId(20L))
                 .willReturn(List.of());
+        given(cookingStepFoodIngredientRepository
+                .findAllWithCookingRecordFoodIngredientByCookingStepId(20L))
+                .willReturn(List.of(stepFoodIngredient));
         given(cookingRecordMapper.toCookingStartResDto(
                 saved,
                 recipe,
                 generated,
                 firstCookingStep,
-                List.of()
+                List.of(),
+                List.of(stepFoodIngredient)
         ))
                 .willReturn(expected);
 
@@ -733,12 +757,24 @@ class CookingRecordServiceTest {
                 .title("칼로 써는 방법 배워볼래요.")
                 .build();
         CookingStepTip cookingStepTip = CookingStepTip.create(cookingStep, cookingTip);
+        FoodIngredient foodIngredient = FoodIngredient.builder().id(20L).name("대파").build();
+        CookingRecordFoodIngredient recordFoodIngredient =
+                CookingRecordFoodIngredient.builder()
+                        .id(30L)
+                        .cookingRecord(cookingRecord)
+                        .foodIngredient(foodIngredient)
+                        .primaryUsedAmountValue(60.0)
+                        .build();
+        CookingStepFoodIngredient stepFoodIngredient = CookingStepFoodIngredient.create(
+                cookingStep,
+                recordFoodIngredient
+        );
         CookingStepNavigationResDto expected = CookingStepNavigationResDto.create(
                 3,
                 1,
                 3,
                 CookingStepDetailResDto.create(
-                        20L, 2L, "조리", null, "볶아주세요.", null, List.of()
+                        20L, 2L, "조리", null, "볶아주세요.", null, List.of(), List.of()
                 )
         );
         given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
@@ -749,10 +785,14 @@ class CookingRecordServiceTest {
         given(cookingStepTipRepository
                 .findAllWithCookingTipAndContentsByCookingStepId(20L))
                 .willReturn(List.of(cookingStepTip));
+        given(cookingStepFoodIngredientRepository
+                .findAllWithCookingRecordFoodIngredientByCookingStepId(20L))
+                .willReturn(List.of(stepFoodIngredient));
         given(cookingRecordMapper.toCookingStepNavigationResDto(
                 cookingSession,
                 cookingStep,
-                List.of(cookingStepTip)
+                List.of(cookingStepTip),
+                List.of(stepFoodIngredient)
         ))
                 .willReturn(expected);
 
@@ -839,6 +879,7 @@ class CookingRecordServiceTest {
                         null,
                         "대파를 잘라주세요.",
                         null,
+                        List.of(),
                         List.of()
                 )
         );
@@ -850,10 +891,14 @@ class CookingRecordServiceTest {
         given(cookingStepTipRepository
                 .findAllWithCookingTipAndContentsByCookingStepId(19L))
                 .willReturn(List.of(cookingStepTip));
+        given(cookingStepFoodIngredientRepository
+                .findAllWithCookingRecordFoodIngredientByCookingStepId(19L))
+                .willReturn(List.of());
         given(cookingRecordMapper.toCookingStepNavigationResDto(
                 cookingSession,
                 cookingStep,
-                List.of(cookingStepTip)
+                List.of(cookingStepTip),
+                List.of()
         ))
                 .willReturn(expected);
 
@@ -933,6 +978,7 @@ class CookingRecordServiceTest {
                         null,
                         "불을 끄고 완성하세요.",
                         null,
+                        List.of(),
                         List.of()
                 )
         );
@@ -944,9 +990,13 @@ class CookingRecordServiceTest {
         given(cookingStepTipRepository
                 .findAllWithCookingTipAndContentsByCookingStepId(21L))
                 .willReturn(List.of());
+        given(cookingStepFoodIngredientRepository
+                .findAllWithCookingRecordFoodIngredientByCookingStepId(21L))
+                .willReturn(List.of());
         given(cookingRecordMapper.toCookingStepNavigationResDto(
                 cookingSession,
                 cookingStep,
+                List.of(),
                 List.of()
         ))
                 .willReturn(expected);
@@ -989,13 +1039,16 @@ class CookingRecordServiceTest {
                 List.of("손을 씻으세요."),
                 List.of(
                         GeneratedCookingStep.create(
-                                1, CookingStepStage.PREPARATION, "준비", "준비", null, List.of(10L)
+                                1, CookingStepStage.PREPARATION, "준비", "준비", null,
+                                List.of(10L), List.of(20L)
                         ),
                         GeneratedCookingStep.create(
-                                2, CookingStepStage.COOKING, "조리", "조리", null, List.of()
+                                2, CookingStepStage.COOKING, "조리", "조리", null,
+                                List.of(), List.of(20L)
                         ),
                         GeneratedCookingStep.create(
-                                3, CookingStepStage.FINISH, "완료", "완료", null, List.of()
+                                3, CookingStepStage.FINISH, "완료", "완료", null,
+                                List.of(), List.of()
                         )
                 )
         );

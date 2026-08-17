@@ -32,9 +32,20 @@ public record CookingStepGenerateGeminiFunctionDeclarationDto(
                         "cookingTipIds", Property.createArray(
                                 "현재 단계와 관련 있는 요리 팁 PK 목록. 관련 팁이 없으면 빈 배열",
                                 Property.createInteger("제공된 요리 팁 PK", 1)
+                        ),
+                        "foodIngredientIds", Property.createArray(
+                                "현재 단계에서 사용하는 음식 재료 PK 목록. 사용하는 재료가 없으면 빈 배열",
+                                Property.createInteger("제공된 음식 재료 PK", 1)
                         )
                 ),
-                List.of("level", "stage", "title", "content", "cookingTipIds")
+                List.of(
+                        "level",
+                        "stage",
+                        "title",
+                        "content",
+                        "cookingTipIds",
+                        "foodIngredientIds"
+                )
         );
         return new CookingStepGenerateGeminiFunctionDeclarationDto(
                 "function",

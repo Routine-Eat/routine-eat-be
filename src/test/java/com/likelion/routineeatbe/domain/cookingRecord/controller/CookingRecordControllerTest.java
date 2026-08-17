@@ -29,6 +29,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessio
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepFoodIngredientResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTipResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTitleResDto;
@@ -541,7 +542,8 @@ class CookingRecordControllerTest {
                                 "대파 써는 법",
                                 "대파를 세로로 고정해 주세요.",
                                 CookingTipContentType.TEXT
-                        ))
+                        )),
+                        createNavigationFoodIngredients()
                 ),
                 List.of(CookingStepTitleResDto.create(1L, "재료 준비"))
         );
@@ -572,6 +574,20 @@ class CookingRecordControllerTest {
                         .value("대파를 세로로 고정해 주세요."))
                 .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipType")
                         .value("TEXT"))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].cookingRecordFoodIngredientId")
+                        .value(30))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].foodIngredientId")
+                        .value(7))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].name")
+                        .value("대파"))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].primaryUsedAmountValue")
+                        .value(60.0))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].primaryUnit")
+                        .value("G"))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].secondaryUsedAmountValue")
+                        .value(0.5))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].secondaryUnit")
+                        .value("JULGI"))
                 .andExpect(jsonPath("$.data.currentCookingStep.stepTips").doesNotExist())
                 .andExpect(jsonPath("$.data.cookingStepTitles[0].stepLevel").value(1));
         then(cookingRecordService).should().startCooking("1234", request);
@@ -622,7 +638,8 @@ class CookingRecordControllerTest {
                         "https://example.com/step.jpg",
                         "대파를 잘라주세요.",
                         "가위를 사용해도 괜찮아요.",
-                        createNavigationTips()
+                        createNavigationTips(),
+                        createNavigationFoodIngredients()
                 )
         );
         given(cookingRecordService.moveToNextCookingStep(10L, "1234"))
@@ -663,7 +680,33 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipContent")
                         .value("https://api-img.nahjjun.cloud/tip/1/2"))
                 .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipType")
-                        .value("IMAGE"));
+                        .value("IMAGE"))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].name")
+                        .value("대파"))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].cookingRecordFoodIngredientId"
+                ).value(30))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].foodIngredientId"
+                ).value(7))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].primaryUsedAmountValue"
+                ).value(60.0))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].primaryUnit"
+                ).value("G"))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].secondaryUsedAmountValue"
+                ).value(0.5))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].secondaryUnit"
+                ).value("JULGI"))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].prevPrimaryAmountValue"
+                ).doesNotExist())
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].currentPrimaryAmountValue"
+                ).doesNotExist());
         then(cookingRecordService).should().moveToNextCookingStep(10L, "1234");
     }
 
@@ -713,7 +756,8 @@ class CookingRecordControllerTest {
                         "https://example.com/step.jpg",
                         "대파를 잘라주세요.",
                         "가위를 사용해도 괜찮아요.",
-                        createNavigationTips()
+                        createNavigationTips(),
+                        createNavigationFoodIngredients()
                 )
         );
         given(cookingRecordService.moveToPreviousCookingStep(10L, "1234"))
@@ -754,7 +798,33 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipContent")
                         .value("https://api-img.nahjjun.cloud/tip/1/2"))
                 .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipType")
-                        .value("IMAGE"));
+                        .value("IMAGE"))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].name")
+                        .value("대파"))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].cookingRecordFoodIngredientId"
+                ).value(30))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].foodIngredientId"
+                ).value(7))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].primaryUsedAmountValue"
+                ).value(60.0))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].primaryUnit"
+                ).value("G"))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].secondaryUsedAmountValue"
+                ).value(0.5))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].secondaryUnit"
+                ).value("JULGI"))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].prevPrimaryAmountValue"
+                ).doesNotExist())
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].currentPrimaryAmountValue"
+                ).doesNotExist());
         then(cookingRecordService).should().moveToPreviousCookingStep(10L, "1234");
     }
 
@@ -795,5 +865,17 @@ class CookingRecordControllerTest {
                         CookingTipContentType.IMAGE
                 )
         );
+    }
+
+    private List<CookingStepFoodIngredientResDto> createNavigationFoodIngredients() {
+        return List.of(CookingStepFoodIngredientResDto.create(
+                30L,
+                7L,
+                "대파",
+                60.0,
+                PrimaryUnit.G,
+                0.5,
+                SecondaryUnit.JULGI
+        ));
     }
 }

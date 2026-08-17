@@ -5,6 +5,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGene
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
+import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingStepFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
 import com.likelion.routineeatbe.domain.cookingRecord.exception.CookingRecordErrorCode;
 import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRepository;
@@ -26,6 +27,7 @@ import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientReposi
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -222,6 +224,7 @@ public class CookingRecordPersistenceService {
      * - 레시피의 1인분 음식 재료 필요량에 요청 인분 수를 곱해 사용량으로 저장합니다.
      * - 체크리스트는 level 0, 실제 요리 단계는 level 1 이상으로 저장합니다.
      * - Gemini가 선택한 요리 팁을 단계별 CookingStepTip으로 연결합니다.
+     * - Gemini가 선택한 음식 재료를 단계별 CookingStepFoodIngredient로 연결합니다.
      *
      * @param userId 사용자 PK
      * @param recipeId 레시피 PK
@@ -266,16 +269,31 @@ public class CookingRecordPersistenceService {
         }
 
         CookingRecord cookingRecord = CookingRecord.create(user, recipe, servings);
+        Map<Long, CookingRecordFoodIngredient> cookingRecordFoodIngredientMap =
+                new HashMap<>();
         for (RecipeFoodIngredient recipeFoodIngredient : recipeFoodIngredients) {
             Double secondaryUsedAmountValue =
                     recipeFoodIngredient.getSecondaryNeedAmountValue() == null
                             ? null
                             : recipeFoodIngredient.getSecondaryNeedAmountValue() * servings;
-            CookingRecordFoodIngredient.create(
-                    cookingRecord,
-                    recipeFoodIngredient.getFoodIngredient(),
-                    recipeFoodIngredient.getPrimaryNeedAmountValue() * servings,
-                    secondaryUsedAmountValue
+            CookingRecordFoodIngredient cookingRecordFoodIngredient =
+                    CookingRecordFoodIngredient.create(
+                            cookingRecord,
+                            recipeFoodIngredient.getFoodIngredient(),
+                            recipeFoodIngredient.getPrimaryNeedAmountValue() * servings,
+                            secondaryUsedAmountValue
+                    );
+            cookingRecordFoodIngredientMap.put(
+                    recipeFoodIngredient.getFoodIngredient().getId(),
+                    cookingRecordFoodIngredient
+            );
+        }
+        Set<Long> requestedFoodIngredientIds = generated.cookingSteps().stream()
+                .flatMap(cookingStep -> cookingStep.foodIngredientIds().stream())
+                .collect(Collectors.toSet());
+        if (!cookingRecordFoodIngredientMap.keySet().containsAll(requestedFoodIngredientIds)) {
+            throw new CustomException(
+                    CookingRecordErrorCode.COOKING_RECORD_FOOD_INGREDIENT_NOT_FOUND
             );
         }
         CookingSession cookingSession = CookingSession.create(
@@ -299,6 +317,12 @@ public class CookingRecordPersistenceService {
             );
             generatedCookingStep.cookingTipIds().forEach(cookingTipId ->
                     CookingStepTip.create(cookingStep, cookingTipMap.get(cookingTipId))
+            );
+            generatedCookingStep.foodIngredientIds().forEach(foodIngredientId ->
+                    CookingStepFoodIngredient.create(
+                            cookingStep,
+                            cookingRecordFoodIngredientMap.get(foodIngredientId)
+                    )
             );
         }
 

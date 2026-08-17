@@ -13,11 +13,13 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessio
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepFoodIngredientResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTipResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTitleResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
+import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingStepFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSessionLog;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingStep;
@@ -304,6 +306,7 @@ public class CookingRecordMapper {
      * @param generated Gemini가 생성한 체크리스트와 요리 단계
      * @param firstCookingStep 저장된 첫 번째 요리 단계
      * @param firstCookingStepTips 첫 단계에 연결된 요리 팁과 콘텐츠
+     * @param firstCookingStepFoodIngredients 첫 단계에 연결된 요리 기록 음식 재료
      * @return 요리 시작 응답 DTO
      */
     public CookingStartResDto toCookingStartResDto(
@@ -311,7 +314,8 @@ public class CookingRecordMapper {
             Recipe recipe,
             CookingStepGenerateGeminiResponseDto generated,
             CookingStep firstCookingStep,
-            List<CookingStepTip> firstCookingStepTips
+            List<CookingStepTip> firstCookingStepTips,
+            List<CookingStepFoodIngredient> firstCookingStepFoodIngredients
     ) {
         CookingSession cookingSession = cookingRecord.getCookingSession();
         Integer currentLevel = cookingSession.getCurrentCookingStepLevel();
@@ -335,7 +339,8 @@ public class CookingRecordMapper {
                 .nextCookingStepLevel(nextLevel)
                 .currentCookingStep(toCookingStepDetailResDto(
                         firstCookingStep,
-                        firstCookingStepTips
+                        firstCookingStepTips,
+                        firstCookingStepFoodIngredients
                 ))
                 .cookingStepTitles(cookingStepTitles)
                 .build();
@@ -347,12 +352,14 @@ public class CookingRecordMapper {
      * @param cookingSession 단계 이동이 완료된 요리 세션
      * @param cookingStep 현재 요리 단계
      * @param cookingStepTips 현재 단계에 연결된 요리 팁과 콘텐츠
+     * @param cookingStepFoodIngredients 현재 단계에 연결된 요리 기록 음식 재료
      * @return 단계 이동 응답 DTO
      */
     public CookingStepNavigationResDto toCookingStepNavigationResDto(
             CookingSession cookingSession,
             CookingStep cookingStep,
-            List<CookingStepTip> cookingStepTips
+            List<CookingStepTip> cookingStepTips,
+            List<CookingStepFoodIngredient> cookingStepFoodIngredients
     ) {
         Integer currentLevel = cookingSession.getCurrentCookingStepLevel();
         Integer nextLevel = currentLevel < cookingSession.getCookingStepCount()
@@ -362,20 +369,26 @@ public class CookingRecordMapper {
                 .cookingStepCount(cookingSession.getCookingStepCount())
                 .prevCookingStepLevel(currentLevel - 1)
                 .nextCookingStepLevel(nextLevel)
-                .currentCookingStep(toCookingStepDetailResDto(cookingStep, cookingStepTips))
+                .currentCookingStep(toCookingStepDetailResDto(
+                        cookingStep,
+                        cookingStepTips,
+                        cookingStepFoodIngredients
+                ))
                 .build();
     }
 
     /**
-     * CookingStep과 연결된 요리 팁 콘텐츠를 현재 요리 단계 상세 DTO로 변환합니다.
+     * CookingStep과 연결된 요리 팁 및 음식 재료를 현재 요리 단계 상세 DTO로 변환합니다.
      *
      * @param cookingStep 변환할 요리 단계
      * @param cookingStepTips 현재 단계에 연결된 요리 팁과 콘텐츠
+     * @param cookingStepFoodIngredients 현재 단계에 연결된 요리 기록 음식 재료
      * @return 현재 요리 단계 상세 DTO
      */
     public CookingStepDetailResDto toCookingStepDetailResDto(
             CookingStep cookingStep,
-            List<CookingStepTip> cookingStepTips
+            List<CookingStepTip> cookingStepTips,
+            List<CookingStepFoodIngredient> cookingStepFoodIngredients
     ) {
         List<CookingStepTipResDto> tips = cookingStepTips.stream()
                 .sorted(Comparator.comparing(
@@ -402,6 +415,36 @@ public class CookingRecordMapper {
                 .content(cookingStep.getContent())
                 .subContent(cookingStep.getSubContent())
                 .tips(tips)
+                .foodIngredients(toCookingStepFoodIngredients(cookingStepFoodIngredients))
                 .build();
+    }
+
+    /**
+     * 현재 단계에 연결된 요리 기록 음식 재료를 실제 사용량 응답으로 변환합니다.
+     *
+     * @param cookingStepFoodIngredients 현재 단계에 연결된 요리 기록 음식 재료
+     * @return 요리 기록 음식 재료 PK 순으로 정렬된 단계별 음식 재료 응답
+     */
+    private List<CookingStepFoodIngredientResDto> toCookingStepFoodIngredients(
+            List<CookingStepFoodIngredient> cookingStepFoodIngredients
+    ) {
+        return cookingStepFoodIngredients.stream()
+                .map(CookingStepFoodIngredient::getCookingRecordFoodIngredient)
+                .sorted(Comparator.comparing(CookingRecordFoodIngredient::getId))
+                .map(cookingRecordFoodIngredient ->
+                        CookingStepFoodIngredientResDto.create(
+                            cookingRecordFoodIngredient.getId(),
+                            cookingRecordFoodIngredient.getFoodIngredient().getId(),
+                            cookingRecordFoodIngredient.getFoodIngredient().getName(),
+                            cookingRecordFoodIngredient.getPrimaryUsedAmountValue(),
+                            cookingRecordFoodIngredient.getFoodIngredient().getPrimaryUnit(),
+                            cookingRecordFoodIngredient.getSecondaryUsedAmountValue(),
+                            cookingRecordFoodIngredient.getSecondaryUsedAmountValue() == null
+                                    ? null
+                                    : cookingRecordFoodIngredient
+                                            .getFoodIngredient()
+                                            .getSecondaryUnit()
+                    ))
+                .toList();
     }
 }

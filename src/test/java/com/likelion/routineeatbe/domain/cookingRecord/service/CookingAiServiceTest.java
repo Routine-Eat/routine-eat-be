@@ -105,6 +105,7 @@ class CookingAiServiceTest {
                         null,
                         "재료를 볶아주세요.",
                         null,
+                        List.of(),
                         List.of()
                 )
         );

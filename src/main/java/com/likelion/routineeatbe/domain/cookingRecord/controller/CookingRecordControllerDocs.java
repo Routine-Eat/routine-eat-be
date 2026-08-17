@@ -216,6 +216,8 @@ public interface CookingRecordControllerDocs {
                     사용자와 레시피 정보를 기반으로 맞춤 요리 단계와 세션을 생성합니다.
                     초기화된 요리 팁 중 각 단계와 관련 있는 팁을 Gemini가 선택하고
                     단계별 팁 연결과 팁 콘텐츠를 현재 단계 응답에 포함합니다.
+                    Gemini가 단계별 사용 음식 재료를 선택해 요리 기록 음식 재료와 연결하고,
+                    현재 단계 응답에 요리 전후 예상 보유량을 포함합니다.
 
                     [Query Parameter]
                     - userNumber: 4자리 사용자 고유 식별번호
@@ -253,7 +255,7 @@ public interface CookingRecordControllerDocs {
             description = """
                     진행 중인 요리 세션을 다음 단계로 이동하고 해당 단계의 상세 정보를 반환합니다.
                     현재 단계 상세 정보에는 단계 PK, 번호, 제목, 이미지, 본문, 부연 설명과
-                    연결된 요리 팁 콘텐츠가 팁 PK 및 sortNum 순서와 함께 포함됩니다.
+                    연결된 요리 팁 콘텐츠 및 단계별 사용 음식 재료가 포함됩니다.
                     현재 단계가 마지막 단계이면 요리 세션을 완료 상태로 변경합니다.
                     이 경우 응답 data는 null입니다.
 
@@ -291,7 +293,7 @@ public interface CookingRecordControllerDocs {
             description = """
                     진행 중인 요리 세션을 이전 단계로 이동하고 해당 단계의 상세 정보를 반환합니다.
                     현재 단계 상세 정보에는 단계 PK, 번호, 제목, 이미지, 본문, 부연 설명과
-                    연결된 요리 팁 콘텐츠가 팁 PK 및 sortNum 순서와 함께 포함됩니다.
+                    연결된 요리 팁 콘텐츠 및 단계별 사용 음식 재료가 포함됩니다.
                     현재 단계가 1이면 단계를 변경하지 않습니다.
                     이 경우 응답 data는 null입니다.
 

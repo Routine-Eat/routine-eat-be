@@ -109,7 +109,12 @@ class CookingStepGenerateGeminiServiceTest {
                 eq(CookingStepGenerateGeminiResponseDto.class)
         );
         assertThat(promptCaptor.getValue())
-                .contains("cookingTipId=10", "대파 써는 법");
+                .contains(
+                        "cookingTipId=10",
+                        "대파 써는 법",
+                        "foodIngredientId=20",
+                        "계란"
+                );
     }
 
     @Test
@@ -167,6 +172,66 @@ class CookingStepGenerateGeminiServiceTest {
         then(retryDelayStrategy).should().waitBeforeRetry(1);
     }
 
+    @Test
+    @DisplayName("제공되지 않은 음식 재료 PK를 반환하면 재시도 후 실패한다")
+    void 제공되지_않은_음식_재료_PK_실패() {
+        // given
+        CookingStepGenerateGeminiResponseDto invalidResponse = responseWithIds(
+                true,
+                List.of(10L),
+                List.of(999L)
+        );
+        given(geminiUtil.callFunction(
+                eq("cooking-step-model"),
+                anyString(),
+                any(CookingStepGenerateGeminiFunctionDeclarationDto.class),
+                eq(CookingStepGenerateGeminiResponseDto.class)
+        )).willReturn(invalidResponse);
+
+        // when & then
+        assertThatThrownBy(() -> geminiService.generate(
+                createUser(SkillLevel.BEGINNER),
+                createRecipe(),
+                List.of(createIngredient()),
+                List.of(createRecipeStep()),
+                List.of(createCookingTip()),
+                1
+        )).isInstanceOf(CustomException.class)
+                .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
+                        .isEqualTo(GeminiErrorCode.INVALID_COOKING_STEP_METADATA));
+        then(retryDelayStrategy).should().waitBeforeRetry(1);
+    }
+
+    @Test
+    @DisplayName("제공된 음식 재료가 모든 단계에서 누락되면 재시도 후 실패한다")
+    void 음식_재료_전체_단계_누락_실패() {
+        // given
+        CookingStepGenerateGeminiResponseDto invalidResponse = responseWithIds(
+                true,
+                List.of(10L),
+                List.of()
+        );
+        given(geminiUtil.callFunction(
+                eq("cooking-step-model"),
+                anyString(),
+                any(CookingStepGenerateGeminiFunctionDeclarationDto.class),
+                eq(CookingStepGenerateGeminiResponseDto.class)
+        )).willReturn(invalidResponse);
+
+        // when & then
+        assertThatThrownBy(() -> geminiService.generate(
+                createUser(SkillLevel.BEGINNER),
+                createRecipe(),
+                List.of(createIngredient()),
+                List.of(createRecipeStep()),
+                List.of(createCookingTip()),
+                1
+        )).isInstanceOf(CustomException.class)
+                .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
+                        .isEqualTo(GeminiErrorCode.INVALID_COOKING_STEP_METADATA));
+        then(retryDelayStrategy).should().waitBeforeRetry(1);
+    }
+
     private User createUser(SkillLevel skillLevel) {
         return User.builder().id(1L).skillLevel(skillLevel).build();
     }
@@ -181,6 +246,7 @@ class CookingStepGenerateGeminiServiceTest {
 
     private RecipeFoodIngredient createIngredient() {
         FoodIngredient foodIngredient = FoodIngredient.builder()
+                .id(20L)
                 .name("계란")
                 .primaryUnit(PrimaryUnit.G)
                 .secondaryUnit(SecondaryUnit.AL)
@@ -208,21 +274,29 @@ class CookingStepGenerateGeminiServiceTest {
             boolean includeSubContent,
             List<Long> cookingTipIds
     ) {
+        return responseWithIds(includeSubContent, cookingTipIds, List.of(20L));
+    }
+
+    private CookingStepGenerateGeminiResponseDto responseWithIds(
+            boolean includeSubContent,
+            List<Long> cookingTipIds,
+            List<Long> foodIngredientIds
+    ) {
         String subContent = includeSubContent ? "불을 약하게 조절하세요." : null;
         return CookingStepGenerateGeminiResponseDto.create(
                 List.of("손을 씻으세요."),
                 List.of(
                         GeneratedCookingStep.create(
                                 1, CookingStepStage.PREPARATION, "재료 준비", "계란을 준비한다.",
-                                subContent, cookingTipIds
+                                subContent, cookingTipIds, foodIngredientIds
                         ),
                         GeneratedCookingStep.create(
                                 2, CookingStepStage.COOKING, "계란 볶기", "계란을 볶는다.",
-                                subContent, cookingTipIds
+                                subContent, cookingTipIds, foodIngredientIds
                         ),
                         GeneratedCookingStep.create(
                                 3, CookingStepStage.FINISH, "요리 종료", "불을 끈다.",
-                                subContent, cookingTipIds
+                                subContent, cookingTipIds, foodIngredientIds
                         )
                 )
         );

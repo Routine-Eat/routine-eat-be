@@ -362,7 +362,8 @@ class CookingRecordPersistenceServiceTest {
                                 "준비",
                                 "준비",
                                 null,
-                                List.of(100L)
+                                List.of(100L),
+                                List.of(10L)
                         ),
                         GeneratedCookingStep.create(
                                 2,
@@ -370,7 +371,8 @@ class CookingRecordPersistenceServiceTest {
                                 "조리",
                                 "조리",
                                 null,
-                                List.of()
+                                List.of(),
+                                List.of(11L)
                         ),
                         GeneratedCookingStep.create(
                                 3,
@@ -378,6 +380,7 @@ class CookingRecordPersistenceServiceTest {
                                 "완료",
                                 "완료",
                                 null,
+                                List.of(),
                                 List.of()
                         )
                 )
@@ -411,10 +414,21 @@ class CookingRecordPersistenceServiceTest {
         assertThat(result.getCookingSession().getCookingSteps())
                 .filteredOn(cookingStep -> cookingStep.getLevel() == 1L)
                 .singleElement()
-                .satisfies(cookingStep -> assertThat(cookingStep.getCookingStepTips())
-                        .singleElement()
-                        .satisfies(cookingStepTip -> assertThat(cookingStepTip.getCookingTip())
-                                .isSameAs(cookingTip)));
+                .satisfies(cookingStep -> {
+                    assertThat(cookingStep.getCookingStepTips())
+                            .singleElement()
+                            .satisfies(cookingStepTip ->
+                                    assertThat(cookingStepTip.getCookingTip())
+                                            .isSameAs(cookingTip));
+                    assertThat(cookingStep.getCookingStepFoodIngredients())
+                            .singleElement()
+                            .satisfies(cookingStepFoodIngredient -> assertThat(
+                                    cookingStepFoodIngredient
+                                            .getCookingRecordFoodIngredient()
+                                            .getFoodIngredient()
+                                            .getId()
+                            ).isEqualTo(10L));
+                });
         assertThat(result.getFoodIngredients()).hasSize(2);
         assertThat(result.getFoodIngredients())
                 .extracting(
@@ -451,7 +465,8 @@ class CookingRecordPersistenceServiceTest {
                                 "준비",
                                 "준비",
                                 null,
-                                List.of(999L)
+                                List.of(999L),
+                                List.of(10L)
                         ))
                 );
         given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(user));
@@ -467,6 +482,49 @@ class CookingRecordPersistenceServiceTest {
                 .isInstanceOf(CustomException.class)
                 .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
                         .isEqualTo(CookingRecordErrorCode.COOKING_TIP_NOT_FOUND));
+        then(cookingRecordRepository).should(never()).saveAndFlush(any(CookingRecord.class));
+    }
+
+    @Test
+    @DisplayName("Gemini가 레시피에 없는 음식 재료를 선택하면 저장에 실패한다")
+    void 단계별_음식_재료_조회_실패_레시피에_없는_재료() {
+        // given
+        User user = User.builder().id(1L).build();
+        Recipe recipe = Recipe.builder().id(2L).build();
+        FoodIngredient foodIngredient = FoodIngredient.builder().id(10L).build();
+        RecipeFoodIngredient recipeFoodIngredient = RecipeFoodIngredient.builder()
+                .recipe(recipe)
+                .foodIngredient(foodIngredient)
+                .primaryNeedAmountValue(50.0)
+                .build();
+        CookingStepGenerateGeminiResponseDto generated =
+                CookingStepGenerateGeminiResponseDto.create(
+                        List.of("손을 씻으세요."),
+                        List.of(GeneratedCookingStep.create(
+                                1,
+                                CookingStepStage.PREPARATION,
+                                "준비",
+                                "준비",
+                                null,
+                                List.of(),
+                                List.of(999L)
+                        ))
+                );
+        given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(user));
+        given(recipeRepository.findById(2L)).willReturn(Optional.of(recipe));
+        given(cookingRecordRepository.existsBlockingSession(eq(1L), eq(2L), anyCollection()))
+                .willReturn(false);
+        given(recipeFoodIngredientRepository.findAllByRecipeIdInWithFoodIngredient(List.of(2L)))
+                .willReturn(List.of(recipeFoodIngredient));
+
+        // when & then
+        assertThatThrownBy(() -> persistenceService.save(1L, 2L, 1, generated))
+                .isInstanceOf(CustomException.class)
+                .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
+                        .isEqualTo(
+                                CookingRecordErrorCode
+                                        .COOKING_RECORD_FOOD_INGREDIENT_NOT_FOUND
+                        ));
         then(cookingRecordRepository).should(never()).saveAndFlush(any(CookingRecord.class));
     }
 

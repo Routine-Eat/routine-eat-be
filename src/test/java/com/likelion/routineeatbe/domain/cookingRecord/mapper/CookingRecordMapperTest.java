@@ -16,6 +16,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartR
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
+import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingStepFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
 import com.likelion.routineeatbe.domain.cookingTip.entity.CookingStepTip;
 import com.likelion.routineeatbe.domain.cookingTip.entity.CookingTip;
@@ -316,6 +317,23 @@ class CookingRecordMapperTest {
                 1
         );
         CookingStepTip cookingStepTip = CookingStepTip.create(firstCookingStep, cookingTip);
+        FoodIngredient greenOnion = FoodIngredient.builder()
+                .id(7L)
+                .name("대파")
+                .primaryUnit(PrimaryUnit.G)
+                .secondaryUnit(SecondaryUnit.JULGI)
+                .build();
+        CookingRecordFoodIngredient recordFoodIngredient =
+                CookingRecordFoodIngredient.builder()
+                        .id(30L)
+                        .foodIngredient(greenOnion)
+                        .primaryUsedAmountValue(60.0)
+                        .secondaryUsedAmountValue(0.5)
+                        .build();
+        CookingStepFoodIngredient stepFoodIngredient = CookingStepFoodIngredient.create(
+                firstCookingStep,
+                recordFoodIngredient
+        );
         Recipe recipe = Recipe.builder()
                 .menu(Menu.builder()
                         .name("계란 대파 볶음밥")
@@ -333,7 +351,8 @@ class CookingRecordMapperTest {
                                         "재료 준비",
                                         "대파를 잘라주세요.",
                                         "가위를 사용해도 괜찮아요.",
-                                        List.of(5L)
+                                        List.of(5L),
+                                        List.of(7L)
                                 ),
                                 GeneratedCookingStep.create(
                                         2,
@@ -341,7 +360,8 @@ class CookingRecordMapperTest {
                                         "조리",
                                         "볶아주세요.",
                                         null,
-                                        List.of()
+                                        List.of(),
+                                        List.of(7L)
                                 ),
                                 GeneratedCookingStep.create(
                                         3,
@@ -349,6 +369,7 @@ class CookingRecordMapperTest {
                                         "완료",
                                         "불을 꺼주세요.",
                                         null,
+                                        List.of(),
                                         List.of()
                                 )
                         )
@@ -360,7 +381,8 @@ class CookingRecordMapperTest {
                 recipe,
                 generated,
                 firstCookingStep,
-                List.of(cookingStepTip)
+                List.of(cookingStepTip),
+                List.of(stepFoodIngredient)
         );
 
         // then
@@ -393,6 +415,17 @@ class CookingRecordMapperTest {
                                 CookingTipContentType.IMAGE
                         )
                 );
+        assertThat(result.currentCookingStep().foodIngredients())
+                .singleElement()
+                .satisfies(foodIngredient -> {
+                    assertThat(foodIngredient.cookingRecordFoodIngredientId()).isEqualTo(30L);
+                    assertThat(foodIngredient.foodIngredientId()).isEqualTo(7L);
+                    assertThat(foodIngredient.name()).isEqualTo("대파");
+                    assertThat(foodIngredient.primaryUsedAmountValue()).isEqualTo(60.0);
+                    assertThat(foodIngredient.primaryUnit()).isEqualTo(PrimaryUnit.G);
+                    assertThat(foodIngredient.secondaryUsedAmountValue()).isEqualTo(0.5);
+                    assertThat(foodIngredient.secondaryUnit()).isEqualTo(SecondaryUnit.JULGI);
+                });
         assertThat(result.cookingStepTitles()).hasSize(3);
     }
 
@@ -438,7 +471,8 @@ class CookingRecordMapperTest {
                 .toCookingStepNavigationResDto(
                         cookingSession,
                         cookingStep,
-                        List.of(cookingStepTip)
+                        List.of(cookingStepTip),
+                        List.of()
                 );
 
         // then
@@ -471,5 +505,6 @@ class CookingRecordMapperTest {
                                 CookingTipContentType.IMAGE
                         )
                 );
+        assertThat(result.currentCookingStep().foodIngredients()).isEmpty();
     }
 }

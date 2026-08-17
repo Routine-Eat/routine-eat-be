@@ -1,6 +1,5 @@
-package com.likelion.routineeatbe.domain.cookingSession.entity;
+package com.likelion.routineeatbe.domain.cookingTip.entity;
 
-import com.likelion.routineeatbe.domain.cookingTip.entity.CookingStepTip;
 import com.likelion.routineeatbe.global.common.BaseTimeEntity;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
@@ -11,10 +10,10 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AccessLevel;
@@ -28,7 +27,13 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@Table(name = "cooking_step")
+@Table(
+        name = "cooking_tip",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_cooking_tip_title",
+                columnNames = "title"
+        )
+)
 @AttributeOverrides({
         @AttributeOverride(
                 name = "createdAt",
@@ -39,57 +44,43 @@ import lombok.NoArgsConstructor;
                 column = @Column(name = "updated_at", nullable = false)
         )
 })
-public class CookingStep extends BaseTimeEntity {
+public class CookingTip extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "cooking_step_id")
+    @Column(name = "cooking_tip_id")
     private Long id;
-
-    @Column(nullable = false)
-    private Long level;
-
-    @Column(name = "thumbnail_url", length = 500)
-    private String thumbnailUrl;
 
     @Column(nullable = false, length = 300)
     private String title;
 
-    @Column(nullable = false, length = 500)
-    private String content;
-
-    @Column(name = "sub_content", length = 500)
-    private String subContent;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cooking_session_id", nullable = false)
-    private CookingSession cookingSession;
+    @Builder.Default
+    @OrderBy("sortOrder ASC")
+    @OneToMany(
+            mappedBy = "cookingTip",
+            fetch = FetchType.LAZY,
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<CookingTipContent> contents = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(
-            mappedBy = "cookingStep",
+            mappedBy = "cookingTip",
             fetch = FetchType.LAZY,
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
     private List<CookingStepTip> cookingStepTips = new ArrayList<>();
 
-    public static CookingStep create(
-            CookingSession cookingSession,
-            Long level,
-            String title,
-            String content,
-            String subContent
-    ) {
-        CookingStep cookingStep = CookingStep.builder()
-                .level(level)
+    public static CookingTip create(String title) {
+        return CookingTip.builder()
                 .title(title)
-                .content(content)
-                .subContent(subContent)
-                .cookingSession(cookingSession)
                 .build();
-        cookingSession.addCookingStep(cookingStep);
-        return cookingStep;
+    }
+
+    public void addContent(CookingTipContent content) {
+        this.contents.add(content);
     }
 
     public void addCookingStepTip(CookingStepTip cookingStepTip) {

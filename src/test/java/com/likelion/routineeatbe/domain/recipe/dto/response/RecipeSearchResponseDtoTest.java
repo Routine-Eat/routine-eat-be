@@ -94,10 +94,13 @@ class RecipeSearchResponseDtoTest {
         RecipeDetailResDto response = RecipeDetailResDto.builder()
                 .recipeId(1L)
                 .foodIngredientUsingPercent(60L)
-                .additionalFoodIngredientCost(1800L)
+                .foodIngredientCost(3500L)
                 .foodIngredients(List.of())
                 .additionalFoodIngredients(List.of())
-                .similarRecipes(List.of())
+                .similarRecipes(List.of(SimilarRecipeResDto.builder()
+                        .id(10L)
+                        .isFavoriteRecipe(true)
+                        .build()))
                 .build();
 
         // when
@@ -106,6 +109,9 @@ class RecipeSearchResponseDtoTest {
         // then
         assertThat(json.path("foodIngredientUsingPercent").asLong()).isEqualTo(60L);
         assertThat(json.has("additionalFoodIngredientCount")).isFalse();
-        assertThat(json.path("additionalFoodIngredientCost").asLong()).isEqualTo(1800L);
+        assertThat(json.has("additionalFoodIngredientCost")).isFalse();
+        assertThat(json.path("foodIngredientCost").asLong()).isEqualTo(3500L);
+        assertThat(json.path("similarRecipes").get(0).path("isFavoriteRecipe").asBoolean())
+                .isTrue();
     }
 }

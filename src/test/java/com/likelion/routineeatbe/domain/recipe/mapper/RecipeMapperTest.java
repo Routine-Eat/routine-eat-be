@@ -13,6 +13,7 @@ import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientUsageListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.SimilarRecipeResDto;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import org.junit.jupiter.api.DisplayName;
@@ -143,6 +144,22 @@ class RecipeMapperTest {
 
         // then
         assertThat(response.foodIngredientUsingPercent()).isEqualTo(60L);
-        assertThat(response.additionalFoodIngredientCost()).isEqualTo(1800L);
+        assertThat(response.foodIngredientCost()).isEqualTo(1800L);
+    }
+
+    @Test
+    @DisplayName("유사 레시피 찜 여부 응답 DTO 변환 성공")
+    void 유사_레시피_찜_여부_응답_DTO_변환_성공() {
+        // given
+        Menu menu = Menu.builder().name("김치 볶음밥").build();
+        Recipe recipe = Recipe.builder().id(10L).menu(menu).build();
+
+        // when
+        SimilarRecipeResDto response = recipeMapper.toSimilarRecipeResDto(recipe, 1L, true);
+
+        // then
+        assertThat(response.id()).isEqualTo(10L);
+        assertThat(response.additionalFoodIngredientCount()).isEqualTo(1L);
+        assertThat(response.isFavoriteRecipe()).isTrue();
     }
 }

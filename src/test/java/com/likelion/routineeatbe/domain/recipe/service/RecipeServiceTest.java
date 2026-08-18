@@ -12,6 +12,7 @@ import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredientType;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
+import com.likelion.routineeatbe.domain.favoriteRecipe.repository.FavoriteRecipeRepository;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import com.likelion.routineeatbe.domain.menu.entity.MenuType;
@@ -63,6 +64,9 @@ class RecipeServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private FavoriteRecipeRepository favoriteRecipeRepository;
 
     @Mock
     private UserFoodIngredientRepository userFoodIngredientRepository;
@@ -144,11 +148,15 @@ class RecipeServiceTest {
         RecipeIngredientResDto fullEgg = RecipeIngredientResDto.builder()
                 .id(2000L).primaryNeedAmountValue(100.0).secondaryNeedAmountValue(2.0).build();
         SimilarRecipeResDto similarRecipeResDto = SimilarRecipeResDto.builder()
-                .id(200L).name("김치 볶음밥").additionalFoodIngredientCount(1L).build();
+                .id(200L)
+                .name("김치 볶음밥")
+                .additionalFoodIngredientCount(1L)
+                .isFavoriteRecipe(true)
+                .build();
         RecipeDetailResDto expectedResponse = RecipeDetailResDto.builder()
                 .recipeId(100L)
                 .foodIngredientUsingPercent(100L)
-                .additionalFoodIngredientCost(1500L)
+                .foodIngredientCost(2500L)
                 .servings(2)
                 .foodIngredients(List.of(fullCarrot, fullEgg))
                 .additionalFoodIngredients(List.of(additionalCarrot))
@@ -174,13 +182,15 @@ class RecipeServiceTest {
                 .willReturn(additionalCarrot);
         given(recipeMapper.toRecipeIngredientResDto(targetEgg, 100.0, 2.0))
                 .willReturn(fullEgg);
-        given(recipeMapper.toSimilarRecipeResDto(similarRecipe, 1L))
+        given(favoriteRecipeRepository.existsByUserIdAndRecipeId(1L, 200L))
+                .willReturn(true);
+        given(recipeMapper.toSimilarRecipeResDto(similarRecipe, 1L, true))
                 .willReturn(similarRecipeResDto);
         given(recipeMapper.toRecipeDetailResDto(
                 targetRecipe,
                 2L,
                 2L,
-                1500L,
+                2500L,
                 2,
                 List.of(fullCarrot, fullEgg),
                 List.of(additionalCarrot),
@@ -193,12 +203,14 @@ class RecipeServiceTest {
         // then
         assertThat(result).isEqualTo(expectedResponse);
         assertThat(result.foodIngredientUsingPercent()).isEqualTo(100L);
-        assertThat(result.additionalFoodIngredientCost()).isEqualTo(1500L);
+        assertThat(result.foodIngredientCost()).isEqualTo(2500L);
         assertThat(result.additionalFoodIngredients().getFirst().primaryNeedAmountValue())
                 .isEqualTo(150.0);
         assertThat(result.similarRecipes().getFirst().additionalFoodIngredientCount())
                 .isEqualTo(1L);
+        assertThat(result.similarRecipes().getFirst().isFavoriteRecipe()).isTrue();
         verify(findSimilarRecipeService).findRecipeWithSimilarRecipes(100L);
+        verify(favoriteRecipeRepository).existsByUserIdAndRecipeId(1L, 200L);
     }
 
     @Test

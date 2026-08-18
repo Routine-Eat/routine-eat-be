@@ -1,6 +1,7 @@
 package com.likelion.routineeatbe.domain.recipe.service;
 
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
+import com.likelion.routineeatbe.domain.favoriteRecipe.repository.FavoriteRecipeRepository;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeWithSimilarRecipes;
@@ -51,6 +52,7 @@ public class RecipeService {
     private final FindSimilarRecipeService findSimilarRecipeService;
 
     private final UserRepository userRepository;
+    private final FavoriteRecipeRepository favoriteRecipeRepository;
     private final UserFoodIngredientRepository userFoodIngredientRepository;
     private final RecipeRepository recipeRepository;
     private final RecipeFoodIngredientRepository recipeFoodIngredientRepository;
@@ -59,7 +61,7 @@ public class RecipeService {
 
     /**
      * 사용자와 인분 수를 기준으로 레시피 상세 정보를 조회합니다.
-     * - 전체 필요 재료에 인분 배율을 적용하고 사용자 보유량을 차감하여 추가 재료와 비용을 계산합니다.
+     * - 전체 필요 재료에 인분 배율을 적용하여 전체 재료비를 계산하고 사용자 보유량을 차감하여 추가 재료를 계산합니다.
      * - 대상 및 유사 레시피 선정은 FindSimilarRecipeService에 위임합니다.
      *
      * @param recipeId 조회할 레시피 PK
@@ -123,12 +125,12 @@ public class RecipeService {
                 ));
 
         /*
-            5. 대상 레시피의 전체 및 추가 재료 계산
-            - 필요량에는 인분 배율을 적용하고 추가 재료의 보조 수량은 주 단위 부족 비율에 맞춰 계산합니다.
+            5. 대상 레시피의 전체 재료비 및 추가 재료 계산
+            - 전체 필요량 기준 재료비를 합산하고 추가 재료의 보조 수량은 주 단위 부족 비율에 맞춰 계산합니다.
          */
         List<RecipeIngredientResDto> foodIngredients = new ArrayList<>();
         List<RecipeIngredientResDto> additionalFoodIngredients = new ArrayList<>();
-        double additionalFoodIngredientCost = 0.0;
+        double foodIngredientCost = 0.0;
         List<RecipeFoodIngredient> targetIngredients = requiredIngredientsByRecipe.getOrDefault(
                 recipe.getId(),
                 List.of()
@@ -153,6 +155,9 @@ public class RecipeService {
                     primaryNeedAmount,
                     secondaryNeedAmount
             ));
+            foodIngredientCost += primaryNeedAmount
+                    * targetIngredient.getFoodIngredient().getPricePerHundred()
+                    / 100.0;
 
             Long foodIngredientId = targetIngredient.getFoodIngredient().getId();
             double shortageAmount = Math.max(
@@ -172,15 +177,12 @@ public class RecipeService {
                         shortageAmount,
                         secondaryShortageAmount
                 ));
-                additionalFoodIngredientCost += shortageAmount
-                        * targetIngredient.getFoodIngredient().getPricePerHundred()
-                        / 100.0;
             }
         }
 
         /*
-            6. 유사 레시피별 추가 재료 개수 계산
-            - 각 유사 레시피는 사용자 보유량을 독립적으로 차감하여 부족 재료 개수를 계산합니다.
+            6. 유사 레시피별 추가 재료 개수와 찜 여부 계산
+            - 각 유사 레시피는 사용자 보유량을 독립적으로 차감하여 부족 재료 개수를 계산하고 찜 여부를 조회합니다.
          */
         List<SimilarRecipeResDto> similarRecipes = recipeResult.similarRecipes().stream()
                 .map(similarRecipe -> {
@@ -198,7 +200,13 @@ public class RecipeService {
                                 return primaryNeedAmount - ownedAmount > AMOUNT_EPSILON;
                             })
                             .count();
-                    return recipeMapper.toSimilarRecipeResDto(similarRecipe, additionalCount);
+                    boolean isFavoriteRecipe = favoriteRecipeRepository
+                            .existsByUserIdAndRecipeId(user.getId(), similarRecipe.getId());
+                    return recipeMapper.toSimilarRecipeResDto(
+                            similarRecipe,
+                            additionalCount,
+                            isFavoriteRecipe
+                    );
                 })
                 .toList();
 
@@ -210,7 +218,7 @@ public class RecipeService {
                 recipe,
                 matchedIngredientCount,
                 requiredIngredientCount,
-                (long) Math.ceil(additionalFoodIngredientCost),
+                (long) Math.ceil(foodIngredientCost),
                 request.servings(),
                 foodIngredients,
                 additionalFoodIngredients,

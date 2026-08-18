@@ -10,6 +10,7 @@ import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientUsageListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.SimilarRecipeResDto;
 import com.likelion.routineeatbe.domain.recipe.enums.RecipeSortType;
 import com.likelion.routineeatbe.domain.recipe.enums.RecipeTimeRequiredFilter;
 import com.likelion.routineeatbe.domain.recipe.service.RecipeService;
@@ -49,10 +50,14 @@ class RecipeControllerTest {
                 .recipeId(1L)
                 .recipeName("계란 야채 볶음밥")
                 .foodIngredientUsingPercent(60L)
+                .foodIngredientCost(3500L)
                 .servings(1)
                 .foodIngredients(List.of())
                 .additionalFoodIngredients(List.of())
-                .similarRecipes(List.of())
+                .similarRecipes(List.of(SimilarRecipeResDto.builder()
+                        .id(10L)
+                        .isFavoriteRecipe(true)
+                        .build()))
                 .build();
         given(recipeService.getRecipeDetail(1L, request)).willReturn(serviceResult);
 
@@ -68,6 +73,9 @@ class RecipeControllerTest {
         assertThat(response.getBody().getMessage()).isEqualTo("레시피 상세 조회에 성공했습니다.");
         assertThat(response.getBody().getData()).isEqualTo(serviceResult);
         assertThat(response.getBody().getData().foodIngredientUsingPercent()).isEqualTo(60L);
+        assertThat(response.getBody().getData().foodIngredientCost()).isEqualTo(3500L);
+        assertThat(response.getBody().getData().similarRecipes().getFirst().isFavoriteRecipe())
+                .isTrue();
         assertThat(response.getBody().getData().servings()).isEqualTo(1);
     }
 

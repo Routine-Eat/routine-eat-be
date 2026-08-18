@@ -43,28 +43,31 @@ public class RecipeMapper {
     }
 
     /**
-     * 유사 Recipe Entity와 추가 필요 재료 개수를 유사 레시피 응답 DTO로 변환합니다.
+     * 유사 Recipe Entity와 추가 필요 재료 개수 및 찜 여부를 유사 레시피 응답 DTO로 변환합니다.
      * @param recipe 유사 레시피 Entity
-     * @param matchedIngredientCount 사용자가 보유한 필요 재료 개수
-     * @param requiredIngredientCount 전체 필요 재료 개수
+     * @param additionalFoodIngredientCount 추가로 필요한 음식 재료 개수
+     * @param isFavoriteRecipe 사용자가 찜한 레시피 여부
      * @return 유사 레시피 응답 DTO
      */
     public SimilarRecipeResDto toSimilarRecipeResDto(
             Recipe recipe,
-            Long additionalFoodIngredientCount
+            Long additionalFoodIngredientCount,
+            boolean isFavoriteRecipe
     ) {
         return SimilarRecipeResDto.create(
                 recipe.getId(),
                 recipe.getMenu().getName(),
-                additionalFoodIngredientCount
+                additionalFoodIngredientCount,
+                isFavoriteRecipe
         );
     }
 
     /**
      * 레시피 Entity와 상세 조회 계산 결과를 상세 응답 DTO로 변환합니다.
      * @param recipe 대상 레시피 Entity
-     * @param additionalFoodIngredientCount 추가로 필요한 음식 재료 개수
-     * @param additionalFoodIngredientCost 추가로 필요한 음식 재료비
+     * @param matchedIngredientCount 사용자가 보유한 필요 재료 개수
+     * @param requiredIngredientCount 전체 필요 재료 개수
+     * @param foodIngredientCost 레시피 조리에 필요한 전체 음식 재료비
      * @param servings 인분 수
      * @param foodIngredients 필요한 전체 재료 목록
      * @param additionalFoodIngredients 추가로 필요한 재료 목록
@@ -75,7 +78,7 @@ public class RecipeMapper {
             Recipe recipe,
             Long matchedIngredientCount,
             Long requiredIngredientCount,
-            Long additionalFoodIngredientCost,
+            Long foodIngredientCost,
             Integer servings,
             List<RecipeIngredientResDto> foodIngredients,
             List<RecipeIngredientResDto> additionalFoodIngredients,
@@ -91,7 +94,7 @@ public class RecipeMapper {
                         matchedIngredientCount,
                         requiredIngredientCount
                 ),
-                additionalFoodIngredientCost,
+                foodIngredientCost,
                 servings,
                 foodIngredients,
                 additionalFoodIngredients,

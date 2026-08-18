@@ -30,6 +30,7 @@ public enum CookingRecordErrorCode implements BaseErrorCode {
             "요리 기록 음식 재료를 찾을 수 없습니다.",
             HttpStatus.NOT_FOUND
     ),
+    COOKING_TIP_NOT_FOUND("CR4047", "요리 팁을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     COOKING_SESSION_NOT_IN_PROGRESS(
             "CR4094",
             "진행 중인 요리 세션이 아닙니다.",
@@ -55,6 +56,7 @@ public enum CookingRecordErrorCode implements BaseErrorCode {
             "요리 기록에 저장된 음식 재료가 없습니다.",
             HttpStatus.CONFLICT
     ),
+    COOKING_TIP_EMPTY("CR4099", "등록된 요리 팁이 없습니다.", HttpStatus.CONFLICT),
     INVALID_COOKING_RECORD_IMAGE(
             "CR4001",
             "요리 결과 이미지는 올바른 이미지 파일이어야 합니다.",
@@ -63,6 +65,11 @@ public enum CookingRecordErrorCode implements BaseErrorCode {
     DUPLICATE_COOKING_RECORD_FOOD_INGREDIENT(
             "CR4002",
             "중복된 요리 기록 음식 재료가 요청되었습니다.",
+            HttpStatus.BAD_REQUEST
+    ),
+    INVALID_COOKING_STEP_LEVEL(
+            "CR4003",
+            "이동할 요리 단계 번호가 올바르지 않습니다.",
             HttpStatus.BAD_REQUEST
     ),
     COOKING_RECORD_IMAGE_UPLOAD_FAILED(

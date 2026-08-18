@@ -1,29 +1,49 @@
 package com.likelion.routineeatbe.domain.cookingRecord.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingAiResult;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingAiReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordSearchReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingSessionLogSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingAiAnswerResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientAmountResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogItemResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepFoodIngredientResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTipResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTitleResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
+import com.likelion.routineeatbe.domain.cookingRecord.service.CookingAiService;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingRecordService;
+import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionLogType;
+import com.likelion.routineeatbe.domain.cookingTip.enums.CookingTipContentType;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,7 +69,234 @@ class CookingRecordControllerTest {
     private CookingRecordService cookingRecordService;
 
     @MockitoBean
+    private CookingAiService cookingAiService;
+
+    @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+
+    @Test
+    @DisplayName("요리 중 AI 질문 API 성공 - multipart 응답 반환")
+    void 요리_중_AI_질문_API_성공() throws Exception {
+        // given
+        CookingAiReqDto request = new CookingAiReqDto("조린다는 게 뭐야?");
+        CookingAiResult response = CookingAiResult.create(
+                "응답이 반환되었습니다.",
+                CookingAiAnswerResDto.create("약한 불에서 국물이 배도록 익히는 뜻이에요."),
+                new byte[]{1, 2, 3}
+        );
+        given(cookingAiService.interact(10L, "1234", request)).willReturn(response);
+
+        // when & then
+        mockMvc.perform(post(
+                        "/api/v1/cooking-records/{cookingRecordId}/cooking-session/ai",
+                        10L
+                )
+                        .param("userNumber", "1234")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(result -> {
+                    String multipartBody = result.getResponse()
+                            .getContentAsString(StandardCharsets.UTF_8);
+                    assertThat(multipartBody)
+                            .contains("name=\"response\"")
+                            .contains("Content-Type: application/json")
+                            .contains("약한 불에서 국물이 배도록 익히는 뜻이에요.")
+                            .contains("name=\"audio\"; filename=\"cooking-ai-answer.wav\"")
+                            .contains("Content-Type: audio/wav");
+                });
+        then(cookingAiService).should().interact(10L, "1234", request);
+    }
+
+    @Test
+    @DisplayName("요리 중 AI 질문 API 실패 - 빈 사용자 발화")
+    void 요리_중_AI_질문_API_실패_빈_사용자_발화() throws Exception {
+        // given
+        CookingAiReqDto request = new CookingAiReqDto(" ");
+
+        // when & then
+        mockMvc.perform(post(
+                        "/api/v1/cooking-records/{cookingRecordId}/cooking-session/ai",
+                        10L
+                )
+                        .param("userNumber", "1234")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        then(cookingAiService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("요리 기록 목록 조회 API 성공 - 기본 커서와 크기 적용")
+    void 요리_기록_목록_조회_API_성공() throws Exception {
+        // given
+        CookingRecordListResDto response = CookingRecordListResDto.create(
+                List.of(CookingRecordListItemResDto.create(
+                        659L,
+                        "감자미역국",
+                        "https://example.com/menu.jpg",
+                        true,
+                        LocalDate.of(2026, 8, 15),
+                        DifficultyLevel.LEVEL_1,
+                        8L
+                )),
+                true,
+                11
+        );
+        given(cookingRecordService.getCookingRecords(
+                new CookingRecordSearchReqDto("1234", 1, 10)
+        )).willReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/cooking-records")
+                        .param("userNumber", "1234"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message")
+                        .value("요리 기록(회고록) 조회에 성공했습니다."))
+                .andExpect(jsonPath("$.data.content[0].recipeId").value(659))
+                .andExpect(jsonPath("$.data.content[0].menuName").value("감자미역국"))
+                .andExpect(jsonPath("$.data.content[0].thumbnailUrl")
+                        .value("https://example.com/menu.jpg"))
+                .andExpect(jsonPath("$.data.content[0].isFavoriteRecipe").value(true))
+                .andExpect(jsonPath("$.data.content[0].completedAt").value("2026-08-15"))
+                .andExpect(jsonPath("$.data.content[0].userDifficultyLevel")
+                        .value("LEVEL_1"))
+                .andExpect(jsonPath("$.data.content[0].usedFoodIngredientCount").value(8))
+                .andExpect(jsonPath("$.data.hasNext").value(true))
+                .andExpect(jsonPath("$.data.nextCursor").value(11));
+        then(cookingRecordService).should().getCookingRecords(
+                new CookingRecordSearchReqDto("1234", 1, 10)
+        );
+    }
+
+    @Test
+    @DisplayName("AI 대화 기록 조회 API 성공 - 기본 커서와 크기 적용")
+    void AI_대화_기록_조회_API_성공() throws Exception {
+        // given
+        CookingSessionLogListResDto response = CookingSessionLogListResDto.create(
+                List.of(
+                        CookingSessionLogItemResDto.create(
+                                10L,
+                                CookingSessionLogType.USER,
+                                "굴소스가 한 스푼밖에 없는데 어떡해?"
+                        ),
+                        CookingSessionLogItemResDto.create(
+                                11L,
+                                CookingSessionLogType.AI,
+                                "간장을 반 스푼 추가해보세요."
+                        )
+                ),
+                true,
+                11
+        );
+        given(cookingRecordService.getCookingSessionLogs(
+                10L,
+                new CookingSessionLogSearchReqDto("1234", 1, 10)
+        )).willReturn(response);
+
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/cooking-records/{cookingRecordId}/cooking-session/ai",
+                        10L
+                ).param("userNumber", "1234"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message")
+                        .value("AI 대화 기록 조회에 성공했습니다."))
+                .andExpect(jsonPath("$.data.content[0].cookingSessionLogId").value(10))
+                .andExpect(jsonPath("$.data.content[0].cookingSessionLogType")
+                        .value("USER"))
+                .andExpect(jsonPath("$.data.content[0].cookingSessionLogContent")
+                        .value("굴소스가 한 스푼밖에 없는데 어떡해?"))
+                .andExpect(jsonPath("$.data.content[1].cookingSessionLogType")
+                        .value("AI"))
+                .andExpect(jsonPath("$.data.hasNext").value(true))
+                .andExpect(jsonPath("$.data.nextCursor").value(11));
+        then(cookingRecordService).should().getCookingSessionLogs(
+                10L,
+                new CookingSessionLogSearchReqDto("1234", 1, 10)
+        );
+    }
+
+    @Test
+    @DisplayName("AI 대화 기록 조회 API 실패 - 커서가 1 미만")
+    void AI_대화_기록_조회_API_실패_잘못된_커서() throws Exception {
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/cooking-records/{cookingRecordId}/cooking-session/ai",
+                        10L
+                )
+                        .param("userNumber", "1234")
+                        .param("cursor", "0"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("요리 기록 목록 조회 API 실패 - 커서가 1 미만")
+    void 요리_기록_목록_조회_API_실패_잘못된_커서() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/v1/cooking-records")
+                        .param("userNumber", "1234")
+                        .param("cursor", "0"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("요리 기록 상세 조회 API 성공 - 200 반환")
+    void 요리_기록_상세_조회_API_성공() throws Exception {
+        // given
+        CookingRecordDetailResDto response = CookingRecordDetailResDto.create(
+                10L,
+                "감자미역국",
+                "https://example.com/menu.jpg",
+                20,
+                DifficultyLevel.LEVEL_2,
+                TasteRating.LEVEL_1,
+                DifficultyLevel.LEVEL_3,
+                "참기름을 조금 더 넣으면 맛있습니다.",
+                "https://api-img.nahjjun.cloud/1/10/result.jpg"
+        );
+        given(cookingRecordService.getCookingRecordDetail(10L, "1234"))
+                .willReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/cooking-records/{cookingRecordId}", 10L)
+                        .param("userNumber", "1234"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message")
+                        .value("요리 기록(회고록) 상세 조회에 성공하였습니다."))
+                .andExpect(jsonPath("$.data.cookingRecordId").value(10))
+                .andExpect(jsonPath("$.data.menuName").value("감자미역국"))
+                .andExpect(jsonPath("$.data.thumbnailUrl")
+                        .value("https://example.com/menu.jpg"))
+                .andExpect(jsonPath("$.data.timeRequired").value(20))
+                .andExpect(jsonPath("$.data.difficultyLevel").value("LEVEL_2"))
+                .andExpect(jsonPath("$.data.userTasteRating").value("LEVEL_1"))
+                .andExpect(jsonPath("$.data.userDifficultyLevel").value("LEVEL_3"))
+                .andExpect(jsonPath("$.data.cookingTip")
+                        .value("참기름을 조금 더 넣으면 맛있습니다."))
+                .andExpect(jsonPath("$.data.userCookingRecordPhotoUrl")
+                        .value("https://api-img.nahjjun.cloud/1/10/result.jpg"));
+        then(cookingRecordService).should().getCookingRecordDetail(10L, "1234");
+    }
+
+    @Test
+    @DisplayName("요리 기록 상세 조회 API 실패 - 잘못된 사용자 번호")
+    void 요리_기록_상세_조회_API_실패_잘못된_사용자_번호() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/v1/cooking-records/{cookingRecordId}", 10L)
+                        .param("userNumber", "12AB"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
+    }
 
     @Test
     @DisplayName("이번 요리에 사용한 음식 재료 양 조회 API 성공 - 200 반환")
@@ -124,6 +371,7 @@ class CookingRecordControllerTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_3,
                 DifficultyLevel.LEVEL_2,
+                "참기름을 조금 더 넣으면 맛있습니다.",
                 List.of(new ModifiedCookingRecordFoodIngredientReqDto(
                         1L,
                         80.0,
@@ -166,6 +414,7 @@ class CookingRecordControllerTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_2,
                 DifficultyLevel.LEVEL_1,
+                null,
                 List.of()
         );
         CookingResultSaveResDto response = CookingResultSaveResDto.create(10L);
@@ -194,6 +443,7 @@ class CookingRecordControllerTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 null,
                 DifficultyLevel.LEVEL_1,
+                null,
                 List.of()
         );
         MockMultipartFile requestPart = new MockMultipartFile(
@@ -218,11 +468,37 @@ class CookingRecordControllerTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_2,
                 DifficultyLevel.LEVEL_1,
+                null,
                 List.of(new ModifiedCookingRecordFoodIngredientReqDto(
                         1L,
                         -1.0,
                         null
                 ))
+        );
+        MockMultipartFile requestPart = new MockMultipartFile(
+                "request",
+                "request.json",
+                MediaType.APPLICATION_JSON_VALUE,
+                objectMapper.writeValueAsBytes(request)
+        );
+
+        // when & then
+        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/v1/cooking-records")
+                        .file(requestPart)
+                        .param("userNumber", "1234"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("요리 결과 저장 API 실패 - 요리 팁 500자 초과")
+    void 요리_결과_저장_API_실패_요리_팁_길이_초과() throws Exception {
+        // given
+        CookingResultSaveReqDto request = new CookingResultSaveReqDto(
+                TasteRating.LEVEL_2,
+                DifficultyLevel.LEVEL_1,
+                "가".repeat(501),
+                List.of()
         );
         MockMultipartFile requestPart = new MockMultipartFile(
                 "request",
@@ -260,7 +536,14 @@ class CookingRecordControllerTest {
                         null,
                         "대파를 잘라주세요.",
                         null,
-                        List.of()
+                        List.of(CookingStepTipResDto.create(
+                                5L,
+                                1,
+                                "대파 써는 법",
+                                "대파를 세로로 고정해 주세요.",
+                                CookingTipContentType.TEXT
+                        )),
+                        createNavigationFoodIngredients()
                 ),
                 List.of(CookingStepTitleResDto.create(1L, "재료 준비"))
         );
@@ -283,7 +566,29 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.data.nextCookingStepLevel").doesNotExist())
                 .andExpect(jsonPath("$.data.currentCookingStep.cookingStepId").value(20))
                 .andExpect(jsonPath("$.data.currentCookingStep.level").value(1))
-                .andExpect(jsonPath("$.data.currentCookingStep.stepTips").isEmpty())
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipId").value(5))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].sortNum").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipTitle")
+                        .value("대파 써는 법"))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipContent")
+                        .value("대파를 세로로 고정해 주세요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipType")
+                        .value("TEXT"))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].cookingRecordFoodIngredientId")
+                        .value(30))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].foodIngredientId")
+                        .value(7))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].name")
+                        .value("대파"))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].primaryUsedAmountValue")
+                        .value(60.0))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].primaryUnit")
+                        .value("G"))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].secondaryUsedAmountValue")
+                        .value(0.5))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].secondaryUnit")
+                        .value("JULGI"))
+                .andExpect(jsonPath("$.data.currentCookingStep.stepTips").doesNotExist())
                 .andExpect(jsonPath("$.data.cookingStepTitles[0].stepLevel").value(1));
         then(cookingRecordService).should().startCooking("1234", request);
     }
@@ -333,7 +638,8 @@ class CookingRecordControllerTest {
                         "https://example.com/step.jpg",
                         "대파를 잘라주세요.",
                         "가위를 사용해도 괜찮아요.",
-                        List.of()
+                        createNavigationTips(),
+                        createNavigationFoodIngredients()
                 )
         );
         given(cookingRecordService.moveToNextCookingStep(10L, "1234"))
@@ -354,7 +660,53 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.data.nextCookingStepLevel").value(3))
                 .andExpect(jsonPath("$.data.currentCookingStep.cookingStepId").value(20))
                 .andExpect(jsonPath("$.data.currentCookingStep.level").value(2))
-                .andExpect(jsonPath("$.data.currentCookingStep.stepTips").isEmpty());
+                .andExpect(jsonPath("$.data.currentCookingStep.title").value("대파 준비하기"))
+                .andExpect(jsonPath("$.data.currentCookingStep.thumbnailUrl")
+                        .value("https://example.com/step.jpg"))
+                .andExpect(jsonPath("$.data.currentCookingStep.content")
+                        .value("대파를 잘라주세요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.subContent")
+                        .value("가위를 사용해도 괜찮아요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipId").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].sortNum").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipTitle")
+                        .value("칼로 써는 방법 배워볼래요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipContent")
+                        .value("칼로 썰 때는 엄지를 안쪽으로 접어주세요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipType")
+                        .value("TEXT"))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipId").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].sortNum").value(2))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipContent")
+                        .value("https://api-img.nahjjun.cloud/tip/1/2"))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipType")
+                        .value("IMAGE"))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].name")
+                        .value("대파"))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].cookingRecordFoodIngredientId"
+                ).value(30))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].foodIngredientId"
+                ).value(7))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].primaryUsedAmountValue"
+                ).value(60.0))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].primaryUnit"
+                ).value("G"))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].secondaryUsedAmountValue"
+                ).value(0.5))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].secondaryUnit"
+                ).value("JULGI"))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].prevPrimaryAmountValue"
+                ).doesNotExist())
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].currentPrimaryAmountValue"
+                ).doesNotExist());
         then(cookingRecordService).should().moveToNextCookingStep(10L, "1234");
     }
 
@@ -374,7 +726,7 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value(201))
                 .andExpect(jsonPath("$.message").value("요리가 종료되었습니다."))
-                .andExpect(jsonPath("$.data").doesNotExist());
+                .andExpect(jsonPath("$.data").value(nullValue()));
     }
 
     @Test
@@ -404,7 +756,8 @@ class CookingRecordControllerTest {
                         "https://example.com/step.jpg",
                         "대파를 잘라주세요.",
                         "가위를 사용해도 괜찮아요.",
-                        List.of()
+                        createNavigationTips(),
+                        createNavigationFoodIngredients()
                 )
         );
         given(cookingRecordService.moveToPreviousCookingStep(10L, "1234"))
@@ -425,7 +778,53 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.data.nextCookingStepLevel").value(2))
                 .andExpect(jsonPath("$.data.currentCookingStep.cookingStepId").value(19))
                 .andExpect(jsonPath("$.data.currentCookingStep.level").value(1))
-                .andExpect(jsonPath("$.data.currentCookingStep.stepTips").isEmpty());
+                .andExpect(jsonPath("$.data.currentCookingStep.title").value("대파 준비하기"))
+                .andExpect(jsonPath("$.data.currentCookingStep.thumbnailUrl")
+                        .value("https://example.com/step.jpg"))
+                .andExpect(jsonPath("$.data.currentCookingStep.content")
+                        .value("대파를 잘라주세요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.subContent")
+                        .value("가위를 사용해도 괜찮아요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipId").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].sortNum").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipTitle")
+                        .value("칼로 써는 방법 배워볼래요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipContent")
+                        .value("칼로 썰 때는 엄지를 안쪽으로 접어주세요."))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipType")
+                        .value("TEXT"))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipId").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].sortNum").value(2))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipContent")
+                        .value("https://api-img.nahjjun.cloud/tip/1/2"))
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[1].cookingTipType")
+                        .value("IMAGE"))
+                .andExpect(jsonPath("$.data.currentCookingStep.foodIngredients[0].name")
+                        .value("대파"))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].cookingRecordFoodIngredientId"
+                ).value(30))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].foodIngredientId"
+                ).value(7))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].primaryUsedAmountValue"
+                ).value(60.0))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].primaryUnit"
+                ).value("G"))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].secondaryUsedAmountValue"
+                ).value(0.5))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].secondaryUnit"
+                ).value("JULGI"))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].prevPrimaryAmountValue"
+                ).doesNotExist())
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].currentPrimaryAmountValue"
+                ).doesNotExist());
         then(cookingRecordService).should().moveToPreviousCookingStep(10L, "1234");
     }
 
@@ -445,7 +844,38 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value(201))
                 .andExpect(jsonPath("$.message").value("1 이전 단계로 이동할 수 없습니다."))
-                .andExpect(jsonPath("$.data").doesNotExist());
+                .andExpect(jsonPath("$.data").value(nullValue()));
         then(cookingRecordService).should().moveToPreviousCookingStep(10L, "1234");
+    }
+
+    private List<CookingStepTipResDto> createNavigationTips() {
+        return List.of(
+                CookingStepTipResDto.create(
+                        1L,
+                        1,
+                        "칼로 써는 방법 배워볼래요.",
+                        "칼로 썰 때는 엄지를 안쪽으로 접어주세요.",
+                        CookingTipContentType.TEXT
+                ),
+                CookingStepTipResDto.create(
+                        1L,
+                        2,
+                        "칼로 써는 방법 배워볼래요.",
+                        "https://api-img.nahjjun.cloud/tip/1/2",
+                        CookingTipContentType.IMAGE
+                )
+        );
+    }
+
+    private List<CookingStepFoodIngredientResDto> createNavigationFoodIngredients() {
+        return List.of(CookingStepFoodIngredientResDto.create(
+                30L,
+                7L,
+                "대파",
+                60.0,
+                PrimaryUnit.G,
+                0.5,
+                SecondaryUnit.JULGI
+        ));
     }
 }

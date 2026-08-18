@@ -48,6 +48,9 @@ public class CookingRecord {
     @Column(name = "photo_url", length = 500)
     private String photoUrl;
 
+    @Column(name = "cooking_tip", length = 500)
+    private String cookingTip;
+
     @Builder.Default
     @Column(nullable = false, columnDefinition = "integer default 1")
     private Integer servings = 1;
@@ -108,10 +111,12 @@ public class CookingRecord {
     public void saveCookingResult(
             TasteRating tasteRating,
             DifficultyLevel difficultyLevel,
+            String cookingTip,
             String photoUrl
     ) {
         this.tasteRating = tasteRating;
         this.difficultyLevel = difficultyLevel;
+        this.cookingTip = cookingTip;
         if (photoUrl != null) {
             this.photoUrl = photoUrl;
         }

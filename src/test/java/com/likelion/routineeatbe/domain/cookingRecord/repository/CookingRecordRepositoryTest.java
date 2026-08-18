@@ -2,6 +2,7 @@ package com.likelion.routineeatbe.domain.cookingRecord.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingRecordSearchResult;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
@@ -12,6 +13,7 @@ import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredientType;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
+import com.likelion.routineeatbe.domain.favoriteRecipe.entity.FavoriteRecipe;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import com.likelion.routineeatbe.domain.menu.entity.MenuType;
@@ -26,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.data.domain.Slice;
 
 @DataJpaTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:cooking-record-test;MODE=MySQL;DB_CLOSE_DELAY=-1;NON_KEYWORDS=USER",
@@ -43,6 +46,103 @@ class CookingRecordRepositoryTest {
 
     @Autowired
     private TestEntityManager entityManager;
+
+    @Test
+    @DisplayName("사용자의 회고 저장까지 종료된 요리 기록을 집계하여 조회한다")
+    void 종료_요리_기록_목록_집계_조회_성공() {
+        // given
+        User user = entityManager.persist(User.builder().loginNumber("1234").build());
+        User otherUser = entityManager.persist(User.builder().loginNumber("5678").build());
+        Recipe recipe = persistRecipe();
+        FoodIngredient potato = persistFoodIngredient("감자");
+        FoodIngredient seaweed = persistFoodIngredient("미역");
+
+        CookingRecord target = CookingRecord.builder()
+                .user(user)
+                .recipe(recipe)
+                .servings(1)
+                .difficultyLevel(DifficultyLevel.LEVEL_3)
+                .build();
+        CookingSession targetSession = CookingSession.create(target, 1);
+        targetSession.terminate();
+        CookingRecordFoodIngredient.create(target, potato, 100.0, null);
+        CookingRecordFoodIngredient.create(target, seaweed, 20.0, null);
+        cookingRecordRepository.saveAndFlush(target);
+        entityManager.persistAndFlush(FavoriteRecipe.create(user, recipe));
+
+        CookingRecord completedButNotTerminated = CookingRecord.builder()
+                .user(user)
+                .recipe(recipe)
+                .servings(1)
+                .difficultyLevel(DifficultyLevel.LEVEL_2)
+                .build();
+        CookingSession completedSession = CookingSession.create(completedButNotTerminated, 1);
+        completedSession.complete();
+        cookingRecordRepository.saveAndFlush(completedButNotTerminated);
+
+        CookingRecord inProgress = CookingRecord.builder()
+                .user(user)
+                .recipe(recipe)
+                .servings(1)
+                .difficultyLevel(DifficultyLevel.LEVEL_2)
+                .build();
+        CookingSession.create(inProgress, 1);
+        cookingRecordRepository.saveAndFlush(inProgress);
+
+        CookingRecord otherUserRecord = CookingRecord.builder()
+                .user(otherUser)
+                .recipe(recipe)
+                .servings(1)
+                .difficultyLevel(DifficultyLevel.LEVEL_4)
+                .build();
+        CookingSession otherUserSession = CookingSession.create(otherUserRecord, 1);
+        otherUserSession.terminate();
+        cookingRecordRepository.saveAndFlush(otherUserRecord);
+        entityManager.clear();
+
+        // when
+        Slice<CookingRecordSearchResult> result = cookingRecordRepository
+                .searchTerminatedCookingRecords(user.getId(), 1, 10);
+
+        // then
+        assertThat(result.hasNext()).isFalse();
+        assertThat(result.getContent()).singleElement().satisfies(record -> {
+            assertThat(record.recipeId()).isEqualTo(recipe.getId());
+            assertThat(record.menuName()).isEqualTo("요리 시작 테스트 메뉴");
+            assertThat(record.favoriteRecipe()).isTrue();
+            assertThat(record.createdAt()).isNotNull();
+            assertThat(record.userDifficultyLevel()).isEqualTo(DifficultyLevel.LEVEL_3);
+            assertThat(record.usedFoodIngredientCount()).isEqualTo(2L);
+        });
+    }
+
+    @Test
+    @DisplayName("종료 요리 기록을 최신순으로 위치 커서 조회한다")
+    void 종료_요리_기록_커서_조회_성공() {
+        // given
+        User user = entityManager.persist(User.builder().loginNumber("2468").build());
+        Recipe firstRecipe = persistRecipe();
+        Recipe secondRecipe = persistRecipe("두 번째 요리 테스트 메뉴");
+        persistTerminatedCookingRecord(user, firstRecipe, DifficultyLevel.LEVEL_1);
+        persistTerminatedCookingRecord(user, secondRecipe, DifficultyLevel.LEVEL_5);
+        entityManager.clear();
+
+        // when
+        Slice<CookingRecordSearchResult> firstPage = cookingRecordRepository
+                .searchTerminatedCookingRecords(user.getId(), 1, 1);
+        Slice<CookingRecordSearchResult> secondPage = cookingRecordRepository
+                .searchTerminatedCookingRecords(user.getId(), 2, 1);
+
+        // then
+        assertThat(firstPage.hasNext()).isTrue();
+        assertThat(firstPage.getContent()).singleElement()
+                .extracting(CookingRecordSearchResult::recipeId)
+                .isEqualTo(secondRecipe.getId());
+        assertThat(secondPage.hasNext()).isFalse();
+        assertThat(secondPage.getContent()).singleElement()
+                .extracting(CookingRecordSearchResult::recipeId)
+                .isEqualTo(firstRecipe.getId());
+    }
 
     @Test
     @DisplayName("사용자의 가장 최근 완료 요리 기록을 조회한다")
@@ -224,6 +324,56 @@ class CookingRecordRepositoryTest {
     }
 
     @Test
+    @DisplayName("사용자 소유 요리 기록을 레시피와 메뉴까지 함께 조회한다")
+    void 사용자_소유_요리_기록_레시피_메뉴_조회_성공() {
+        // given
+        User user = entityManager.persist(User.builder().loginNumber("3456").build());
+        User otherUser = entityManager.persist(User.builder().loginNumber("7890").build());
+        Recipe recipe = persistRecipe();
+        CookingRecord saved = cookingRecordRepository.saveAndFlush(
+                CookingRecord.create(user, recipe, 1)
+        );
+        entityManager.clear();
+
+        // when
+        CookingRecord result = cookingRecordRepository
+                .findByIdAndUserIdWithRecipeAndMenu(saved.getId(), user.getId())
+                .orElseThrow();
+
+        // then
+        assertThat(result.getRecipe().getMenu().getName()).isEqualTo("요리 시작 테스트 메뉴");
+        assertThat(cookingRecordRepository.findByIdAndUserIdWithRecipeAndMenu(
+                saved.getId(),
+                otherUser.getId()
+        )).isEmpty();
+    }
+
+    @Test
+    @DisplayName("사용자 소유 요리 기록을 요리 세션과 함께 조회한다")
+    void 사용자_소유_요리_기록_세션_조회_성공() {
+        // given
+        User user = entityManager.persist(User.builder().loginNumber("1122").build());
+        User otherUser = entityManager.persist(User.builder().loginNumber("3344").build());
+        Recipe recipe = persistRecipe();
+        CookingRecord cookingRecord = CookingRecord.create(user, recipe, 1);
+        CookingSession expectedSession = CookingSession.create(cookingRecord, 1);
+        CookingRecord saved = cookingRecordRepository.saveAndFlush(cookingRecord);
+        entityManager.clear();
+
+        // when
+        CookingRecord result = cookingRecordRepository
+                .findByIdAndUserIdWithCookingSession(saved.getId(), user.getId())
+                .orElseThrow();
+
+        // then
+        assertThat(result.getCookingSession().getId()).isEqualTo(expectedSession.getId());
+        assertThat(cookingRecordRepository.findByIdAndUserIdWithCookingSession(
+                saved.getId(),
+                otherUser.getId()
+        )).isEmpty();
+    }
+
+    @Test
     @DisplayName("사용자 소유 요리 기록과 세션을 조회하고 양수 단계만 조회한다")
     void 사용자_소유_요리_기록_세션_단계_조회_성공() {
         // given
@@ -261,8 +411,12 @@ class CookingRecordRepositoryTest {
     }
 
     private Recipe persistRecipe() {
+        return persistRecipe("요리 시작 테스트 메뉴");
+    }
+
+    private Recipe persistRecipe(String menuName) {
         Menu menu = entityManager.persist(Menu.builder()
-                .name("요리 시작 테스트 메뉴")
+                .name(menuName)
                 .type(MenuType.KOREAN)
                 .recommendationType(RecommendationType.DEFAULT)
                 .calory(100.0)
@@ -274,5 +428,32 @@ class CookingRecordRepositoryTest {
                 .type(RecipeType.BASIC)
                 .menu(menu)
                 .build());
+    }
+
+    private FoodIngredient persistFoodIngredient(String name) {
+        return entityManager.persist(FoodIngredient.builder()
+                .name(name)
+                .type(FoodIngredientType.VEGETABLE)
+                .pricePerHundred(1000L)
+                .primaryUnit(PrimaryUnit.G)
+                .secondaryUnit(SecondaryUnit.PINCH)
+                .exception(false)
+                .build());
+    }
+
+    private CookingRecord persistTerminatedCookingRecord(
+            User user,
+            Recipe recipe,
+            DifficultyLevel difficultyLevel
+    ) {
+        CookingRecord cookingRecord = CookingRecord.builder()
+                .user(user)
+                .recipe(recipe)
+                .servings(1)
+                .difficultyLevel(difficultyLevel)
+                .build();
+        CookingSession cookingSession = CookingSession.create(cookingRecord, 1);
+        cookingSession.terminate();
+        return cookingRecordRepository.saveAndFlush(cookingRecord);
     }
 }

@@ -1,8 +1,11 @@
 package com.likelion.routineeatbe.domain.cookingSession.entity;
 
+import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingStepFoodIngredient;
+import com.likelion.routineeatbe.domain.cookingTip.entity.CookingStepTip;
 import com.likelion.routineeatbe.global.common.BaseTimeEntity;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -11,7 +14,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -60,6 +66,24 @@ public class CookingStep extends BaseTimeEntity {
     @JoinColumn(name = "cooking_session_id", nullable = false)
     private CookingSession cookingSession;
 
+    @Builder.Default
+    @OneToMany(
+            mappedBy = "cookingStep",
+            fetch = FetchType.LAZY,
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<CookingStepTip> cookingStepTips = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(
+            mappedBy = "cookingStep",
+            fetch = FetchType.LAZY,
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<CookingStepFoodIngredient> cookingStepFoodIngredients = new ArrayList<>();
+
     public static CookingStep create(
             CookingSession cookingSession,
             Long level,
@@ -76,5 +100,15 @@ public class CookingStep extends BaseTimeEntity {
                 .build();
         cookingSession.addCookingStep(cookingStep);
         return cookingStep;
+    }
+
+    public void addCookingStepTip(CookingStepTip cookingStepTip) {
+        this.cookingStepTips.add(cookingStepTip);
+    }
+
+    public void addCookingStepFoodIngredient(
+            CookingStepFoodIngredient cookingStepFoodIngredient
+    ) {
+        this.cookingStepFoodIngredients.add(cookingStepFoodIngredient);
     }
 }

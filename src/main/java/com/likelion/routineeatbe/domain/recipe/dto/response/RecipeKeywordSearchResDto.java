@@ -28,7 +28,9 @@ public record RecipeKeywordSearchResDto(
                 minimum = "0",
                 maximum = "100"
         )
-        Long foodIngredientUsingPercent
+        Long foodIngredientUsingPercent,
+        @Schema(description = "사용자가 찜한 레시피 여부", example = "true")
+        boolean isFavoriteRecipe
 ) {
 
     public static RecipeKeywordSearchResDto create(
@@ -39,7 +41,8 @@ public record RecipeKeywordSearchResDto(
             Integer timeRequired,
             DifficultyLevel difficultyLevel,
             MenuType category,
-            Long foodIngredientUsingPercent
+            Long foodIngredientUsingPercent,
+            boolean isFavoriteRecipe
     ) {
         return RecipeKeywordSearchResDto.builder()
                 .recipeId(recipeId)
@@ -50,6 +53,7 @@ public record RecipeKeywordSearchResDto(
                 .difficultyLevel(difficultyLevel)
                 .category(category)
                 .foodIngredientUsingPercent(foodIngredientUsingPercent)
+                .isFavoriteRecipe(isFavoriteRecipe)
                 .build();
     }
 }

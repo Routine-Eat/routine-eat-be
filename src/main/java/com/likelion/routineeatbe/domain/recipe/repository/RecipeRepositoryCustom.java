@@ -3,6 +3,7 @@ package com.likelion.routineeatbe.domain.recipe.repository;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeReRecommendRequest;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
@@ -13,16 +14,29 @@ import org.springframework.data.domain.Slice;
 public interface RecipeRepositoryCustom {
 
     /**
-     * 필터, 정렬 및 추천 유형 조건에 따라 기본 레시피 목록을 위치 커서 기반으로 조회합니다.
+     * 필터, 정렬 및 목록 유형 조건에 따라 기본 레시피 목록을 위치 커서 기반으로 조회합니다.
      * @param userId 재료 일치도와 부족 재료비를 계산할 사용자 ID
      * @param request 레시피 조회 조건
-     * @param recommendationType Service에서 지정한 추천 유형 조건
+     * @param recommendationType Service에서 지정한 목록 유형 조건
      * @return 레시피 조회 결과 Slice
      */
     Slice<RecipeSearchResult> searchRecipes(
             Long userId,
             RecipeSearchRequestDto request,
             RecommendationType recommendationType
+    );
+
+    /**
+     * 사용자가 가장 많이 보유한 음식 재료가 포함된 기본 레시피를 위치 커서 기반으로 조회합니다.
+     * @param userId 재료 일치도와 부족 재료비를 계산할 사용자 ID
+     * @param foodIngredientId 레시피에 포함되어야 하는 음식 재료 PK
+     * @param request 레시피 조회 조건
+     * @return 대상 음식 재료가 포함된 레시피 조회 결과 Slice
+     */
+    Slice<RecipeSearchResult> searchRecipesByFoodIngredient(
+            Long userId,
+            Long foodIngredientId,
+            RecipeSearchRequestDto request
     );
 
     /**
@@ -40,18 +54,16 @@ public interface RecipeRepositoryCustom {
     );
 
     /**
-     * 메뉴명에 검색어가 포함된 기본 레시피를 일치도 및 인기순으로 조회합니다.
+     * 메뉴명에 검색어가 포함된 기본 레시피를 필터, 일치도 및 정렬 조건으로 조회합니다.
      * @param userId 음식 재료 활용률을 계산할 사용자 ID
      * @param searchWord 메뉴/레시피명 검색어
-     * @param cursor 1부터 시작하는 조회 위치
-     * @param size 한 번에 조회할 레시피 개수
+     * @param request 필터, 정렬, 위치 커서 및 조회 크기
      * @return 사용자 재료 집계가 포함된 검색 레시피 Slice
      */
     Slice<RecipeSearchResult> searchRecipesByMenuName(
             Long userId,
             String searchWord,
-            Long cursor,
-            Integer size
+            RecipeKeywordSearchReqDto request
     );
 
     /**

@@ -14,10 +14,10 @@ class RecipeSearchResponseDtoTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    @DisplayName("추천 유형별 레시피 응답 필드 직렬화 성공")
-    void 추천_유형별_레시피_응답_필드_직렬화_성공() throws Exception {
+    @DisplayName("남은 재료 및 추천 유형별 레시피 응답 필드 직렬화 성공")
+    void 남은_재료_및_추천_유형별_레시피_응답_필드_직렬화_성공() throws Exception {
         // given
-        RecipeIngredientUsageListResponseDto defaultRecipe =
+        RecipeIngredientUsageListResponseDto remainFoodIngredient =
                 RecipeIngredientUsageListResponseDto.builder()
                         .recipeId(1L)
                         .foodIngredientUsingPercent(72L)
@@ -29,9 +29,9 @@ class RecipeSearchResponseDtoTest {
                         .foodIngredientUsingPercent(72L)
                         .requiredIngredientCost(2500L)
                         .build();
-        CursorSliceResponse<RecipeIngredientUsageListResponseDto> defaultSlice =
+        CursorSliceResponse<RecipeIngredientUsageListResponseDto> remainFoodIngredientSlice =
                 CursorSliceResponse.<RecipeIngredientUsageListResponseDto>builder()
-                        .content(List.of(defaultRecipe))
+                        .content(List.of(remainFoodIngredient))
                         .size(10)
                         .hasNext(false)
                         .build();
@@ -42,21 +42,27 @@ class RecipeSearchResponseDtoTest {
                         .hasNext(false)
                         .build();
         RecipeSearchResponseDto response = RecipeSearchResponseDto.create(
-                defaultSlice,
-                defaultSlice,
+                "감자",
+                remainFoodIngredientSlice,
+                remainFoodIngredientSlice,
                 usageSlice,
                 usageSlice
         );
 
         // when
         JsonNode json = objectMapper.readTree(objectMapper.writeValueAsString(response));
-        JsonNode defaultContent = json.path("defaultRecipe").path("content").get(0);
+        JsonNode remainFoodIngredientContent = json.path("remainFoodIngredient")
+                .path("content")
+                .get(0);
         JsonNode dietContent = json.path("dietRecipe").path("content").get(0);
 
         // then
-        assertThat(defaultContent.path("foodIngredientUsingPercent").asLong()).isEqualTo(72L);
-        assertThat(defaultContent.has("matchedIngredientCount")).isFalse();
-        assertThat(defaultContent.has("requiredIngredientCount")).isFalse();
+        assertThat(json.path("remainFoodIngredientName").asText()).isEqualTo("감자");
+        assertThat(json.has("defaultRecipe")).isFalse();
+        assertThat(remainFoodIngredientContent.path("foodIngredientUsingPercent").asLong())
+                .isEqualTo(72L);
+        assertThat(remainFoodIngredientContent.has("matchedIngredientCount")).isFalse();
+        assertThat(remainFoodIngredientContent.has("requiredIngredientCount")).isFalse();
         assertThat(dietContent.path("foodIngredientUsingPercent").asLong()).isEqualTo(72L);
         assertThat(dietContent.has("matchedIngredientCount")).isFalse();
         assertThat(dietContent.has("requiredIngredientCount")).isFalse();
@@ -70,6 +76,7 @@ class RecipeSearchResponseDtoTest {
                 .recipeId(659L)
                 .menuName("감자미역국")
                 .foodIngredientUsingPercent(100L)
+                .isFavoriteRecipe(true)
                 .build();
 
         // when
@@ -77,6 +84,7 @@ class RecipeSearchResponseDtoTest {
 
         // then
         assertThat(json.path("foodIngredientUsingPercent").asLong()).isEqualTo(100L);
+        assertThat(json.path("isFavoriteRecipe").asBoolean()).isTrue();
     }
 
     @Test
@@ -86,10 +94,13 @@ class RecipeSearchResponseDtoTest {
         RecipeDetailResDto response = RecipeDetailResDto.builder()
                 .recipeId(1L)
                 .foodIngredientUsingPercent(60L)
-                .additionalFoodIngredientCost(1800L)
+                .foodIngredientCost(3500L)
                 .foodIngredients(List.of())
                 .additionalFoodIngredients(List.of())
-                .similarRecipes(List.of())
+                .similarRecipes(List.of(SimilarRecipeResDto.builder()
+                        .id(10L)
+                        .isFavoriteRecipe(true)
+                        .build()))
                 .build();
 
         // when
@@ -98,6 +109,9 @@ class RecipeSearchResponseDtoTest {
         // then
         assertThat(json.path("foodIngredientUsingPercent").asLong()).isEqualTo(60L);
         assertThat(json.has("additionalFoodIngredientCount")).isFalse();
-        assertThat(json.path("additionalFoodIngredientCost").asLong()).isEqualTo(1800L);
+        assertThat(json.has("additionalFoodIngredientCost")).isFalse();
+        assertThat(json.path("foodIngredientCost").asLong()).isEqualTo(3500L);
+        assertThat(json.path("similarRecipes").get(0).path("isFavoriteRecipe").asBoolean())
+                .isTrue();
     }
 }

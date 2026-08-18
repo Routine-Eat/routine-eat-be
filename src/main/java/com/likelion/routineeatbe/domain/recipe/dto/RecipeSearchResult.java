@@ -15,8 +15,40 @@ public record RecipeSearchResult(
         Long cookingCount,
         Long matchedIngredientCount,
         Long requiredIngredientCount,
-        Long requiredIngredientCost
+        Long requiredIngredientCost,
+        Boolean isFavoriteRecipe
 ) {
+
+    public RecipeSearchResult(
+            Long recipeId,
+            Long menuId,
+            String menuName,
+            String thumbnailUrl,
+            Double calory,
+            Integer timeRequired,
+            DifficultyLevel difficultyLevel,
+            MenuType category,
+            Long cookingCount,
+            Long matchedIngredientCount,
+            Long requiredIngredientCount,
+            Long requiredIngredientCost
+    ) {
+        this(
+                recipeId,
+                menuId,
+                menuName,
+                thumbnailUrl,
+                calory,
+                timeRequired,
+                difficultyLevel,
+                category,
+                cookingCount,
+                matchedIngredientCount,
+                requiredIngredientCount,
+                requiredIngredientCost,
+                false
+        );
+    }
 
     public RecipeSearchResult withRequiredIngredientCost(Long cost) {
         return new RecipeSearchResult(
@@ -31,7 +63,8 @@ public record RecipeSearchResult(
                 cookingCount,
                 matchedIngredientCount,
                 requiredIngredientCount,
-                cost
+                cost,
+                isFavoriteRecipe
         );
     }
 
@@ -51,7 +84,8 @@ public record RecipeSearchResult(
                 cookingCount,
                 matchedIngredientCount,
                 count,
-                cost
+                cost,
+                isFavoriteRecipe
         );
     }
 }

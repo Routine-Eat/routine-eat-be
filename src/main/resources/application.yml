@@ -11,7 +11,7 @@ spring:
       ddl-auto: update
 
 cors:
-  allowed-origins: http://localhost:3000,http://localhost:5173
+  allowed-origins: http://localhost:3000,http://localhost:5173,https://routine-eat.netlify.app,https://routine-eat.site
 
 logging:
   level:

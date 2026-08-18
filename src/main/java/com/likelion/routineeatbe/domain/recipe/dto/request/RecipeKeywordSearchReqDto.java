@@ -1,5 +1,9 @@
 package com.likelion.routineeatbe.domain.recipe.dto.request;
 
+import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
+import com.likelion.routineeatbe.domain.menu.entity.MenuType;
+import com.likelion.routineeatbe.domain.recipe.enums.RecipeSortType;
+import com.likelion.routineeatbe.domain.recipe.enums.RecipeTimeRequiredFilter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -45,11 +49,45 @@ public record RecipeKeywordSearchReqDto(
         )
         @Min(1)
         @Max(100)
-        Integer size
+        Integer size,
+
+        @Schema(
+                description = "요리 시간 필터",
+                example = "WITHIN_15_MINUTES",
+                allowableValues = {
+                        "WITHIN_15_MINUTES",
+                        "WITHIN_30_MINUTES",
+                        "OVER_30_MINUTES"
+                }
+        )
+        RecipeTimeRequiredFilter timeRequired,
+
+        @Schema(
+                description = "요리 난이도 필터",
+                example = "LEVEL_2",
+                allowableValues = {"LEVEL_1", "LEVEL_2", "LEVEL_3", "LEVEL_4", "LEVEL_5"}
+        )
+        DifficultyLevel difficultyLevel,
+
+        @Schema(
+                description = "메뉴 카테고리 필터",
+                example = "KOREAN",
+                allowableValues = {"KOREAN", "CHINESE", "JAPANESE", "WESTERN", "OTHER"}
+        )
+        MenuType category,
+
+        @Schema(
+                description = "정렬 옵션",
+                example = "DEFAULT",
+                defaultValue = "DEFAULT",
+                allowableValues = {"DEFAULT", "FOOD_INTEGRATION"}
+        )
+        RecipeSortType sortType
 ) {
 
     public RecipeKeywordSearchReqDto {
         cursor = cursor == null ? 1L : cursor;
         size = size == null ? 10 : size;
+        sortType = sortType == null ? RecipeSortType.DEFAULT : sortType;
     }
 }

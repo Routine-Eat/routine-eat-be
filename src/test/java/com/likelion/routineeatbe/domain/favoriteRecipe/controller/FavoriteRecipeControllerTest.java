@@ -13,7 +13,6 @@ import com.likelion.routineeatbe.domain.favoriteRecipe.dto.response.FavoriteReci
 import com.likelion.routineeatbe.domain.favoriteRecipe.dto.response.FavoriteRecipeResDto;
 import com.likelion.routineeatbe.domain.favoriteRecipe.service.FavoriteRecipeService;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
-import com.likelion.routineeatbe.domain.menu.entity.MenuType;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -120,13 +119,9 @@ class FavoriteRecipeControllerTest {
                 659L,
                 "감자미역국",
                 "http://example.com/thumbnail.jpg",
-                35.4,
                 20,
                 DifficultyLevel.LEVEL_2,
-                MenuType.KOREAN,
-                1L,
-                4L,
-                10_000L
+                72L
         );
         FavoriteRecipeListResDto response = FavoriteRecipeListResDto.create(
                 List.of(favoriteRecipe),
@@ -144,9 +139,16 @@ class FavoriteRecipeControllerTest {
                 .andExpect(jsonPath("$.message").value("찜한 레시피 조회에 성공했습니다."))
                 .andExpect(jsonPath("$.data.content[0].recipeId").value(659))
                 .andExpect(jsonPath("$.data.content[0].menuName").value("감자미역국"))
-                .andExpect(jsonPath("$.data.content[0].matchedIngredientCount").value(1))
-                .andExpect(jsonPath("$.data.content[0].requiredIngredientCount").value(4))
-                .andExpect(jsonPath("$.data.content[0].requiredIngredientCost").value(10000))
+                .andExpect(jsonPath("$.data.content[0].thumbnailUrl")
+                        .value("http://example.com/thumbnail.jpg"))
+                .andExpect(jsonPath("$.data.content[0].timeRequired").value(20))
+                .andExpect(jsonPath("$.data.content[0].difficultyLevel").value("LEVEL_2"))
+                .andExpect(jsonPath("$.data.content[0].foodIngredientUsingPercent").value(72))
+                .andExpect(jsonPath("$.data.content[0].calory").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].category").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].matchedIngredientCount").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].requiredIngredientCount").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].requiredIngredientCost").doesNotExist())
                 .andExpect(jsonPath("$.data.hasNext").value(true))
                 .andExpect(jsonPath("$.data.nextCursor").value(11))
                 .andExpect(jsonPath("$.data.size").doesNotExist());

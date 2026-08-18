@@ -213,7 +213,12 @@ public class RecipeAiRecommendService {
             Long userId,
             RecipeReRecommendRequest request
     ) {
-        // 1. 사용자 제외 식재료 및 보유 조리도구 수집
+        log.info("[RecipeReRecommend] 재추천 시작 | userId: {}, previousRecipeId: {}",
+                userId, request.previousRecipeId());
+
+        // ==========================================
+        // 1. DB 조회 및 후보군 생성 (루프 바깥에서 1회만 실행)
+        // ==========================================
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER));
 
@@ -223,7 +228,6 @@ public class RecipeAiRecommendService {
                 .collect(Collectors.toSet());
         Set<Long> cookedMenuIds = new HashSet<>(planMenuRepository.findCompletedMenuIdsByUserId(userId));
 
-        // 2. DB 동적 필터링을 통해 후보군 조회 (Safety Rule + Optional Filter)
         List<Recipe> filteredRecipes = recipeRepository.findCandidateRecipesByDbFilter(
                 forbiddenIngredientIds,
                 ownedEquipmentIds,
@@ -232,29 +236,54 @@ public class RecipeAiRecommendService {
                 request.desiredIngredientIds()
         );
 
-        // 3. AI 프롬프트 전달용 Candidate DTO 구성
-        // - previousRecipeId가 존재할 경우, 후보군에서 완벽히 제외하여 AI 오선택 방지
         Set<Long> ownedIngredientIds = ingredientIds(userId, UserFoodIngredientType.OWN);
+
+        // previousRecipeId가 존재할 경우 후보군에서 미리 완전히 제외
         List<Candidate> candidates = filteredRecipes.stream()
                 .filter(recipe -> request.previousRecipeId() == null
                         || !recipe.getId().equals(request.previousRecipeId()))
                 .map(recipe -> Candidate.from(recipe, ownedIngredientIds, cookedMenuIds))
                 .toList();
 
+        // 추천 가능한 후보군이 3개 미만이면 즉시 예외 반환
         if (candidates.size() < 3) {
+            log.warn("[RecipeReRecommend] 후보군 부족으로 추천 불가 | candidateSize: {}", candidates.size());
             throw new CustomException(MealPlanErrorCode.NO_RECOMMENDABLE_RECIPE);
         }
 
-        // 4. Gemini AI 호출 (3개 레시피 추천)
-        RecipeReRecommendGeminiResponse aiResult = geminiUtil.callFunction(
-                geminiProperties.menuAnalyzeModel(),
-                createReRecommendPrompt(candidates, user.getSkillLevel(), request),
-                RecipeReRecommendFunctionDeclaration.create(),
-                RecipeReRecommendGeminiResponse.class
-        );
+        // ==========================================
+        // 2. Gemini AI 호출 및 검증 (최대 5회 재시도 루프)
+        // ==========================================
+        int maxTries = 5;
+        int currentTry = 0;
 
-        // 5. 결과 검증 및 AiRecipeRecommendResponse 리스트로 변환
-        return toReRecommendResponse(aiResult, candidates);
+        while (currentTry < maxTries) {
+            currentTry++;
+            log.info("[RecipeReRecommend] AI 호출 시도: {}/{}", currentTry, maxTries);
+
+            try {
+                // Gemini AI 호출
+                RecipeReRecommendGeminiResponse aiResult = geminiUtil.callFunction(
+                        geminiProperties.menuAnalyzeModel(),
+                        createReRecommendPrompt(candidates, user.getSkillLevel(), request),
+                        RecipeReRecommendFunctionDeclaration.create(),
+                        RecipeReRecommendGeminiResponse.class
+                );
+
+                // AI 결과 검증 및 DTO 변환 (내부에서 검증 실패 시 CustomException 발생)
+                List<AiRecipeRecommendResponse> responseList = toReRecommendResponse(aiResult, candidates);
+
+                log.info("[RecipeReRecommend] 재추천 성공 | 추천 개수: {}", responseList.size());
+                return responseList; // 성공 시 즉시 반환하며 루프 종료
+
+            } catch (Exception e) {
+                log.warn("[RecipeReRecommend] AI 재추천 시도 실패 ({} / {}): {}", currentTry, maxTries, e.getMessage());
+            }
+        }
+
+        // 5회 모두 실패 시 예외 던짐 (무한 로딩 방지)
+        log.error("[RecipeReRecommend] 최대 재시도 횟수({})를 초과했습니다.", maxTries);
+        throw new CustomException(MealPlanErrorCode.NO_RECOMMENDABLE_RECIPE);
     }
 
     private String createReRecommendPrompt(

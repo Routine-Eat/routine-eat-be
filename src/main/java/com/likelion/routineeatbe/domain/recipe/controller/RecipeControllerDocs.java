@@ -241,10 +241,10 @@ public interface RecipeControllerDocs {
             ),
             @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음", content = @Content)
     })
-    @GetMapping("/ai-recommend/again/{userId}")
+    @PostMapping("/ai-recommend/again/{userId}")
     GlobalResponse<List<AiRecipeRecommendResponse>> getAiRecipeRecommendThree(
             @PathVariable Long userId,
-            @ParameterObject @ModelAttribute
+            @RequestBody @Valid
             RecipeReRecommendRequest request
     );
 

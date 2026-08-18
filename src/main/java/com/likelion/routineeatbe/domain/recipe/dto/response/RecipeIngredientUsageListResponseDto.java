@@ -6,15 +6,18 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
 @Builder
-@Schema(title = "RecipeListResponseDto", description = "레시피 목록 조회 항목 DTO")
-public record RecipeListResponseDto(
-        @Schema(description = "레시피 PK", example = "659")
+@Schema(
+        title = "RecipeIngredientUsageListResponseDto",
+        description = "음식 재료 활용률을 포함하는 레시피 목록 조회 항목 DTO"
+)
+public record RecipeIngredientUsageListResponseDto(
+        @Schema(description = "레시피 PK", example = "1002")
         Long recipeId,
-        @Schema(description = "메뉴 이름", example = "감자미역국")
+        @Schema(description = "메뉴 이름", example = "감자냉채")
         String menuName,
         @Schema(description = "메뉴 썸네일 이미지 URL")
         String thumbnailUrl,
-        @Schema(description = "칼로리", example = "35.4")
+        @Schema(description = "칼로리", example = "51.2")
         Double calory,
         @Schema(description = "필요 요리 시간(분)", example = "20")
         Integer timeRequired,
@@ -24,15 +27,18 @@ public record RecipeListResponseDto(
         MenuType category,
         @Schema(description = "요리 횟수", example = "0")
         Long cookingCount,
-        @Schema(description = "사용자가 보유한 필요 재료 개수", example = "1")
-        Long matchedIngredientCount,
-        @Schema(description = "전체 필요 재료 개수", example = "5")
-        Long requiredIngredientCount,
+        @Schema(
+                description = "전체 필요 재료 중 사용자가 보유한 재료의 비율(%)",
+                example = "72",
+                minimum = "0",
+                maximum = "100"
+        )
+        Long foodIngredientUsingPercent,
         @Schema(description = "부족한 재료를 추가 구매하는 데 필요한 비용(원)", example = "10000")
         Long requiredIngredientCost
 ) {
 
-    public static RecipeListResponseDto create(
+    public static RecipeIngredientUsageListResponseDto create(
             Long recipeId,
             String menuName,
             String thumbnailUrl,
@@ -41,11 +47,10 @@ public record RecipeListResponseDto(
             DifficultyLevel difficultyLevel,
             MenuType category,
             Long cookingCount,
-            Long matchedIngredientCount,
-            Long requiredIngredientCount,
+            Long foodIngredientUsingPercent,
             Long requiredIngredientCost
     ) {
-        return RecipeListResponseDto.builder()
+        return RecipeIngredientUsageListResponseDto.builder()
                 .recipeId(recipeId)
                 .menuName(menuName)
                 .thumbnailUrl(thumbnailUrl)
@@ -54,8 +59,7 @@ public record RecipeListResponseDto(
                 .difficultyLevel(difficultyLevel)
                 .category(category)
                 .cookingCount(cookingCount)
-                .matchedIngredientCount(matchedIngredientCount)
-                .requiredIngredientCount(requiredIngredientCount)
+                .foodIngredientUsingPercent(foodIngredientUsingPercent)
                 .requiredIngredientCost(requiredIngredientCost)
                 .build();
     }

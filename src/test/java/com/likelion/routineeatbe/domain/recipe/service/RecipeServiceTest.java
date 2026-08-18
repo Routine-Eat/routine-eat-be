@@ -11,6 +11,7 @@ import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
+import com.likelion.routineeatbe.domain.menu.entity.MenuType;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeWithSimilarRecipes;
@@ -19,8 +20,8 @@ import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchRe
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientResDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientUsageListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
-import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.SimilarRecipeResDto;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
@@ -137,7 +138,7 @@ class RecipeServiceTest {
                 .id(200L).name("김치 볶음밥").additionalFoodIngredientCount(1L).build();
         RecipeDetailResDto expectedResponse = RecipeDetailResDto.builder()
                 .recipeId(100L)
-                .additionalFoodIngredientCount(1L)
+                .foodIngredientUsingPercent(100L)
                 .additionalFoodIngredientCost(1500L)
                 .servings(2)
                 .foodIngredients(List.of(fullCarrot, fullEgg))
@@ -168,7 +169,8 @@ class RecipeServiceTest {
                 .willReturn(similarRecipeResDto);
         given(recipeMapper.toRecipeDetailResDto(
                 targetRecipe,
-                1L,
+                2L,
+                2L,
                 1500L,
                 2,
                 List.of(fullCarrot, fullEgg),
@@ -181,7 +183,7 @@ class RecipeServiceTest {
 
         // then
         assertThat(result).isEqualTo(expectedResponse);
-        assertThat(result.additionalFoodIngredientCount()).isEqualTo(1L);
+        assertThat(result.foodIngredientUsingPercent()).isEqualTo(100L);
         assertThat(result.additionalFoodIngredientCost()).isEqualTo(1500L);
         assertThat(result.additionalFoodIngredients().getFirst().primaryNeedAmountValue())
                 .isEqualTo(150.0);
@@ -200,11 +202,13 @@ class RecipeServiceTest {
                 10L, 20L, "감자 요리", null, 100.0, 20,
                 null, null, 3L, 1L, 2L, 2500L
         );
-        RecipeListResponseDto responseDto = RecipeListResponseDto.builder()
-                .recipeId(10L)
-                .menuName("감자 요리")
-                .requiredIngredientCost(2500L)
-                .build();
+        RecipeIngredientUsageListResponseDto usageResponseDto =
+                RecipeIngredientUsageListResponseDto.builder()
+                        .recipeId(10L)
+                        .menuName("감자 요리")
+                        .foodIngredientUsingPercent(50L)
+                        .requiredIngredientCost(2500L)
+                        .build();
         Slice<RecipeSearchResult> slice = new SliceImpl<>(
                 List.of(searchResult), PageRequest.of(0, 10), true
         );
@@ -213,14 +217,20 @@ class RecipeServiceTest {
         for (RecommendationType type : RecommendationType.values()) {
             given(recipeRepository.searchRecipes(user.getId(), request, type)).willReturn(slice);
         }
-        given(recipeMapper.toRecipeListResponseDto(searchResult)).willReturn(responseDto);
+        given(recipeMapper.toRecipeIngredientUsageListResponseDto(searchResult))
+                .willReturn(usageResponseDto);
 
         // when
         RecipeSearchResponseDto result = recipeService.getRecipes(request);
 
         // then
-        assertThat(result.defaultRecipe().content()).containsExactly(responseDto);
+        assertThat(result.defaultRecipe().content()).containsExactly(usageResponseDto);
+        assertThat(result.defaultRecipe().content().getFirst().foodIngredientUsingPercent())
+                .isEqualTo(50L);
         assertThat(result.simpleRecipe().nextCursor()).isEqualTo(11L);
+        assertThat(result.dietRecipe().content()).containsExactly(usageResponseDto);
+        assertThat(result.dietRecipe().content().getFirst().foodIngredientUsingPercent())
+                .isEqualTo(50L);
         assertThat(result.dietRecipe().nextCursor()).isEqualTo(11L);
         assertThat(result.glutenFreeRecipe().nextCursor()).isEqualTo(11L);
         for (RecommendationType type : RecommendationType.values()) {
@@ -248,18 +258,22 @@ class RecipeServiceTest {
                 "1234", " 감자 ", 1L, 10
         );
         User user = User.builder().id(1L).loginNumber("1234").build();
-        Recipe recipe = Recipe.builder().id(10L).build();
+        RecipeSearchResult searchResult = new RecipeSearchResult(
+                10L, 20L, "감자미역국", "thumbnail", 35.4, 20,
+                DifficultyLevel.LEVEL_2, MenuType.KOREAN, 0L, 2L, 2L, 0L
+        );
         RecipeKeywordSearchResDto responseDto = RecipeKeywordSearchResDto.builder()
                 .recipeId(10L)
                 .menuName("감자미역국")
+                .foodIngredientUsingPercent(100L)
                 .build();
-        Slice<Recipe> slice = new SliceImpl<>(
-                List.of(recipe), PageRequest.of(0, 10), true
+        Slice<RecipeSearchResult> slice = new SliceImpl<>(
+                List.of(searchResult), PageRequest.of(0, 10), true
         );
 
         given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
-        given(recipeRepository.searchRecipesByMenuName("감자", 1L, 10)).willReturn(slice);
-        given(recipeMapper.toRecipeKeywordSearchResDto(recipe)).willReturn(responseDto);
+        given(recipeRepository.searchRecipesByMenuName(1L, "감자", 1L, 10)).willReturn(slice);
+        given(recipeMapper.toRecipeKeywordSearchResDto(searchResult)).willReturn(responseDto);
 
         // when
         CursorSliceResponse<RecipeKeywordSearchResDto> result =
@@ -267,10 +281,11 @@ class RecipeServiceTest {
 
         // then
         assertThat(result.content()).containsExactly(responseDto);
+        assertThat(result.content().getFirst().foodIngredientUsingPercent()).isEqualTo(100L);
         assertThat(result.hasNext()).isTrue();
         assertThat(result.nextCursor()).isEqualTo(11L);
-        verify(recipeRepository).searchRecipesByMenuName("감자", 1L, 10);
-        verify(recipeMapper).toRecipeKeywordSearchResDto(recipe);
+        verify(recipeRepository).searchRecipesByMenuName(1L, "감자", 1L, 10);
+        verify(recipeMapper).toRecipeKeywordSearchResDto(searchResult);
     }
 
     @Test
@@ -281,10 +296,14 @@ class RecipeServiceTest {
                 "1234", "감자", 11L, 10
         );
         User user = User.builder().id(1L).loginNumber("1234").build();
-        Slice<Recipe> slice = new SliceImpl<>(List.of(), PageRequest.of(0, 10), false);
+        Slice<RecipeSearchResult> slice = new SliceImpl<>(
+                List.of(),
+                PageRequest.of(0, 10),
+                false
+        );
 
         given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
-        given(recipeRepository.searchRecipesByMenuName("감자", 11L, 10)).willReturn(slice);
+        given(recipeRepository.searchRecipesByMenuName(1L, "감자", 11L, 10)).willReturn(slice);
 
         // when
         CursorSliceResponse<RecipeKeywordSearchResDto> result =

@@ -21,7 +21,14 @@ public record RecipeKeywordSearchResDto(
         @Schema(description = "요리 난이도", example = "LEVEL_2")
         DifficultyLevel difficultyLevel,
         @Schema(description = "메뉴 카테고리", example = "KOREAN")
-        MenuType category
+        MenuType category,
+        @Schema(
+                description = "전체 필요 재료 중 사용자가 보유한 재료의 비율(%)",
+                example = "100",
+                minimum = "0",
+                maximum = "100"
+        )
+        Long foodIngredientUsingPercent
 ) {
 
     public static RecipeKeywordSearchResDto create(
@@ -31,7 +38,8 @@ public record RecipeKeywordSearchResDto(
             Double calory,
             Integer timeRequired,
             DifficultyLevel difficultyLevel,
-            MenuType category
+            MenuType category,
+            Long foodIngredientUsingPercent
     ) {
         return RecipeKeywordSearchResDto.builder()
                 .recipeId(recipeId)
@@ -41,6 +49,7 @@ public record RecipeKeywordSearchResDto(
                 .timeRequired(timeRequired)
                 .difficultyLevel(difficultyLevel)
                 .category(category)
+                .foodIngredientUsingPercent(foodIngredientUsingPercent)
                 .build();
     }
 }

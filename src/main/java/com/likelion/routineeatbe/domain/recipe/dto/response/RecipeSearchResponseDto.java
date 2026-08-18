@@ -8,20 +8,20 @@ import lombok.Builder;
 @Schema(title = "RecipeSearchResponseDto", description = "추천 유형별 전체 레시피 조회 응답 DTO")
 public record RecipeSearchResponseDto(
         @Schema(description = "추천 유형 조건이 없는 전체 레시피 목록")
-        CursorSliceResponse<RecipeListResponseDto> defaultRecipe,
+        CursorSliceResponse<RecipeIngredientUsageListResponseDto> defaultRecipe,
         @Schema(description = "자취생 간단 레시피 목록")
-        CursorSliceResponse<RecipeListResponseDto> simpleRecipe,
+        CursorSliceResponse<RecipeIngredientUsageListResponseDto> simpleRecipe,
         @Schema(description = "다이어트에 좋은 레시피 목록")
-        CursorSliceResponse<RecipeListResponseDto> dietRecipe,
+        CursorSliceResponse<RecipeIngredientUsageListResponseDto> dietRecipe,
         @Schema(description = "글루텐 프리 식단 레시피 목록")
-        CursorSliceResponse<RecipeListResponseDto> glutenFreeRecipe
+        CursorSliceResponse<RecipeIngredientUsageListResponseDto> glutenFreeRecipe
 ) {
 
     public static RecipeSearchResponseDto create(
-            CursorSliceResponse<RecipeListResponseDto> defaultRecipe,
-            CursorSliceResponse<RecipeListResponseDto> simpleRecipe,
-            CursorSliceResponse<RecipeListResponseDto> dietRecipe,
-            CursorSliceResponse<RecipeListResponseDto> glutenFreeRecipe
+            CursorSliceResponse<RecipeIngredientUsageListResponseDto> defaultRecipe,
+            CursorSliceResponse<RecipeIngredientUsageListResponseDto> simpleRecipe,
+            CursorSliceResponse<RecipeIngredientUsageListResponseDto> dietRecipe,
+            CursorSliceResponse<RecipeIngredientUsageListResponseDto> glutenFreeRecipe
     ) {
         return RecipeSearchResponseDto.builder()
                 .defaultRecipe(defaultRecipe)

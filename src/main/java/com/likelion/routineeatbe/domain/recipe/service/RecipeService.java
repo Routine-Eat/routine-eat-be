@@ -8,8 +8,8 @@ import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchRe
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientResDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientUsageListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
-import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.SimilarRecipeResDto;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
@@ -29,6 +29,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -127,6 +128,15 @@ public class RecipeService {
                 recipe.getId(),
                 List.of()
         );
+        long requiredIngredientCount = targetIngredients.stream()
+                .map(targetIngredient -> targetIngredient.getFoodIngredient().getId())
+                .distinct()
+                .count();
+        long matchedIngredientCount = targetIngredients.stream()
+                .map(targetIngredient -> targetIngredient.getFoodIngredient().getId())
+                .distinct()
+                .filter(ownedAmountByFoodIngredient::containsKey)
+                .count();
         for (RecipeFoodIngredient targetIngredient : targetIngredients) {
             double primaryNeedAmount = targetIngredient.getPrimaryNeedAmountValue()
                     * request.servings();
@@ -193,7 +203,8 @@ public class RecipeService {
          */
         RecipeDetailResDto result = recipeMapper.toRecipeDetailResDto(
                 recipe,
-                (long) additionalFoodIngredients.size(),
+                matchedIngredientCount,
+                requiredIngredientCount,
                 (long) Math.ceil(additionalFoodIngredientCost),
                 request.servings(),
                 foodIngredients,
@@ -202,9 +213,9 @@ public class RecipeService {
         );
 
         log.info(
-                "[RecipeService] 레시피 상세 조회 | getRecipeDetail() - END | recipeId: {}, additionalIngredientCount: {}, similarRecipeCount: {}",
+                "[RecipeService] 레시피 상세 조회 | getRecipeDetail() - END | recipeId: {}, foodIngredientUsingPercent: {}, similarRecipeCount: {}",
                 recipeId,
-                result.additionalFoodIngredientCount(),
+                result.foodIngredientUsingPercent(),
                 result.similarRecipes().size()
         );
         return result;
@@ -237,17 +248,29 @@ public class RecipeService {
             2. 전체 및 추천 유형별 목록 조회
             - 네 목록은 동일한 필터, 정렬, 커서, 조회 크기를 공유합니다.
          */
-        CursorSliceResponse<RecipeListResponseDto> defaultRecipe = getRecipeSlice(
-                user.getId(), request, RecommendationType.DEFAULT
+        CursorSliceResponse<RecipeIngredientUsageListResponseDto> defaultRecipe = getRecipeSlice(
+                user.getId(),
+                request,
+                RecommendationType.DEFAULT,
+                recipeMapper::toRecipeIngredientUsageListResponseDto
         );
-        CursorSliceResponse<RecipeListResponseDto> simpleRecipe = getRecipeSlice(
-                user.getId(), request, RecommendationType.SIMPLE
+        CursorSliceResponse<RecipeIngredientUsageListResponseDto> simpleRecipe = getRecipeSlice(
+                user.getId(),
+                request,
+                RecommendationType.SIMPLE,
+                recipeMapper::toRecipeIngredientUsageListResponseDto
         );
-        CursorSliceResponse<RecipeListResponseDto> dietRecipe = getRecipeSlice(
-                user.getId(), request, RecommendationType.DIET
+        CursorSliceResponse<RecipeIngredientUsageListResponseDto> dietRecipe = getRecipeSlice(
+                user.getId(),
+                request,
+                RecommendationType.DIET,
+                recipeMapper::toRecipeIngredientUsageListResponseDto
         );
-        CursorSliceResponse<RecipeListResponseDto> glutenFreeRecipe = getRecipeSlice(
-                user.getId(), request, RecommendationType.GLUTEN_FREE
+        CursorSliceResponse<RecipeIngredientUsageListResponseDto> glutenFreeRecipe = getRecipeSlice(
+                user.getId(),
+                request,
+                RecommendationType.GLUTEN_FREE,
+                recipeMapper::toRecipeIngredientUsageListResponseDto
         );
 
         /*
@@ -294,14 +317,15 @@ public class RecipeService {
             1. 사용자 존재 여부 확인
             - 사용자 고유 식별번호가 존재하지 않으면 USER_NOT_FOUND 예외를 발생시킵니다.
          */
-        userRepository.findByLoginNumber(request.userNumber())
+        User user = userRepository.findByLoginNumber(request.userNumber())
                 .orElseThrow(() -> new CustomException(RecipeErrorCode.USER_NOT_FOUND));
 
         /*
             2. 검색어 기반 레시피 조회
             - 검색어 앞뒤 공백을 제거하고 메뉴명 일치도 순으로 기본 레시피를 조회합니다.
          */
-        Slice<Recipe> recipeSlice = recipeRepository.searchRecipesByMenuName(
+        Slice<RecipeSearchResult> recipeSlice = recipeRepository.searchRecipesByMenuName(
+                        user.getId(),
                         request.searchWord().strip(),
                         request.cursor(),
                         request.size()
@@ -333,12 +357,14 @@ public class RecipeService {
      * @param userId 사용자 ID
      * @param request 레시피 조회 조건
      * @param recommendationType 조회할 추천 유형
+     * @param mapper 추천 유형에 맞는 목록 응답 DTO 변환 함수
      * @return 해당 추천 유형의 커서 기반 레시피 목록
      */
-    private CursorSliceResponse<RecipeListResponseDto> getRecipeSlice(
+    private <T> CursorSliceResponse<T> getRecipeSlice(
             Long userId,
             RecipeSearchRequestDto request,
-            RecommendationType recommendationType
+            RecommendationType recommendationType,
+            Function<RecipeSearchResult, T> mapper
     ) {
         log.debug(
                 "[RecipeService] 추천 유형별 레시피 조회 | getRecipeSlice() - START | recommendationType: {}",
@@ -353,9 +379,9 @@ public class RecipeService {
         Long nextCursor = recipeSlice.hasNext()
                 ? request.cursor() + request.size()
                 : null;
-        CursorSliceResponse<RecipeListResponseDto> result = CursorSliceResponse.of(
+        CursorSliceResponse<T> result = CursorSliceResponse.of(
                 recipeSlice,
-                recipeMapper::toRecipeListResponseDto,
+                mapper,
                 nextCursor
         );
 

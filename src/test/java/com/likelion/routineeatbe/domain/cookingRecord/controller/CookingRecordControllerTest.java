@@ -35,6 +35,9 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepFo
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTipResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTitleResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CurrentCookingStepDetailResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CurrentCookingStepFoodIngredientResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CurrentCookingStepResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.enums.TasteRating;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingAiService;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingRecordService;
@@ -654,6 +657,64 @@ class CookingRecordControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
         then(cookingRecordService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("현재 요리 단계 조회 API 성공 - 200 반환")
+    void 현재_요리_단계_조회_API_성공_200_반환() throws Exception {
+        // given
+        CurrentCookingStepResDto response = CurrentCookingStepResDto.create(
+                10,
+                0,
+                2,
+                CurrentCookingStepDetailResDto.create(
+                        1L,
+                        "재료 준비: 대파 준비하기",
+                        "https://example.com/step.jpg",
+                        "대파를 잘라주세요.",
+                        "가위를 사용해도 괜찮아요.",
+                        createNavigationTips(),
+                        List.of(CurrentCookingStepFoodIngredientResDto.create(
+                                30L,
+                                7L,
+                                "대파",
+                                60.0,
+                                PrimaryUnit.G,
+                                0.5,
+                                SecondaryUnit.JULGI
+                        ))
+                )
+        );
+        given(cookingRecordService.getCurrentCookingStep(10L, "1234"))
+                .willReturn(response);
+
+        // when & then
+        mockMvc.perform(get(
+                        "/api/v1/cooking-records/{cookingRecordId}/cooking-session/cooking-steps/current",
+                        10L
+                ).param("userNumber", "1234"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(201))
+                .andExpect(jsonPath("$.message").value("현재 1번째 단계입니다."))
+                .andExpect(jsonPath("$.data.cookingStepCount").value(10))
+                .andExpect(jsonPath("$.data.prevCookingStepLevel").value(0))
+                .andExpect(jsonPath("$.data.nextCookingStepLevel").value(2))
+                .andExpect(jsonPath("$.data.currentCookingStep.level").value(1))
+                .andExpect(jsonPath("$.data.currentCookingStep.cookingStepId")
+                        .doesNotExist())
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipType")
+                        .value("TEXT"))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].primaryAmountValue"
+                ).value(60.0))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].secondaryAmountValue"
+                ).value(0.5))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].primaryUsedAmountValue"
+                ).doesNotExist());
+        then(cookingRecordService).should().getCurrentCookingStep(10L, "1234");
     }
 
     @Test

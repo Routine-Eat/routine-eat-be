@@ -19,6 +19,10 @@ public record AiMealRecommendationResponse(Plan practice, Plan useAll, Plan simp
     }
 
     /** 메뉴 식별자, 표시 이름, 식단 목적에 맞는 개별 추천 이유입니다. */
-    public record Menu(Long menuId, String menuName, DifficultyLevel difficultyLevel, Integer timeRequired) {
+    public record Menu(Long menuId, String menuName, DifficultyLevel difficultyLevel, Integer timeRequired,
+                       @Schema(description = "재료 일치율",example = "88")
+                       Double sameRate,
+                       @Schema(description = "예상 재료 가격",example = "1800")
+                       Long price) {
     }
 }

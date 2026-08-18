@@ -123,7 +123,8 @@ public class RecipeMapper {
                 result.category(),
                 result.cookingCount(),
                 foodIngredientUsingPercent,
-                result.requiredIngredientCost()
+                result.requiredIngredientCost(),
+                Boolean.TRUE.equals(result.isFavoriteRecipe())
         );
     }
 

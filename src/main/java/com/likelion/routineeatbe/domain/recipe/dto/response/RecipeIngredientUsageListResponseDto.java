@@ -35,7 +35,9 @@ public record RecipeIngredientUsageListResponseDto(
         )
         Long foodIngredientUsingPercent,
         @Schema(description = "부족한 재료를 추가 구매하는 데 필요한 비용(원)", example = "10000")
-        Long requiredIngredientCost
+        Long requiredIngredientCost,
+        @Schema(description = "현재 사용자의 레시피 찜 여부", example = "true")
+        boolean isFavoriteRecipe
 ) {
 
     public static RecipeIngredientUsageListResponseDto create(
@@ -48,7 +50,8 @@ public record RecipeIngredientUsageListResponseDto(
             MenuType category,
             Long cookingCount,
             Long foodIngredientUsingPercent,
-            Long requiredIngredientCost
+            Long requiredIngredientCost,
+            boolean isFavoriteRecipe
     ) {
         return RecipeIngredientUsageListResponseDto.builder()
                 .recipeId(recipeId)
@@ -61,6 +64,7 @@ public record RecipeIngredientUsageListResponseDto(
                 .cookingCount(cookingCount)
                 .foodIngredientUsingPercent(foodIngredientUsingPercent)
                 .requiredIngredientCost(requiredIngredientCost)
+                .isFavoriteRecipe(isFavoriteRecipe)
                 .build();
     }
 }

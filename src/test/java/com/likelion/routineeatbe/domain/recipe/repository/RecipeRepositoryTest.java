@@ -16,6 +16,7 @@ import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.enums.RecipeSortType;
+import com.likelion.routineeatbe.domain.recipe.enums.RecipeTimeRequiredFilter;
 import com.likelion.routineeatbe.domain.recipe.enums.RecipeType;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.User;
@@ -152,8 +153,9 @@ class RecipeRepositoryTest {
         User user = entityManager.persist(User.builder().loginNumber("1234").build());
         FoodIngredient potato = persistFoodIngredient("감자", 1000L);
         FoodIngredient carrot = persistFoodIngredient("당근", 2000L);
-        Recipe simpleRecipe = persistRecipe("감자 요리", 10L, RecommendationType.SIMPLE);
+        Recipe simpleRecipe = persistRecipe("감자 요리", 10L, RecommendationType.SIMPLE, 15);
         persistRecipe("당근 요리", 20L, RecommendationType.DIET);
+        favoriteRecipeRepository.save(FavoriteRecipe.create(user, simpleRecipe));
         persistRequiredIngredient(simpleRecipe, potato, 100.0);
         persistRequiredIngredient(simpleRecipe, carrot, 100.0);
         entityManager.persist(UserFoodIngredient.builder()
@@ -178,6 +180,140 @@ class RecipeRepositoryTest {
         assertThat(result.getContent().getFirst().matchedIngredientCount()).isEqualTo(1L);
         assertThat(result.getContent().getFirst().requiredIngredientCount()).isEqualTo(2L);
         assertThat(result.getContent().getFirst().requiredIngredientCost()).isEqualTo(2500L);
+        assertThat(result.getContent().getFirst().isFavoriteRecipe()).isTrue();
+    }
+
+    @Test
+    @DisplayName("간단 레시피를 추천 유형과 무관하게 조리 시간 15분 이하로 조회 성공")
+    void 간단_레시피를_추천_유형과_무관하게_조리_시간_15분_이하로_조회_성공() {
+        // given
+        User user = entityManager.persist(User.builder().loginNumber("2345").build());
+        Recipe fifteenMinuteRecipe = persistRecipe(
+                "15분 요리",
+                10L,
+                RecommendationType.DEFAULT,
+                15
+        );
+        persistRecipe("16분 간단 요리", 20L, RecommendationType.SIMPLE, 16);
+        entityManager.flush();
+        entityManager.clear();
+
+        RecipeSearchRequestDto request = createRequest(1L, 10, RecipeSortType.DEFAULT);
+
+        // when
+        Slice<RecipeSearchResult> result = recipeRepository.searchRecipes(
+                user.getId(),
+                request,
+                RecommendationType.SIMPLE
+        );
+
+        // then
+        assertThat(result.getContent()).extracting(RecipeSearchResult::recipeId)
+                .containsExactly(fifteenMinuteRecipe.getId());
+    }
+
+    @Test
+    @DisplayName("요리 시간 ENUM 구간별 레시피 필터 조회 성공")
+    void 요리_시간_ENUM_구간별_레시피_필터_조회_성공() {
+        // given
+        User user = entityManager.persist(User.builder().loginNumber("4567").build());
+        Recipe fifteenMinuteRecipe = persistRecipe(
+                "필터 15분 요리",
+                10L,
+                RecommendationType.DEFAULT,
+                15
+        );
+        Recipe sixteenMinuteRecipe = persistRecipe(
+                "필터 16분 요리",
+                20L,
+                RecommendationType.DEFAULT,
+                16
+        );
+        Recipe thirtyMinuteRecipe = persistRecipe(
+                "필터 30분 요리",
+                30L,
+                RecommendationType.DEFAULT,
+                30
+        );
+        Recipe thirtyOneMinuteRecipe = persistRecipe(
+                "필터 31분 요리",
+                40L,
+                RecommendationType.DEFAULT,
+                31
+        );
+        entityManager.flush();
+        entityManager.clear();
+
+        // when
+        Slice<RecipeSearchResult> withinFifteenMinutes = recipeRepository.searchRecipes(
+                user.getId(),
+                createRequest(
+                        1L,
+                        10,
+                        RecipeSortType.DEFAULT,
+                        RecipeTimeRequiredFilter.WITHIN_15_MINUTES
+                ),
+                RecommendationType.DEFAULT
+        );
+        Slice<RecipeSearchResult> withinThirtyMinutes = recipeRepository.searchRecipes(
+                user.getId(),
+                createRequest(
+                        1L,
+                        10,
+                        RecipeSortType.DEFAULT,
+                        RecipeTimeRequiredFilter.WITHIN_30_MINUTES
+                ),
+                RecommendationType.DEFAULT
+        );
+        Slice<RecipeSearchResult> overThirtyMinutes = recipeRepository.searchRecipes(
+                user.getId(),
+                createRequest(
+                        1L,
+                        10,
+                        RecipeSortType.DEFAULT,
+                        RecipeTimeRequiredFilter.OVER_30_MINUTES
+                ),
+                RecommendationType.DEFAULT
+        );
+
+        // then
+        assertThat(withinFifteenMinutes.getContent()).extracting(RecipeSearchResult::recipeId)
+                .containsExactly(fifteenMinuteRecipe.getId());
+        assertThat(withinThirtyMinutes.getContent()).extracting(RecipeSearchResult::recipeId)
+                .containsExactly(thirtyMinuteRecipe.getId(), sixteenMinuteRecipe.getId());
+        assertThat(overThirtyMinutes.getContent()).extracting(RecipeSearchResult::recipeId)
+                .containsExactly(thirtyOneMinuteRecipe.getId());
+    }
+
+    @Test
+    @DisplayName("사용자가 가장 많이 보유한 음식 재료가 포함된 레시피 조회 성공")
+    void 사용자가_가장_많이_보유한_음식_재료가_포함된_레시피_조회_성공() {
+        // given
+        User user = entityManager.persist(User.builder().loginNumber("3456").build());
+        FoodIngredient potato = persistFoodIngredient("남은 감자", 1000L);
+        FoodIngredient carrot = persistFoodIngredient("남은 당근", 2000L);
+        Recipe potatoRecipe = persistRecipe("감자 우선 요리", 10L, RecommendationType.DEFAULT);
+        Recipe carrotRecipe = persistRecipe("당근 요리", 20L, RecommendationType.DEFAULT);
+        persistRequiredIngredient(potatoRecipe, potato, 100.0);
+        persistRequiredIngredient(carrotRecipe, carrot, 100.0);
+        entityManager.flush();
+        entityManager.clear();
+
+        RecipeSearchRequestDto request = createRequest(1L, 10, RecipeSortType.DEFAULT);
+
+        // when
+        Slice<RecipeSearchResult> result = recipeRepository.searchRecipesByFoodIngredient(
+                user.getId(),
+                potato.getId(),
+                request
+        );
+
+        // then
+        assertThat(result.getContent()).extracting(RecipeSearchResult::recipeId)
+                .containsExactly(potatoRecipe.getId());
+        assertThat(result.getContent()).noneMatch(
+                recipeSearchResult -> recipeSearchResult.recipeId().equals(carrotRecipe.getId())
+        );
     }
 
     @Test
@@ -315,8 +451,17 @@ class RecipeRepositoryTest {
     }
 
     private RecipeSearchRequestDto createRequest(Long cursor, int size, RecipeSortType sortType) {
+        return createRequest(cursor, size, sortType, null);
+    }
+
+    private RecipeSearchRequestDto createRequest(
+            Long cursor,
+            int size,
+            RecipeSortType sortType,
+            RecipeTimeRequiredFilter timeRequired
+    ) {
         return new RecipeSearchRequestDto(
-                "1234", cursor, size, null, null, MenuType.KOREAN, sortType
+                "1234", cursor, size, timeRequired, null, MenuType.KOREAN, sortType
         );
     }
 
@@ -325,13 +470,22 @@ class RecipeRepositoryTest {
             Long cookingCount,
             RecommendationType recommendationType
     ) {
+        return persistRecipe(name, cookingCount, recommendationType, 20);
+    }
+
+    private Recipe persistRecipe(
+            String name,
+            Long cookingCount,
+            RecommendationType recommendationType,
+            Integer timeRequired
+    ) {
         Menu menu = entityManager.persist(Menu.builder()
                 .name(name)
                 .type(MenuType.KOREAN)
                 .recommendationType(recommendationType)
                 .calory(100.0)
                 .ingredient_info_original("재료 정보")
-                .timeRequired(20)
+                .timeRequired(timeRequired)
                 .difficultyLevel(DifficultyLevel.LEVEL_1)
                 .build());
         return entityManager.persist(Recipe.builder()

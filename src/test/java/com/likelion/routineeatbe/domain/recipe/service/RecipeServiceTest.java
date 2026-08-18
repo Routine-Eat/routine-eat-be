@@ -3,6 +3,9 @@ package com.likelion.routineeatbe.domain.recipe.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
@@ -193,14 +196,18 @@ class RecipeServiceTest {
     }
 
     @Test
-    @DisplayName("전체 및 추천 유형별 레시피 목록 조회 성공")
-    void 전체_및_추천_유형별_레시피_목록_조회_성공() {
+    @DisplayName("남은 재료 및 추천 유형별 레시피 목록 조회 성공")
+    void 남은_재료_및_추천_유형별_레시피_목록_조회_성공() {
         // given
         RecipeSearchRequestDto request = createRequest("1234");
         User user = User.builder().id(1L).loginNumber("1234").build();
+        FoodIngredient prioritizedFoodIngredient = FoodIngredient.builder()
+                .id(100L)
+                .name("감자")
+                .build();
         RecipeSearchResult searchResult = new RecipeSearchResult(
                 10L, 20L, "감자 요리", null, 100.0, 20,
-                null, null, 3L, 1L, 2L, 2500L
+                null, null, 3L, 1L, 2L, 2500L, true
         );
         RecipeIngredientUsageListResponseDto usageResponseDto =
                 RecipeIngredientUsageListResponseDto.builder()
@@ -208,13 +215,25 @@ class RecipeServiceTest {
                         .menuName("감자 요리")
                         .foodIngredientUsingPercent(50L)
                         .requiredIngredientCost(2500L)
+                        .isFavoriteRecipe(true)
                         .build();
         Slice<RecipeSearchResult> slice = new SliceImpl<>(
                 List.of(searchResult), PageRequest.of(0, 10), true
         );
 
         given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
-        for (RecommendationType type : RecommendationType.values()) {
+        given(userFoodIngredientRepository.findFoodIngredientsByTotalPrimaryAmountDesc(
+                user.getId(),
+                UserFoodIngredientType.OWN,
+                PageRequest.of(0, 1)
+        )).willReturn(List.of(prioritizedFoodIngredient));
+        given(recipeRepository.searchRecipesByFoodIngredient(user.getId(), 100L, request))
+                .willReturn(slice);
+        for (RecommendationType type : List.of(
+                RecommendationType.SIMPLE,
+                RecommendationType.DIET,
+                RecommendationType.GLUTEN_FREE
+        )) {
             given(recipeRepository.searchRecipes(user.getId(), request, type)).willReturn(slice);
         }
         given(recipeMapper.toRecipeIngredientUsageListResponseDto(searchResult))
@@ -224,8 +243,9 @@ class RecipeServiceTest {
         RecipeSearchResponseDto result = recipeService.getRecipes(request);
 
         // then
-        assertThat(result.defaultRecipe().content()).containsExactly(usageResponseDto);
-        assertThat(result.defaultRecipe().content().getFirst().foodIngredientUsingPercent())
+        assertThat(result.remainFoodIngredientName()).isEqualTo("감자");
+        assertThat(result.remainFoodIngredient().content()).containsExactly(usageResponseDto);
+        assertThat(result.remainFoodIngredient().content().getFirst().foodIngredientUsingPercent())
                 .isEqualTo(50L);
         assertThat(result.simpleRecipe().nextCursor()).isEqualTo(11L);
         assertThat(result.dietRecipe().content()).containsExactly(usageResponseDto);
@@ -233,9 +253,57 @@ class RecipeServiceTest {
                 .isEqualTo(50L);
         assertThat(result.dietRecipe().nextCursor()).isEqualTo(11L);
         assertThat(result.glutenFreeRecipe().nextCursor()).isEqualTo(11L);
-        for (RecommendationType type : RecommendationType.values()) {
+        verify(recipeRepository).searchRecipesByFoodIngredient(user.getId(), 100L, request);
+        for (RecommendationType type : List.of(
+                RecommendationType.SIMPLE,
+                RecommendationType.DIET,
+                RecommendationType.GLUTEN_FREE
+        )) {
             verify(recipeRepository).searchRecipes(user.getId(), request, type);
         }
+    }
+
+    @Test
+    @DisplayName("보유량이 남은 OWN 재료가 없는 경우 남은 재료 우선 목록 빈 응답 성공")
+    void 보유량이_남은_OWN_재료가_없는_경우_남은_재료_우선_목록_빈_응답_성공() {
+        // given
+        RecipeSearchRequestDto request = createRequest("1234");
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        Slice<RecipeSearchResult> emptySlice = new SliceImpl<>(
+                List.of(),
+                PageRequest.of(0, 10),
+                false
+        );
+
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(userFoodIngredientRepository.findFoodIngredientsByTotalPrimaryAmountDesc(
+                user.getId(),
+                UserFoodIngredientType.OWN,
+                PageRequest.of(0, 1)
+        )).willReturn(List.of());
+        for (RecommendationType type : List.of(
+                RecommendationType.SIMPLE,
+                RecommendationType.DIET,
+                RecommendationType.GLUTEN_FREE
+        )) {
+            given(recipeRepository.searchRecipes(user.getId(), request, type))
+                    .willReturn(emptySlice);
+        }
+
+        // when
+        RecipeSearchResponseDto result = recipeService.getRecipes(request);
+
+        // then
+        assertThat(result.remainFoodIngredient().content()).isEmpty();
+        assertThat(result.remainFoodIngredientName()).isNull();
+        assertThat(result.remainFoodIngredient().size()).isEqualTo(10);
+        assertThat(result.remainFoodIngredient().hasNext()).isFalse();
+        assertThat(result.remainFoodIngredient().nextCursor()).isNull();
+        verify(recipeRepository, never()).searchRecipesByFoodIngredient(
+                anyLong(),
+                anyLong(),
+                any(RecipeSearchRequestDto.class)
+        );
     }
 
     @Test

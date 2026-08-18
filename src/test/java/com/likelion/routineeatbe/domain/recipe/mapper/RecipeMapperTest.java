@@ -63,7 +63,7 @@ class RecipeMapperTest {
         // given
         RecipeSearchResult result = new RecipeSearchResult(
                 1L, 2L, "감자 요리", "thumbnail", 100.0, 20,
-                DifficultyLevel.LEVEL_1, MenuType.KOREAN, 3L, 8L, 11L, 2500L
+                DifficultyLevel.LEVEL_1, MenuType.KOREAN, 3L, 8L, 11L, 2500L, true
         );
 
         // when
@@ -74,6 +74,7 @@ class RecipeMapperTest {
         assertThat(response.recipeId()).isEqualTo(1L);
         assertThat(response.foodIngredientUsingPercent()).isEqualTo(72L);
         assertThat(response.requiredIngredientCost()).isEqualTo(2500L);
+        assertThat(response.isFavoriteRecipe()).isTrue();
     }
 
     @Test

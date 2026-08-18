@@ -1,5 +1,6 @@
 package com.likelion.routineeatbe.domain.recipe.service;
 
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeWithSimilarRecipes;
@@ -33,6 +34,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -222,9 +224,10 @@ public class RecipeService {
     }
 
     /**
-     * 사용자와 필터 조건을 기준으로 전체 및 추천 유형별 레시피 목록을 조회합니다.
+     * 사용자와 필터 조건을 기준으로 남은 재료, 간단 조리 및 추천 유형별 레시피 목록을 조회합니다.
      * - 동일한 위치 커서와 조회 크기를 네 개 목록에 적용합니다.
-     * - DEFAULT는 전체, 나머지는 SIMPLE, DIET, GLUTEN_FREE 유형만 조회합니다.
+     * - 남은 재료 목록은 주 단위 보유량 합계가 가장 큰 OWN 재료가 포함된 레시피를 조회합니다.
+     * - 간단 조리 목록은 조리 시간이 15분 이하인 레시피를 조회합니다.
      *
      * @param request 레시피 조회 조건
      * @return 전체 및 추천 유형별 레시피 목록 응답
@@ -245,15 +248,44 @@ public class RecipeService {
                 .orElseThrow(() -> new CustomException(RecipeErrorCode.USER_NOT_FOUND));
 
         /*
-            2. 전체 및 추천 유형별 목록 조회
-            - 네 목록은 동일한 필터, 정렬, 커서, 조회 크기를 공유합니다.
+            2. 가장 많이 보유한 음식 재료 조회
+            - OWN 재료를 음식 재료별 주 단위 보유량 합계로 정렬하여 첫 번째 음식 재료를 조회합니다.
          */
-        CursorSliceResponse<RecipeIngredientUsageListResponseDto> defaultRecipe = getRecipeSlice(
-                user.getId(),
-                request,
-                RecommendationType.DEFAULT,
-                recipeMapper::toRecipeIngredientUsageListResponseDto
-        );
+        List<FoodIngredient> prioritizedFoodIngredients = userFoodIngredientRepository
+                .findFoodIngredientsByTotalPrimaryAmountDesc(
+                        user.getId(),
+                        UserFoodIngredientType.OWN,
+                        PageRequest.of(0, 1)
+                );
+        FoodIngredient prioritizedFoodIngredient = prioritizedFoodIngredients.isEmpty()
+                ? null
+                : prioritizedFoodIngredients.getFirst();
+
+        /*
+            3. 남은 음식 재료 우선 목록 조회
+            - 가장 많이 보유한 음식 재료가 있으면 해당 재료를 포함한 레시피를 조회합니다.
+            - 양이 남은 OWN 재료가 없으면 빈 커서 응답을 반환합니다.
+         */
+        CursorSliceResponse<RecipeIngredientUsageListResponseDto> remainFoodIngredient =
+                prioritizedFoodIngredient == null
+                        ? CursorSliceResponse.<RecipeIngredientUsageListResponseDto>builder()
+                                .content(List.of())
+                                .size(request.size())
+                                .hasNext(false)
+                                .nextCursor(null)
+                                .build()
+                        : getRecipeSliceByFoodIngredient(
+                                user.getId(),
+                                prioritizedFoodIngredient.getId(),
+                                request,
+                                recipeMapper::toRecipeIngredientUsageListResponseDto
+                        );
+
+        /*
+            4. 간단 조리 및 추천 유형별 목록 조회
+            - 간단 조리는 15분 이하, 다이어트와 글루텐 프리는 추천 유형을 기준으로 조회합니다.
+            - 세 목록은 동일한 필터, 정렬, 커서, 조회 크기를 공유합니다.
+         */
         CursorSliceResponse<RecipeIngredientUsageListResponseDto> simpleRecipe = getRecipeSlice(
                 user.getId(),
                 request,
@@ -274,19 +306,21 @@ public class RecipeService {
         );
 
         /*
-            3. 최상위 응답 조합
+            5. 최상위 응답 조합
             - 조회한 네 CursorSliceResponse를 명세의 응답 필드에 맞게 조합합니다.
          */
         RecipeSearchResponseDto result = RecipeSearchResponseDto.create(
-                defaultRecipe,
+                prioritizedFoodIngredient == null ? null : prioritizedFoodIngredient.getName(),
+                remainFoodIngredient,
                 simpleRecipe,
                 dietRecipe,
                 glutenFreeRecipe
         );
 
         log.info(
-                "[RecipeService] 전체 레시피 목록 조회 | getRecipes() - END | default: {}, simple: {}, diet: {}, glutenFree: {}",
-                defaultRecipe.content().size(),
+                "[RecipeService] 전체 레시피 목록 조회 | getRecipes() - END | remainFoodIngredientName: {}, remainFoodIngredient: {}, simple: {}, diet: {}, glutenFree: {}",
+                result.remainFoodIngredientName(),
+                remainFoodIngredient.content().size(),
                 simpleRecipe.content().size(),
                 dietRecipe.content().size(),
                 glutenFreeRecipe.content().size()
@@ -387,6 +421,47 @@ public class RecipeService {
 
         log.debug(
                 "[RecipeService] 추천 유형별 레시피 조회 | getRecipeSlice() - END | resultSize: {}, nextCursor: {}",
+                result.content().size(),
+                result.nextCursor()
+        );
+        return result;
+    }
+
+    /**
+     * 사용자가 가장 많이 보유한 음식 재료가 포함된 레시피 Slice를 커서 응답으로 변환합니다.
+     * @param userId 사용자 ID
+     * @param foodIngredientId 레시피에 포함되어야 하는 음식 재료 PK
+     * @param request 레시피 조회 조건
+     * @param mapper 목록 응답 DTO 변환 함수
+     * @return 대상 음식 재료가 포함된 커서 기반 레시피 목록
+     */
+    private <T> CursorSliceResponse<T> getRecipeSliceByFoodIngredient(
+            Long userId,
+            Long foodIngredientId,
+            RecipeSearchRequestDto request,
+            Function<RecipeSearchResult, T> mapper
+    ) {
+        log.debug(
+                "[RecipeService] 남은 음식 재료 우선 레시피 조회 | getRecipeSliceByFoodIngredient() - START | foodIngredientId: {}",
+                foodIngredientId
+        );
+
+        Slice<RecipeSearchResult> recipeSlice = recipeRepository.searchRecipesByFoodIngredient(
+                userId,
+                foodIngredientId,
+                request
+        );
+        Long nextCursor = recipeSlice.hasNext()
+                ? request.cursor() + request.size()
+                : null;
+        CursorSliceResponse<T> result = CursorSliceResponse.of(
+                recipeSlice,
+                mapper,
+                nextCursor
+        );
+
+        log.debug(
+                "[RecipeService] 남은 음식 재료 우선 레시피 조회 | getRecipeSliceByFoodIngredient() - END | resultSize: {}, nextCursor: {}",
                 result.content().size(),
                 result.nextCursor()
         );

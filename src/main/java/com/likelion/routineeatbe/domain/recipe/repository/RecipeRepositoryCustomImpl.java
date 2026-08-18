@@ -29,14 +29,14 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
     private final EntityManager entityManager;
 
     /**
-     * 사용자, 필터, 정렬 및 추천 유형을 기준으로 레시피를 위치 커서 방식으로 조회합니다.
+     * 사용자, 필터, 정렬 및 목록 유형을 기준으로 레시피를 위치 커서 방식으로 조회합니다.
      * - cursor는 레시피 PK가 아니라 1부터 시작하는 정렬 결과의 조회 위치입니다.
      * - size + 1건만 DB에서 조회하여 다음 데이터 존재 여부를 판별합니다.
      * - 반환 페이지의 부족 재료비는 사용자 보유 수량을 차감하여 별도로 집계합니다.
      *
      * @param userId 재료 일치도와 부족 재료비를 계산할 사용자 ID
      * @param request 필터, 정렬, 위치 커서 및 조회 크기
-     * @param recommendationType Service에서 지정한 추천 유형
+     * @param recommendationType Service에서 지정한 목록 유형
      * @return 레시피 조회 결과 Slice
      */
     @Override
@@ -45,9 +45,57 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
             RecipeSearchRequestDto request,
             RecommendationType recommendationType
     ) {
-        String jpql = createSearchJpql(request, recommendationType);
+        return executeSearchRecipes(userId, request, recommendationType, null);
+    }
+
+    /**
+     * 사용자가 가장 많이 보유한 음식 재료가 포함된 기본 레시피를 위치 커서 방식으로 조회합니다.
+     * @param userId 재료 일치도와 부족 재료비를 계산할 사용자 ID
+     * @param foodIngredientId 레시피에 포함되어야 하는 음식 재료 PK
+     * @param request 필터, 정렬, 위치 커서 및 조회 크기
+     * @return 대상 음식 재료가 포함된 레시피 조회 결과 Slice
+     */
+    @Override
+    public Slice<RecipeSearchResult> searchRecipesByFoodIngredient(
+            Long userId,
+            Long foodIngredientId,
+            RecipeSearchRequestDto request
+    ) {
+        return executeSearchRecipes(
+                userId,
+                request,
+                RecommendationType.DEFAULT,
+                foodIngredientId
+        );
+    }
+
+    /**
+     * 공통 레시피 조회 JPQL을 실행하고 위치 커서 Slice와 부족 재료비를 계산합니다.
+     * @param userId 재료 일치도와 부족 재료비를 계산할 사용자 ID
+     * @param request 필터, 정렬, 위치 커서 및 조회 크기
+     * @param recommendationType 조회할 추천 유형
+     * @param requiredFoodIngredientId 반드시 포함할 음식 재료 PK, 없으면 null
+     * @return 레시피 조회 결과 Slice
+     */
+    private Slice<RecipeSearchResult> executeSearchRecipes(
+            Long userId,
+            RecipeSearchRequestDto request,
+            RecommendationType recommendationType,
+            Long requiredFoodIngredientId
+    ) {
+        String jpql = createSearchJpql(
+                request,
+                recommendationType,
+                requiredFoodIngredientId
+        );
         TypedQuery<RecipeSearchResult> query = entityManager.createQuery(jpql, RecipeSearchResult.class);
-        bindParameters(query, userId, request, recommendationType);
+        bindParameters(
+                query,
+                userId,
+                request,
+                recommendationType,
+                requiredFoodIngredientId
+        );
 
         int offset = Math.toIntExact(request.cursor() - 1L);
         query.setFirstResult(offset);
@@ -276,11 +324,13 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
      * 레시피 기본 정보, 필요 재료 개수, 사용자 보유 재료 일치 개수를 조회하는 JPQL을 생성합니다.
      * @param request 선택 필터 및 정렬 조건
      * @param recommendationType 조회할 추천 유형
+     * @param requiredFoodIngredientId 반드시 포함할 음식 재료 PK, 없으면 null
      * @return 실행할 JPQL 문자열
      */
     private String createSearchJpql(
             RecipeSearchRequestDto request,
-            RecommendationType recommendationType
+            RecommendationType recommendationType,
+            Long requiredFoodIngredientId
     ) {
         StringBuilder jpql = new StringBuilder("""
                 select new com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult(
@@ -295,7 +345,8 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
                     recipe.cookingCount,
                     count(distinct userFoodIngredient.foodIngredient.id),
                     count(distinct recipeFoodIngredient.id),
-                    0L
+                    0L,
+                    case when count(distinct favoriteRecipe.id) > 0 then true else false end
                 )
                 from Recipe recipe
                 join recipe.menu menu
@@ -305,32 +356,61 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
                     on userFoodIngredient.foodIngredient = recipeFoodIngredient.foodIngredient
                     and userFoodIngredient.user.id = :userId
                     and userFoodIngredient.relationType = :ownType
+                left join FavoriteRecipe favoriteRecipe
+                    on favoriteRecipe.recipe = recipe
+                    and favoriteRecipe.user.id = :userId
                 where recipe.type = com.likelion.routineeatbe.domain.recipe.enums.RecipeType.BASIC
                 """);
 
-        appendFilterConditions(jpql, request, recommendationType);
+        appendFilterConditions(
+                jpql,
+                request,
+                recommendationType,
+                requiredFoodIngredientId
+        );
         jpql.append(" group by recipe, menu ");
         appendOrderBy(jpql, request.sortType());
         return jpql.toString();
     }
 
     /**
-     * 값이 존재하는 선택 필터와 Service가 지정한 추천 유형 조건을 추가합니다.
-     * - DEFAULT는 추천 유형 조건을 생략하여 전체 레시피를 조회합니다.
+     * 값이 존재하는 선택 필터와 목록별 고정 조건을 추가합니다.
+     * - 대상 음식 재료가 있으면 해당 재료를 포함하는 레시피만 조회합니다.
+     * - SIMPLE은 조리 시간 15분 이하, DIET와 GLUTEN_FREE는 추천 유형으로 조회합니다.
      * @param jpql 조건을 추가할 JPQL 빌더
      * @param request 시간, 난이도, 카테고리 필터
      * @param recommendationType 조회할 추천 유형
+     * @param requiredFoodIngredientId 반드시 포함할 음식 재료 PK, 없으면 null
      */
     private void appendFilterConditions(
             StringBuilder jpql,
             RecipeSearchRequestDto request,
-            RecommendationType recommendationType
+            RecommendationType recommendationType,
+            Long requiredFoodIngredientId
     ) {
-        if (recommendationType != RecommendationType.DEFAULT) {
+        if (requiredFoodIngredientId != null) {
+            jpql.append("""
+                     and exists (
+                         select requiredRecipeFoodIngredient.id
+                         from RecipeFoodIngredient requiredRecipeFoodIngredient
+                         where requiredRecipeFoodIngredient.recipe = recipe
+                           and requiredRecipeFoodIngredient.foodIngredient.id = :requiredFoodIngredientId
+                     )
+                    """);
+        } else if (recommendationType == RecommendationType.SIMPLE) {
+            jpql.append(" and menu.timeRequired <= 15 ");
+        } else if (recommendationType != RecommendationType.DEFAULT) {
             jpql.append(" and menu.recommendationType = :recommendationType ");
         }
         if (request.timeRequired() != null) {
-            jpql.append(" and menu.timeRequired <= :timeRequired ");
+            switch (request.timeRequired()) {
+                case WITHIN_15_MINUTES ->
+                        jpql.append(" and menu.timeRequired <= 15 ");
+                case WITHIN_30_MINUTES ->
+                        jpql.append(" and menu.timeRequired > 15 and menu.timeRequired <= 30 ");
+                case OVER_30_MINUTES ->
+                        jpql.append(" and menu.timeRequired > 30 ");
+            }
         }
         if (request.difficultyLevel() != null) {
             jpql.append(" and menu.difficultyLevel = :difficultyLevel ");
@@ -368,21 +448,23 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
      * @param userId 사용자 ID
      * @param request 실제 필터 값
      * @param recommendationType 조회할 추천 유형
+     * @param requiredFoodIngredientId 반드시 포함할 음식 재료 PK, 없으면 null
      */
     private void bindParameters(
             TypedQuery<RecipeSearchResult> query,
             Long userId,
             RecipeSearchRequestDto request,
-            RecommendationType recommendationType
+            RecommendationType recommendationType,
+            Long requiredFoodIngredientId
     ) {
         query.setParameter("userId", userId);
         query.setParameter("ownType", UserFoodIngredientType.OWN);
 
-        if (recommendationType != RecommendationType.DEFAULT) {
+        if (requiredFoodIngredientId != null) {
+            query.setParameter("requiredFoodIngredientId", requiredFoodIngredientId);
+        } else if (recommendationType != RecommendationType.DEFAULT
+                && recommendationType != RecommendationType.SIMPLE) {
             query.setParameter("recommendationType", recommendationType);
-        }
-        if (request.timeRequired() != null) {
-            query.setParameter("timeRequired", request.timeRequired());
         }
         if (request.difficultyLevel() != null) {
             query.setParameter("difficultyLevel", request.difficultyLevel());

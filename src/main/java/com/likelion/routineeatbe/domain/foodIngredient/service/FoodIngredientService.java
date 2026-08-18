@@ -2,6 +2,7 @@ package com.likelion.routineeatbe.domain.foodIngredient.service;
 
 import com.likelion.routineeatbe.domain.foodIngredient.dto.response.FoodIngredientResponse;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredientType;
 import com.likelion.routineeatbe.domain.foodIngredient.repository.FoodIngredientRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,12 +29,14 @@ public class FoodIngredientService {
      * @return 객체 각각을 FoodIngredientResponse로 변환한 리스트 반환
      */
     @Transactional(readOnly = true)
-    public List<FoodIngredientResponse> getFoodIngredients(String search){
+    public List<FoodIngredientResponse> getFoodIngredients(String search, FoodIngredientType type){
         List<FoodIngredient> foodIngredients;
         if(StringUtils.hasText(search)){ /* 1. 검색어 유무 검사 */
             /* 2. 검색어 있으니 레포의 findByNameContaining() */
             foodIngredients =foodIngredientRepository.findByNameContaining(search);
-        } else{ /* 3. 검색어 없으니 findALl() */
+        } else if(type != null){ /* 3. 검색어 없으니 findALl() */
+            foodIngredients = foodIngredientRepository.findByType(type);
+        } else {
             foodIngredients = foodIngredientRepository.findAll();
         }
         /* 4. (FoodIngredientResponse::from)로 각각을 포장한 리스트 반환 */

@@ -1,6 +1,7 @@
 package com.likelion.routineeatbe.domain.foodIngredient.controller;
 
 import com.likelion.routineeatbe.domain.foodIngredient.dto.response.FoodIngredientResponse;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredientType;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -20,7 +21,11 @@ public interface FoodIngredientControllerDocs {
 
     @Operation(
             summary = "식재료 조회 API",
-            description = "검색어를 이용하여 식재료 조회, 검색어가 없다면 식재료 전체 조회"
+            description = """
+                    검색어를 이용하여 식재료 조회 \n
+                    식재료 타입 별 조회, 검색어 우선이므로 검색어가 있다면 타입 무시 \n
+                    검색어, 타입이 없다면 식재료 전체 조회
+                    """
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -31,7 +36,8 @@ public interface FoodIngredientControllerDocs {
     @GetMapping
     GlobalResponse<List<FoodIngredientResponse>> getFoodIngredients(
             @Parameter(description = "검색어 (선택)")
-            @RequestParam(name = "search", required = false) String search
+            @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "type", required = false) FoodIngredientType type
     );
 
     @Operation(

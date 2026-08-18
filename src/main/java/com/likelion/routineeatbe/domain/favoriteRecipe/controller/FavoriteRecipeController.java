@@ -35,7 +35,7 @@ public class FavoriteRecipeController implements FavoriteRecipeControllerDocs {
     @Override
     public ResponseEntity<GlobalResponse<Void>> removeFavorite(
             Long recipeId,
-            Integer userNumber
+            String userNumber
     ) {
         favoriteRecipeService.removeFavorite(recipeId, userNumber);
         return ResponseEntity

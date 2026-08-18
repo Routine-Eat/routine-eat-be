@@ -18,8 +18,13 @@ public record RecipeDetailResDto(
         Integer recipeTimeRequired,
         @Schema(description = "레시피 난이도", example = "LEVEL_1")
         DifficultyLevel recipeDifficultyLevel,
-        @Schema(description = "추가로 필요한 음식 재료 개수", example = "2")
-        Long additionalFoodIngredientCount,
+        @Schema(
+                description = "전체 필요 재료 중 사용자가 보유한 재료의 비율(%)",
+                example = "60",
+                minimum = "0",
+                maximum = "100"
+        )
+        Long foodIngredientUsingPercent,
         @Schema(description = "추가로 필요한 음식 재료비", example = "1800")
         Long additionalFoodIngredientCost,
         @Schema(description = "인분 수", example = "1")
@@ -38,7 +43,7 @@ public record RecipeDetailResDto(
             String recipeThumbnailUrl,
             Integer recipeTimeRequired,
             DifficultyLevel recipeDifficultyLevel,
-            Long additionalFoodIngredientCount,
+            Long foodIngredientUsingPercent,
             Long additionalFoodIngredientCost,
             Integer servings,
             List<RecipeIngredientResDto> foodIngredients,
@@ -51,7 +56,7 @@ public record RecipeDetailResDto(
                 .recipeThumbnailUrl(recipeThumbnailUrl)
                 .recipeTimeRequired(recipeTimeRequired)
                 .recipeDifficultyLevel(recipeDifficultyLevel)
-                .additionalFoodIngredientCount(additionalFoodIngredientCount)
+                .foodIngredientUsingPercent(foodIngredientUsingPercent)
                 .additionalFoodIngredientCost(additionalFoodIngredientCost)
                 .servings(servings)
                 .foodIngredients(List.copyOf(foodIngredients))

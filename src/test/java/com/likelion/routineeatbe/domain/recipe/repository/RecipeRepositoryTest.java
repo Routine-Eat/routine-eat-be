@@ -208,23 +208,38 @@ class RecipeRepositoryTest {
     @DisplayName("메뉴명 검색어 일치도 및 위치 커서 레시피 조회 성공")
     void 메뉴명_검색어_일치도_및_위치_커서_레시피_조회_성공() {
         // given
+        User user = entityManager.persist(User.builder().loginNumber("7777").build());
+        FoodIngredient potato = persistFoodIngredient("검색 감자", 1000L);
         Recipe exactMatch = persistRecipe("감자", 1L, RecommendationType.DEFAULT);
         Recipe shortPrefixMatch = persistRecipe("감자국", 1L, RecommendationType.DEFAULT);
         Recipe longPrefixMatch = persistRecipe("감자볶음", 100L, RecommendationType.DEFAULT);
         Recipe containsMatch = persistRecipe("매운감자국", 200L, RecommendationType.DEFAULT);
         persistRecipe("고구마국", 300L, RecommendationType.DEFAULT);
+        persistRequiredIngredient(exactMatch, potato, 100.0);
+        entityManager.persist(UserFoodIngredient.builder()
+                .user(user)
+                .foodIngredient(potato)
+                .relationType(UserFoodIngredientType.OWN)
+                .primaryAmountValue(100.0)
+                .build());
         entityManager.flush();
         entityManager.clear();
 
         // when
-        Slice<Recipe> firstPage = recipeRepository.searchRecipesByMenuName("감자", 1L, 2);
-        Slice<Recipe> secondPage = recipeRepository.searchRecipesByMenuName("감자", 3L, 2);
+        Slice<RecipeSearchResult> firstPage = recipeRepository.searchRecipesByMenuName(
+                user.getId(), "감자", 1L, 2
+        );
+        Slice<RecipeSearchResult> secondPage = recipeRepository.searchRecipesByMenuName(
+                user.getId(), "감자", 3L, 2
+        );
 
         // then
-        assertThat(firstPage.getContent()).extracting(Recipe::getId)
+        assertThat(firstPage.getContent()).extracting(RecipeSearchResult::recipeId)
                 .containsExactly(exactMatch.getId(), shortPrefixMatch.getId());
+        assertThat(firstPage.getContent().getFirst().matchedIngredientCount()).isEqualTo(1L);
+        assertThat(firstPage.getContent().getFirst().requiredIngredientCount()).isEqualTo(1L);
         assertThat(firstPage.hasNext()).isTrue();
-        assertThat(secondPage.getContent()).extracting(Recipe::getId)
+        assertThat(secondPage.getContent()).extracting(RecipeSearchResult::recipeId)
                 .containsExactly(longPrefixMatch.getId(), containsMatch.getId());
         assertThat(secondPage.hasNext()).isFalse();
     }
@@ -233,16 +248,19 @@ class RecipeRepositoryTest {
     @DisplayName("LIKE 특수문자를 일반 문자로 처리한 메뉴명 검색 성공")
     void LIKE_특수문자를_일반_문자로_처리한_메뉴명_검색_성공() {
         // given
+        User user = entityManager.persist(User.builder().loginNumber("8888").build());
         Recipe percentRecipe = persistRecipe("100% 감자", 1L, RecommendationType.DEFAULT);
         persistRecipe("감자국", 2L, RecommendationType.DEFAULT);
         entityManager.flush();
         entityManager.clear();
 
         // when
-        Slice<Recipe> result = recipeRepository.searchRecipesByMenuName("%", 1L, 10);
+        Slice<RecipeSearchResult> result = recipeRepository.searchRecipesByMenuName(
+                user.getId(), "%", 1L, 10
+        );
 
         // then
-        assertThat(result.getContent()).extracting(Recipe::getId)
+        assertThat(result.getContent()).extracting(RecipeSearchResult::recipeId)
                 .containsExactly(percentRecipe.getId());
         assertThat(result.hasNext()).isFalse();
     }
@@ -330,6 +348,7 @@ class RecipeRepositoryTest {
                 .pricePerHundred(pricePerHundred)
                 .primaryUnit(PrimaryUnit.G)
                 .secondaryUnit(SecondaryUnit.GAE)
+                .exception(false)
                 .build());
     }
 

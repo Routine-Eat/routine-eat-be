@@ -128,22 +128,48 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
      * - 같은 일치도에서는 짧은 메뉴명, 요리 횟수, 레시피 PK 순으로 정렬합니다.
      * - size + 1건을 조회하여 다음 데이터 존재 여부를 판별합니다.
      *
+     * @param userId 음식 재료 활용률을 계산할 사용자 ID
      * @param searchWord 메뉴/레시피명 검색어
      * @param cursor 1부터 시작하는 조회 위치
      * @param size 한 번에 조회할 레시피 개수
-     * @return 검색된 기본 레시피 Slice
+     * @return 사용자 재료 집계가 포함된 검색 레시피 Slice
      */
     @Override
-    public Slice<Recipe> searchRecipesByMenuName(String searchWord, Long cursor, Integer size) {
+    public Slice<RecipeSearchResult> searchRecipesByMenuName(
+            Long userId,
+            String searchWord,
+            Long cursor,
+            Integer size
+    ) {
         String normalizedSearchWord = searchWord.toLowerCase(Locale.ROOT);
         String escapedSearchWord = escapeLikePattern(normalizedSearchWord);
 
-        List<Recipe> content = new ArrayList<>(entityManager.createQuery("""
-                        select recipe
+        List<RecipeSearchResult> content = new ArrayList<>(entityManager.createQuery("""
+                        select new com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult(
+                            recipe.id,
+                            menu.id,
+                            menu.name,
+                            menu.thumbnailUrl,
+                            menu.calory,
+                            menu.timeRequired,
+                            menu.difficultyLevel,
+                            menu.type,
+                            recipe.cookingCount,
+                            count(distinct userFoodIngredient.foodIngredient.id),
+                            count(distinct recipeFoodIngredient.id),
+                            cast(0 as long)
+                        )
                         from Recipe recipe
-                        join fetch recipe.menu menu
+                        join recipe.menu menu
+                        left join RecipeFoodIngredient recipeFoodIngredient
+                            on recipeFoodIngredient.recipe = recipe
+                        left join UserFoodIngredient userFoodIngredient
+                            on userFoodIngredient.foodIngredient = recipeFoodIngredient.foodIngredient
+                            and userFoodIngredient.user.id = :userId
+                            and userFoodIngredient.relationType = :ownType
                         where recipe.type = com.likelion.routineeatbe.domain.recipe.enums.RecipeType.BASIC
                           and lower(menu.name) like :containsPattern escape '!'
+                        group by recipe, menu
                         order by
                             case
                                 when lower(menu.name) = :normalizedSearchWord then 0
@@ -153,7 +179,9 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
                             length(menu.name) asc,
                             recipe.cookingCount desc,
                             recipe.id desc
-                        """, Recipe.class)
+                        """, RecipeSearchResult.class)
+                .setParameter("userId", userId)
+                .setParameter("ownType", UserFoodIngredientType.OWN)
                 .setParameter("normalizedSearchWord", normalizedSearchWord)
                 .setParameter("prefixPattern", escapedSearchWord + "%")
                 .setParameter("containsPattern", "%" + escapedSearchWord + "%")

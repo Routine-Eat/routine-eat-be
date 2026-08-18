@@ -7,8 +7,8 @@ import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeDetailReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientUsageListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
-import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
 import com.likelion.routineeatbe.domain.recipe.service.RecipeService;
 import com.likelion.routineeatbe.global.response.CursorSliceResponse;
@@ -40,6 +40,7 @@ class RecipeControllerTest {
         RecipeDetailResDto serviceResult = RecipeDetailResDto.builder()
                 .recipeId(1L)
                 .recipeName("계란 야채 볶음밥")
+                .foodIngredientUsingPercent(60L)
                 .servings(1)
                 .foodIngredients(List.of())
                 .additionalFoodIngredients(List.of())
@@ -58,6 +59,7 @@ class RecipeControllerTest {
         assertThat(response.getBody().getCode()).isEqualTo(201);
         assertThat(response.getBody().getMessage()).isEqualTo("레시피 상세 조회에 성공했습니다.");
         assertThat(response.getBody().getData()).isEqualTo(serviceResult);
+        assertThat(response.getBody().getData().foodIngredientUsingPercent()).isEqualTo(60L);
         assertThat(response.getBody().getData().servings()).isEqualTo(1);
     }
 
@@ -68,19 +70,22 @@ class RecipeControllerTest {
         RecipeSearchRequestDto request = new RecipeSearchRequestDto(
                 "1234", null, null, null, null, null, null
         );
-        RecipeListResponseDto recipe = RecipeListResponseDto.builder()
-                .recipeId(10L)
-                .menuName("감자 요리")
-                .requiredIngredientCost(2500L)
-                .build();
-        CursorSliceResponse<RecipeListResponseDto> slice = CursorSliceResponse.<RecipeListResponseDto>builder()
-                .content(List.of(recipe))
-                .size(10)
-                .hasNext(true)
-                .nextCursor(11L)
-                .build();
+        RecipeIngredientUsageListResponseDto usageRecipe =
+                RecipeIngredientUsageListResponseDto.builder()
+                        .recipeId(10L)
+                        .menuName("감자 요리")
+                        .foodIngredientUsingPercent(50L)
+                        .requiredIngredientCost(2500L)
+                        .build();
+        CursorSliceResponse<RecipeIngredientUsageListResponseDto> usageSlice =
+                CursorSliceResponse.<RecipeIngredientUsageListResponseDto>builder()
+                        .content(List.of(usageRecipe))
+                        .size(10)
+                        .hasNext(true)
+                        .nextCursor(11L)
+                        .build();
         RecipeSearchResponseDto serviceResult = RecipeSearchResponseDto.create(
-                slice, slice, slice, slice
+                usageSlice, usageSlice, usageSlice, usageSlice
         );
         given(recipeService.getRecipes(request)).willReturn(serviceResult);
 
@@ -94,7 +99,10 @@ class RecipeControllerTest {
         assertThat(response.getBody().isSuccess()).isTrue();
         assertThat(response.getBody().getCode()).isEqualTo(201);
         assertThat(response.getBody().getMessage()).isEqualTo("전체 레시피 조회에 성공했습니다.");
-        assertThat(response.getBody().getData().defaultRecipe().content()).containsExactly(recipe);
+        assertThat(response.getBody().getData().defaultRecipe().content())
+                .containsExactly(usageRecipe);
+        assertThat(response.getBody().getData().dietRecipe().content())
+                .containsExactly(usageRecipe);
         assertThat(response.getBody().getData().glutenFreeRecipe().nextCursor()).isEqualTo(11L);
     }
 
@@ -108,6 +116,7 @@ class RecipeControllerTest {
         RecipeKeywordSearchResDto recipe = RecipeKeywordSearchResDto.builder()
                 .recipeId(659L)
                 .menuName("감자미역국")
+                .foodIngredientUsingPercent(100L)
                 .build();
         CursorSliceResponse<RecipeKeywordSearchResDto> serviceResult =
                 CursorSliceResponse.<RecipeKeywordSearchResDto>builder()
@@ -130,6 +139,8 @@ class RecipeControllerTest {
         assertThat(response.getBody().getMessage())
                 .isEqualTo("주어진 검색어로 레시피 검색에 성공했습니다.");
         assertThat(response.getBody().getData().content()).containsExactly(recipe);
+        assertThat(response.getBody().getData().content().getFirst().foodIngredientUsingPercent())
+                .isEqualTo(100L);
         assertThat(response.getBody().getData().nextCursor()).isEqualTo(11L);
     }
 }

@@ -31,7 +31,7 @@ public interface RecipeControllerDocs {
     @Operation(
             summary = "레시피 상세 조회",
             description = """
-                    레시피 기본 정보와 인분별 필요 재료, 사용자 보유량을 제외한 추가 재료 및 유사 레시피를 조회합니다.
+                    레시피 기본 정보와 인분별 필요 재료, 음식 재료 활용률, 사용자 보유량을 제외한 추가 재료 및 유사 레시피를 조회합니다.
 
                     [Path Variable]
                     - recipeId: 레시피 PK
@@ -70,6 +70,10 @@ public interface RecipeControllerDocs {
                     - difficultyLevel: LEVEL_1 ~ LEVEL_5
                     - category: KOREAN | CHINESE | JAPANESE | WESTERN | OTHER
                     - sortType: DEFAULT | FOOD_INTEGRATION
+
+                    [Response]
+                    - defaultRecipe, simpleRecipe, dietRecipe, glutenFreeRecipe:
+                      전체 필요 재료 중 사용자가 보유한 재료 비율(%)과 추가 구매 비용 제공
                     """
     )
     @ApiResponses(value = {
@@ -96,6 +100,9 @@ public interface RecipeControllerDocs {
                     - searchWord: 메뉴/레시피명 검색어
                     - cursor: 1부터 시작하는 조회 위치, 다음 요청은 응답의 nextCursor 사용
                     - size: 1회 조회 개수, 기본값 10, 최대 100
+
+                    [Response]
+                    - foodIngredientUsingPercent: 전체 필요 재료 중 사용자가 보유한 재료 비율(%)
                     """
     )
     @ApiResponses(value = {

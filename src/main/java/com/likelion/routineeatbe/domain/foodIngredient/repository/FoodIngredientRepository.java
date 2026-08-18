@@ -1,6 +1,7 @@
 package com.likelion.routineeatbe.domain.foodIngredient.repository;
 
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredientType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -22,5 +23,7 @@ public interface FoodIngredientRepository extends JpaRepository<FoodIngredient,L
     List<FoodIngredient> findAllByOrderByTypeAscIdAsc();
 
     List<FoodIngredient> findByExceptionTrue();
+
+    List<FoodIngredient> findByType(FoodIngredientType type);
 
 }

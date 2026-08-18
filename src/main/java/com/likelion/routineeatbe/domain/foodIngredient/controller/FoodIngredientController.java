@@ -1,6 +1,7 @@
 package com.likelion.routineeatbe.domain.foodIngredient.controller;
 
 import com.likelion.routineeatbe.domain.foodIngredient.dto.response.FoodIngredientResponse;
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredientType;
 import com.likelion.routineeatbe.domain.foodIngredient.service.FoodIngredientService;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +22,8 @@ public class FoodIngredientController implements FoodIngredientControllerDocs{
     private final DataSource dataSource;
 
     @Override
-    public GlobalResponse<List<FoodIngredientResponse>> getFoodIngredients(String search){
-        List<FoodIngredientResponse> foodIngredientResponseList=foodIngredientService.getFoodIngredients(search);
+    public GlobalResponse<List<FoodIngredientResponse>> getFoodIngredients(String search, FoodIngredientType type){
+        List<FoodIngredientResponse> foodIngredientResponseList=foodIngredientService.getFoodIngredients(search,type);
         return GlobalResponse.success(200,"식재료 조회가 성공했습니다.",foodIngredientResponseList);
     }
 

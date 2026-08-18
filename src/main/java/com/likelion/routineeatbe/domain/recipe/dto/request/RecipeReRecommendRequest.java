@@ -2,6 +2,8 @@ package com.likelion.routineeatbe.domain.recipe.dto.request;
 
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
+
 import java.util.List;
 
 public record RecipeReRecommendRequest(
@@ -15,6 +17,7 @@ public record RecipeReRecommendRequest(
         List<Long> desiredIngredientIds,
 
         @Schema(description = "처음에 추천 받은 레시피 id", example = "1")
+        @NotNull
         Long previousRecipeId
 ) {
     public enum CookingTimeFilter {

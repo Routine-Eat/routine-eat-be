@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
+import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRepository;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredientType;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.PrimaryUnit;
 import com.likelion.routineeatbe.domain.foodIngredient.entity.SecondaryUnit;
@@ -19,10 +20,12 @@ import com.likelion.routineeatbe.domain.menu.entity.MenuType;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeWithSimilarRecipes;
+import com.likelion.routineeatbe.domain.recipe.dto.request.CanCookReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeDetailReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.CanCookResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientUsageListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
@@ -78,6 +81,9 @@ class RecipeServiceTest {
     private RecipeFoodIngredientRepository recipeFoodIngredientRepository;
 
     @Mock
+    private CookingRecordRepository cookingRecordRepository;
+
+    @Mock
     private UserSearchHistoryRepository userSearchHistoryRepository;
 
     @Mock
@@ -85,6 +91,144 @@ class RecipeServiceTest {
 
     @Mock
     private FindSimilarRecipeService findSimilarRecipeService;
+
+    @Test
+    @DisplayName("인분별 필요량보다 보유 재료가 충분하면 요리 가능")
+    void 인분별_필요량보다_보유_재료가_충분하면_요리_가능_성공() {
+        // given
+        CanCookReqDto request = new CanCookReqDto("1234", 2);
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        Recipe recipe = Recipe.builder().id(100L).build();
+        FoodIngredient carrot = FoodIngredient.builder().id(1000L).build();
+        FoodIngredient egg = FoodIngredient.builder().id(2000L).build();
+        RecipeFoodIngredient requiredCarrot = RecipeFoodIngredient.create(
+                recipe,
+                carrot,
+                100.0,
+                null
+        );
+        RecipeFoodIngredient requiredEgg = RecipeFoodIngredient.create(
+                recipe,
+                egg,
+                50.0,
+                null
+        );
+        UserFoodIngredient firstOwnedCarrot = UserFoodIngredient.builder()
+                .user(user)
+                .foodIngredient(carrot)
+                .relationType(UserFoodIngredientType.OWN)
+                .primaryAmountValue(120.0)
+                .build();
+        UserFoodIngredient secondOwnedCarrot = UserFoodIngredient.builder()
+                .user(user)
+                .foodIngredient(carrot)
+                .relationType(UserFoodIngredientType.OWN)
+                .primaryAmountValue(80.0)
+                .build();
+        UserFoodIngredient ownedEgg = UserFoodIngredient.builder()
+                .user(user)
+                .foodIngredient(egg)
+                .relationType(UserFoodIngredientType.OWN)
+                .primaryAmountValue(100.0)
+                .build();
+
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(recipeRepository.findById(100L)).willReturn(Optional.of(recipe));
+        given(cookingRecordRepository.existsBlockingSession(1L, 100L, java.util.Set.of(
+                com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus.IN_PROGRESS,
+                com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus.COMPLETED
+        ))).willReturn(false);
+        given(recipeFoodIngredientRepository.findAllByRecipeIdInWithFoodIngredient(List.of(100L)))
+                .willReturn(List.of(requiredCarrot, requiredEgg));
+        given(userFoodIngredientRepository.findAllWithFoodIngredientByUserIdAndRelationType(
+                1L,
+                UserFoodIngredientType.OWN
+        )).willReturn(List.of(firstOwnedCarrot, secondOwnedCarrot, ownedEgg));
+
+        // when
+        CanCookResDto result = recipeService.canCook(100L, request);
+
+        // then
+        assertThat(result.canCook()).isTrue();
+    }
+
+    @Test
+    @DisplayName("필수 재료가 하나라도 부족하면 요리 불가능")
+    void 필수_재료가_하나라도_부족하면_요리_불가능_성공() {
+        // given
+        CanCookReqDto request = new CanCookReqDto("1234", 2);
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        Recipe recipe = Recipe.builder().id(100L).build();
+        FoodIngredient carrot = FoodIngredient.builder().id(1000L).build();
+        RecipeFoodIngredient requiredCarrot = RecipeFoodIngredient.create(
+                recipe,
+                carrot,
+                100.0,
+                null
+        );
+        UserFoodIngredient ownedCarrot = UserFoodIngredient.builder()
+                .user(user)
+                .foodIngredient(carrot)
+                .relationType(UserFoodIngredientType.OWN)
+                .primaryAmountValue(199.0)
+                .build();
+
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(recipeRepository.findById(100L)).willReturn(Optional.of(recipe));
+        given(recipeFoodIngredientRepository.findAllByRecipeIdInWithFoodIngredient(List.of(100L)))
+                .willReturn(List.of(requiredCarrot));
+        given(userFoodIngredientRepository.findAllWithFoodIngredientByUserIdAndRelationType(
+                1L,
+                UserFoodIngredientType.OWN
+        )).willReturn(List.of(ownedCarrot));
+
+        // when
+        CanCookResDto result = recipeService.canCook(100L, request);
+
+        // then
+        assertThat(result.canCook()).isFalse();
+    }
+
+    @Test
+    @DisplayName("진행 중이거나 완료된 동일 레시피 세션이 있으면 요리 불가능")
+    void 차단_대상_동일_레시피_세션이_있으면_요리_불가능_성공() {
+        // given
+        CanCookReqDto request = new CanCookReqDto("1234", null);
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        Recipe recipe = Recipe.builder().id(100L).build();
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(recipeRepository.findById(100L)).willReturn(Optional.of(recipe));
+        given(cookingRecordRepository.existsBlockingSession(1L, 100L, java.util.Set.of(
+                com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus.IN_PROGRESS,
+                com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus.COMPLETED
+        ))).willReturn(true);
+
+        // when
+        CanCookResDto result = recipeService.canCook(100L, request);
+
+        // then
+        assertThat(result.canCook()).isFalse();
+        assertThat(request.servings()).isEqualTo(1);
+        verify(recipeFoodIngredientRepository, never())
+                .findAllByRecipeIdInWithFoodIngredient(any());
+        verify(userFoodIngredientRepository, never())
+                .findAllWithFoodIngredientByUserIdAndRelationType(anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 레시피는 요리 가능 여부 조회 실패")
+    void 존재하지_않는_레시피는_요리_가능_여부_조회_실패() {
+        // given
+        CanCookReqDto request = new CanCookReqDto("1234", 1);
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(recipeRepository.findById(999L)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> recipeService.canCook(999L, request))
+                .isInstanceOf(CustomException.class);
+        verify(cookingRecordRepository, never()).existsBlockingSession(anyLong(), anyLong(), any());
+    }
 
     @Test
     @DisplayName("인분과 사용자 보유량을 반영한 레시피 상세 조회 성공")

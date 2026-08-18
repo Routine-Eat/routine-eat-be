@@ -3,6 +3,7 @@ package com.likelion.routineeatbe.domain.cookingRecord.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -15,6 +16,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingSession
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingCompleteResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
@@ -23,6 +25,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResult
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepMoveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingStepFoodIngredient;
@@ -59,6 +62,7 @@ import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -797,7 +801,7 @@ class CookingRecordServiceTest {
                 .willReturn(expected);
 
         // when
-        CookingStepNavigationResDto result = cookingRecordService.moveToNextCookingStep(
+        CookingStepMoveResDto result = cookingRecordService.moveToNextCookingStep(
                 10L,
                 "1234"
         );
@@ -814,18 +818,28 @@ class CookingRecordServiceTest {
         // given
         User user = User.builder().id(1L).loginNumber("1234").build();
         CookingRecord cookingRecord = createCookingRecord(10L, user, 3, 3);
+        CookingCompleteResDto expected = CookingCompleteResDto.create(
+                "오징어볶음",
+                LocalDate.now()
+        );
         given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
         given(cookingRecordRepository.findByIdAndUserIdForUpdate(10L, 1L))
                 .willReturn(Optional.of(cookingRecord));
+        given(cookingRecordMapper.toCookingCompleteResDto(
+                eq(cookingRecord),
+                any(LocalDate.class)
+        )).willReturn(expected);
 
         // when
-        CookingStepNavigationResDto result = cookingRecordService.moveToNextCookingStep(
+        CookingStepMoveResDto result = cookingRecordService.moveToNextCookingStep(
                 10L,
                 "1234"
         );
 
         // then
-        assertThat(result).isNull();
+        assertThat(result).isSameAs(expected);
+        assertThat(((CookingCompleteResDto) result).cookedMenuName()).isEqualTo("오징어볶음");
+        assertThat(((CookingCompleteResDto) result).cookedDate()).isEqualTo(LocalDate.now());
         assertThat(cookingRecord.getCookingSession().getStatus())
                 .isEqualTo(CookingSessionStatus.COMPLETED);
         then(cookingStepRepository).shouldHaveNoInteractions();

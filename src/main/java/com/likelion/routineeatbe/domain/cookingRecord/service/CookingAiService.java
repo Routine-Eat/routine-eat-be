@@ -6,6 +6,8 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingAiGemini
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingAiGeminiFunctionDeclarationDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingAiReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingAiAnswerResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingCompleteResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepMoveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.service.gemini.CookingAiGeminiService;
 import com.likelion.routineeatbe.domain.cookingRecord.service.gemini.CookingSpeechGenerateGeminiService;
@@ -128,15 +130,16 @@ public class CookingAiService {
                 "[CookingAiService] 다음 요리 단계 이동 시작 | moveToNextCookingStep() - START | cookingRecordId: {}",
                 context.cookingRecordId()
         );
-        CookingStepNavigationResDto navigation = cookingRecordService.moveToNextCookingStep(
+        CookingStepMoveResDto movement = cookingRecordService.moveToNextCookingStep(
                 context.cookingRecordId(),
                 userNumber
         );
-        String message = navigation == null
+        String message = movement instanceof CookingCompleteResDto
                 ? "요리가 종료되었습니다."
                 : "다음 요리 단계로 이동했습니다. 현재 %d번째 단계입니다."
-                        .formatted(navigation.currentCookingStep().level());
-        CookingAiResult result = completeSystemCommand(call, context, message, navigation);
+                        .formatted(((CookingStepNavigationResDto) movement)
+                                .currentCookingStep().level());
+        CookingAiResult result = completeSystemCommand(call, context, message, movement);
         log.debug(
                 "[CookingAiService] 다음 요리 단계 이동 종료 | moveToNextCookingStep() - END | cookingRecordId: {}",
                 context.cookingRecordId()
@@ -215,14 +218,14 @@ public class CookingAiService {
      * @param call Gemini Function Call 정보
      * @param context 현재 요리 컨텍스트
      * @param message 시스템 동작 결과 메시지
-     * @param navigation 요리 단계 이동 결과
+     * @param movement 요리 단계 이동 또는 완료 결과
      * @return 음성이 없는 시스템 동작 응답
      */
     private CookingAiResult completeSystemCommand(
             CookingAiGeminiCallDto call,
             CookingAiContextDto context,
             String message,
-            CookingStepNavigationResDto navigation
+            CookingStepMoveResDto movement
     ) {
         log.debug(
                 "[CookingAiService] 시스템 동작 완료 처리 시작 | completeSystemCommand() - START | cookingSessionId: {}",
@@ -230,7 +233,7 @@ public class CookingAiService {
         );
         cookingAiContextService.saveSystemLog(context.cookingSessionId(), message);
         cookingAiGeminiService.completeSystemCommand(call, message);
-        CookingAiResult result = CookingAiResult.create(message, navigation, null);
+        CookingAiResult result = CookingAiResult.create(message, movement, null);
         log.debug(
                 "[CookingAiService] 시스템 동작 완료 처리 종료 | completeSystemCommand() - END | cookingSessionId: {}",
                 context.cookingSessionId()

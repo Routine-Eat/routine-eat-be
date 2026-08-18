@@ -19,6 +19,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingSession
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.ModifiedCookingRecordFoodIngredientReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingAiAnswerResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingCompleteResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientAmountResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
@@ -714,8 +715,12 @@ class CookingRecordControllerTest {
     @DisplayName("다음 요리 단계 이동 API 성공 - 요리 완료")
     void 다음_요리_단계_이동_API_성공_요리_완료() throws Exception {
         // given
+        CookingCompleteResDto response = CookingCompleteResDto.create(
+                "오징어볶음",
+                LocalDate.of(2026, 8, 21)
+        );
         given(cookingRecordService.moveToNextCookingStep(10L, "1234"))
-                .willReturn(null);
+                .willReturn(response);
 
         // when & then
         mockMvc.perform(post(
@@ -726,7 +731,8 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value(201))
                 .andExpect(jsonPath("$.message").value("요리가 종료되었습니다."))
-                .andExpect(jsonPath("$.data").value(nullValue()));
+                .andExpect(jsonPath("$.data.cookedMenuName").value("오징어볶음"))
+                .andExpect(jsonPath("$.data.cookedDate").value("2026-08-21"));
     }
 
     @Test

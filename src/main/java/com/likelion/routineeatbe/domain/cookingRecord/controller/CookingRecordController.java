@@ -7,11 +7,13 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordS
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingSessionLogSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingCompleteResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepMoveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingRecordService;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingAiService;
@@ -116,18 +118,19 @@ public class CookingRecordController implements CookingRecordControllerDocs {
     }
 
     @Override
-    public ResponseEntity<GlobalResponse<CookingStepNavigationResDto>> moveToNextCookingStep(
+    public ResponseEntity<GlobalResponse<CookingStepMoveResDto>> moveToNextCookingStep(
             Long cookingRecordId,
             String userNumber
     ) {
-        CookingStepNavigationResDto result = cookingRecordService.moveToNextCookingStep(
+        CookingStepMoveResDto result = cookingRecordService.moveToNextCookingStep(
                 cookingRecordId,
                 userNumber
         );
-        String message = result == null
+        String message = result instanceof CookingCompleteResDto
                 ? "요리가 종료되었습니다."
                 : "다음 요리 단계로 이동했습니다. 현재 %d번째 단계입니다."
-                        .formatted(result.currentCookingStep().level());
+                        .formatted(((CookingStepNavigationResDto) result)
+                                .currentCookingStep().level());
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(GlobalResponse.success(

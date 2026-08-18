@@ -3,6 +3,7 @@ package com.likelion.routineeatbe.domain.cookingRecord.mapper;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingAiContextDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingRecordSearchResult;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingCompleteResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientAmountResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
@@ -29,6 +30,7 @@ import com.likelion.routineeatbe.domain.cookingTip.entity.CookingTipContent;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,23 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class CookingRecordMapper {
+
+    /**
+     * 완료된 CookingRecord Entity를 요리 완료 응답 DTO로 변환합니다.
+     *
+     * @param cookingRecord 완료 상태로 변경된 사용자 소유 요리 기록
+     * @param cookedDate 요리 완료 날짜
+     * @return 요리된 메뉴 이름과 완료 날짜가 포함된 응답
+     */
+    public CookingCompleteResDto toCookingCompleteResDto(
+            CookingRecord cookingRecord,
+            LocalDate cookedDate
+    ) {
+        return CookingCompleteResDto.create(
+                cookingRecord.getRecipe().getMenu().getName(),
+                cookedDate
+        );
+    }
 
     /**
      * 요리 기록과 단계, 재료 정보를 Gemini 요리 답변용 컨텍스트 DTO로 변환합니다.

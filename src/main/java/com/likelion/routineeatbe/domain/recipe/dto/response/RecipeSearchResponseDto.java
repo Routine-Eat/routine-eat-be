@@ -5,11 +5,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
 @Builder
-@Schema(title = "RecipeSearchResponseDto", description = "추천 유형별 전체 레시피 조회 응답 DTO")
+@Schema(title = "RecipeSearchResponseDto", description = "남은 재료 및 추천 유형별 레시피 조회 응답 DTO")
 public record RecipeSearchResponseDto(
-        @Schema(description = "추천 유형 조건이 없는 전체 레시피 목록")
-        CursorSliceResponse<RecipeIngredientUsageListResponseDto> defaultRecipe,
-        @Schema(description = "자취생 간단 레시피 목록")
+        @Schema(description = "사용자가 가장 많이 보유한 음식 재료 이름", example = "감자")
+        String remainFoodIngredientName,
+        @Schema(description = "사용자가 가장 많이 보유한 음식 재료가 포함된 레시피 목록")
+        CursorSliceResponse<RecipeIngredientUsageListResponseDto> remainFoodIngredient,
+        @Schema(description = "조리 시간이 15분 이하인 간단 레시피 목록")
         CursorSliceResponse<RecipeIngredientUsageListResponseDto> simpleRecipe,
         @Schema(description = "다이어트에 좋은 레시피 목록")
         CursorSliceResponse<RecipeIngredientUsageListResponseDto> dietRecipe,
@@ -18,13 +20,15 @@ public record RecipeSearchResponseDto(
 ) {
 
     public static RecipeSearchResponseDto create(
-            CursorSliceResponse<RecipeIngredientUsageListResponseDto> defaultRecipe,
+            String remainFoodIngredientName,
+            CursorSliceResponse<RecipeIngredientUsageListResponseDto> remainFoodIngredient,
             CursorSliceResponse<RecipeIngredientUsageListResponseDto> simpleRecipe,
             CursorSliceResponse<RecipeIngredientUsageListResponseDto> dietRecipe,
             CursorSliceResponse<RecipeIngredientUsageListResponseDto> glutenFreeRecipe
     ) {
         return RecipeSearchResponseDto.builder()
-                .defaultRecipe(defaultRecipe)
+                .remainFoodIngredientName(remainFoodIngredientName)
+                .remainFoodIngredient(remainFoodIngredient)
                 .simpleRecipe(simpleRecipe)
                 .dietRecipe(dietRecipe)
                 .glutenFreeRecipe(glutenFreeRecipe)

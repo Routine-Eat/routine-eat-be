@@ -10,6 +10,9 @@ import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchR
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
 import com.likelion.routineeatbe.domain.recipe.service.RecipeAiRecommendService;
 import com.likelion.routineeatbe.domain.recipe.service.RecipeService;
+import com.likelion.routineeatbe.domain.userSearchHistory.dto.request.UserSearchHistoryReqDto;
+import com.likelion.routineeatbe.domain.userSearchHistory.dto.response.UserSearchHistoryResDto;
+import com.likelion.routineeatbe.domain.userSearchHistory.service.UserSearchHistoryService;
 import com.likelion.routineeatbe.global.response.CursorSliceResponse;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,7 @@ public class RecipeController implements RecipeControllerDocs {
 
     private final RecipeService recipeService;
     private final RecipeAiRecommendService recipeAiRecommendService;
+    private final UserSearchHistoryService userSearchHistoryService;
 
     @Override
     public ResponseEntity<GlobalResponse<RecipeDetailResDto>> getRecipeDetail(
@@ -65,6 +69,20 @@ public class RecipeController implements RecipeControllerDocs {
                 "주어진 검색어로 레시피 검색에 성공했습니다.",
                 result
         ));
+    }
+
+    @Override
+    public ResponseEntity<GlobalResponse<UserSearchHistoryResDto>> getSearchHistories(
+            UserSearchHistoryReqDto request
+    ) {
+        UserSearchHistoryResDto result = userSearchHistoryService.getSearchHistories(request);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(GlobalResponse.success(
+                        HttpStatus.CREATED.value(),
+                        "성공했습니다.",
+                        result
+                ));
     }
 
     @Override

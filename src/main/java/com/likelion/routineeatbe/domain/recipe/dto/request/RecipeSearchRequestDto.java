@@ -3,11 +3,11 @@ package com.likelion.routineeatbe.domain.recipe.dto.request;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.menu.entity.MenuType;
 import com.likelion.routineeatbe.domain.recipe.enums.RecipeSortType;
+import com.likelion.routineeatbe.domain.recipe.enums.RecipeTimeRequiredFilter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 public record RecipeSearchRequestDto(
@@ -43,12 +43,15 @@ public record RecipeSearchRequestDto(
         Integer size,
 
         @Schema(
-                description = "최대 요리 시간(분). 입력한 시간 이하의 레시피를 조회합니다.",
-                example = "30",
-                minimum = "1"
+                description = "요리 시간 구간 필터",
+                example = "WITHIN_30_MINUTES",
+                allowableValues = {
+                        "WITHIN_15_MINUTES",
+                        "WITHIN_30_MINUTES",
+                        "OVER_30_MINUTES"
+                }
         )
-        @Positive
-        Integer timeRequired,
+        RecipeTimeRequiredFilter timeRequired,
 
         @Schema(
                 description = "요리 난이도",

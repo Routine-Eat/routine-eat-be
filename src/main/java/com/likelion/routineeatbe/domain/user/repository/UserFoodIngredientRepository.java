@@ -1,5 +1,6 @@
 package com.likelion.routineeatbe.domain.user.repository;
 
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import jakarta.persistence.LockModeType;
@@ -7,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
@@ -32,6 +34,32 @@ public interface UserFoodIngredientRepository extends JpaRepository<UserFoodIngr
     List<UserFoodIngredient> findAllWithFoodIngredientByUserIdAndRelationType(
             @Param("userId") Long userId,
             @Param("relationType") UserFoodIngredientType relationType
+    );
+
+    /**
+     * 사용자의 특정 관계 음식 재료를 주 단위 보유량 합계가 큰 순서로 조회합니다.
+     * - 동일 음식 재료가 여러 행이면 primaryAmountValue를 합산합니다.
+     * - 합계가 0 이하인 음식 재료는 제외하고 동률이면 음식 재료 PK 오름차순으로 정렬합니다.
+     *
+     * @param userId 조회할 사용자 PK
+     * @param relationType 조회할 사용자 음식 재료 관계
+     * @param pageable 조회할 결과 범위
+     * @return 주 단위 보유량 합계가 큰 순서의 음식 재료 목록
+     */
+    @Query("""
+            select userFoodIngredient.foodIngredient
+            from UserFoodIngredient userFoodIngredient
+            where userFoodIngredient.user.id = :userId
+              and userFoodIngredient.relationType = :relationType
+            group by userFoodIngredient.foodIngredient.id
+            having sum(coalesce(userFoodIngredient.primaryAmountValue, 0.0)) > 0.0
+            order by sum(coalesce(userFoodIngredient.primaryAmountValue, 0.0)) desc,
+                     userFoodIngredient.foodIngredient.id asc
+            """)
+    List<FoodIngredient> findFoodIngredientsByTotalPrimaryAmountDesc(
+            @Param("userId") Long userId,
+            @Param("relationType") UserFoodIngredientType relationType,
+            Pageable pageable
     );
 
     // 사용자의 특정 관계의 특정 식재료 삭제

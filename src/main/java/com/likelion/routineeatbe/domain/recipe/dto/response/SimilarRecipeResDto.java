@@ -11,18 +11,22 @@ public record SimilarRecipeResDto(
         @Schema(description = "레시피 이름", example = "김치 볶음밥")
         String name,
         @Schema(description = "추가로 필요한 음식 재료 개수", example = "1")
-        Long additionalFoodIngredientCount
+        Long additionalFoodIngredientCount,
+        @Schema(description = "사용자가 찜한 레시피 여부", example = "true")
+        boolean isFavoriteRecipe
 ) {
 
     public static SimilarRecipeResDto create(
             Long id,
             String name,
-            Long additionalFoodIngredientCount
+            Long additionalFoodIngredientCount,
+            boolean isFavoriteRecipe
     ) {
         return SimilarRecipeResDto.builder()
                 .id(id)
                 .name(name)
                 .additionalFoodIngredientCount(additionalFoodIngredientCount)
+                .isFavoriteRecipe(isFavoriteRecipe)
                 .build();
     }
 }

@@ -14,6 +14,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecord
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CurrentCookingStepResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepMoveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingRecordService;
@@ -128,6 +129,23 @@ public class CookingRecordController implements CookingRecordControllerDocs {
                         "요리 시작에 성공했습니다.",
                         result
                 ));
+    }
+
+    @Override
+    public ResponseEntity<GlobalResponse<CurrentCookingStepResDto>> getCurrentCookingStep(
+            Long cookingRecordId,
+            String userNumber
+    ) {
+        CurrentCookingStepResDto result = cookingRecordService.getCurrentCookingStep(
+                cookingRecordId,
+                userNumber
+        );
+        return ResponseEntity.ok(GlobalResponse.success(
+                HttpStatus.CREATED.value(),
+                "현재 %d번째 단계입니다."
+                        .formatted(result.currentCookingStep().level()),
+                result
+        ));
     }
 
     @Override

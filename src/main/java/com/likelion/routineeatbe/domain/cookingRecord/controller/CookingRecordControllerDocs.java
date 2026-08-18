@@ -14,6 +14,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessio
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingAiMultipartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CurrentCookingStepResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepMoveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
@@ -280,6 +281,52 @@ public interface CookingRecordControllerDocs {
             @Pattern(regexp = "^[0-9]{4}$", message = "사용자 고유 식별번호는 숫자 4자리여야 합니다.")
             @RequestParam("userNumber") String userNumber,
             @Valid @RequestBody CookingStartReqDto request
+    );
+
+    @Operation(
+            summary = "현재 요리 단계 정보 조회",
+            description = """
+                    진행 중인 요리 세션의 현재 단계 상세 정보를 조회합니다.
+                    현재 단계의 제목, 이미지, 본문, 부연 설명과 연결된 요리 팁 및
+                    단계별 사용 음식 재료를 함께 반환합니다.
+
+                    [Path Variable]
+                    - cookingRecordId: 요리 기록 PK
+
+                    [Query Parameter]
+                    - userNumber: 4자리 사용자 고유 식별번호
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "현재 요리 단계 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = CurrentCookingStepResDto.class)
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 값", content = @Content),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자, 요리 기록, 요리 세션 또는 단계를 찾을 수 없음",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "진행 중인 세션이 아니거나 단계 상태가 잘못됨",
+                    content = @Content
+            )
+    })
+    @GetMapping("/{cookingRecordId}/cooking-session/cooking-steps/current")
+    ResponseEntity<GlobalResponse<CurrentCookingStepResDto>> getCurrentCookingStep(
+            @Parameter(description = "요리 기록 PK", required = true)
+            @Positive(message = "요리 기록 PK는 양수여야 합니다.")
+            @PathVariable("cookingRecordId") Long cookingRecordId,
+            @Parameter(description = "사용자 고유 식별번호", required = true)
+            @NotBlank(message = "사용자 고유 식별번호는 필수입니다.")
+            @Size(min = 4, max = 4, message = "사용자 고유 식별번호는 4자리여야 합니다.")
+            @Pattern(regexp = "^[0-9]{4}$", message = "사용자 고유 식별번호는 숫자 4자리여야 합니다.")
+            @RequestParam("userNumber") String userNumber
     );
 
     @Operation(

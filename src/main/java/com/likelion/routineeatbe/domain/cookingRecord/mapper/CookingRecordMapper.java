@@ -7,6 +7,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingComple
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientAmountResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordInProgressResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogItemResDto;
@@ -41,6 +42,18 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class CookingRecordMapper {
+
+    /**
+     * 진행 중인 CookingRecord Entity를 진행 중인 요리 세션 응답 DTO로 변환합니다.
+     *
+     * @param cookingRecord 진행 중인 사용자 소유 요리 기록
+     * @return 진행 중인 요리 기록 PK가 포함된 응답
+     */
+    public CookingRecordInProgressResDto toCookingRecordInProgressResDto(
+            CookingRecord cookingRecord
+    ) {
+        return CookingRecordInProgressResDto.create(cookingRecord.getId());
+    }
 
     /**
      * 완료된 CookingRecord Entity를 요리 완료 응답 DTO로 변환합니다.

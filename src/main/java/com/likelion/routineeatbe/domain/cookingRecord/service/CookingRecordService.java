@@ -9,6 +9,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartRe
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingCompleteResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordInProgressResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
@@ -79,6 +80,59 @@ public class CookingRecordService {
     private final CookingRecordPersistenceService persistenceService;
     private final CookingRecordImageStorageService imageStorageService;
     private final CookingRecordMapper cookingRecordMapper;
+
+    /**
+     * (1) 작업 목적
+     * 사용자의 진행 중인 요리 세션에 연결된 요리 기록을 조회합니다.
+     *
+     * (2) 세부 작업 내용
+     * - 사용자 고유 식별번호로 사용자를 조회합니다.
+     * - 사용자의 가장 최근 진행 중인 요리 기록을 조회합니다.
+     * - 조회한 요리 기록을 응답 DTO로 변환합니다.
+     *
+     * @param userNumber 사용자 고유 식별번호
+     * @return 진행 중인 요리 기록 PK
+     */
+    @Transactional(readOnly = true)
+    public CookingRecordInProgressResDto getInProgressCookingRecord(String userNumber) {
+        log.info(
+                "[CookingRecordService] 진행 중인 요리 세션 조회 시작 | getInProgressCookingRecord() - START | userNumber: {}",
+                userNumber
+        );
+
+        /*
+            1. 사용자 조회
+            - 사용자 고유 식별번호가 존재하지 않으면 USER_NOT_FOUND 예외를 발생시킵니다.
+         */
+        User user = userRepository.findByLoginNumber(userNumber)
+                .orElseThrow(() -> new CustomException(CookingRecordErrorCode.USER_NOT_FOUND));
+
+        /*
+            2. 진행 중인 요리 기록 조회
+            - 사용자의 가장 최근 IN_PROGRESS 상태 요리 기록이 없으면 예외를 발생시킵니다.
+         */
+        CookingRecord cookingRecord = cookingRecordRepository
+                .findFirstByUser_IdAndCookingSession_StatusOrderByCreatedAtDescIdDesc(
+                        user.getId(),
+                        CookingSessionStatus.IN_PROGRESS
+                )
+                .orElseThrow(() -> new CustomException(
+                        CookingRecordErrorCode.COOKING_SESSION_NOT_FOUND
+                ));
+
+        /*
+            3. 진행 중인 요리 기록 응답 변환
+            - 조회한 요리 기록을 Mapper로 응답 DTO로 변환합니다.
+         */
+        CookingRecordInProgressResDto result = cookingRecordMapper
+                .toCookingRecordInProgressResDto(cookingRecord);
+
+        log.info(
+                "[CookingRecordService] 진행 중인 요리 세션 조회 종료 | getInProgressCookingRecord() - END | result: {}",
+                result
+        );
+        return result;
+    }
 
     /**
      * (1) 작업 목적

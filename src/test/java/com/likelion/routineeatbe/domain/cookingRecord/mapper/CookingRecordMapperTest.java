@@ -9,6 +9,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingRecordSearchRes
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingCompleteResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordInProgressResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
@@ -48,6 +49,20 @@ import org.springframework.data.domain.SliceImpl;
 class CookingRecordMapperTest {
 
     private final CookingRecordMapper cookingRecordMapper = new CookingRecordMapper();
+
+    @Test
+    @DisplayName("진행 중인 요리 기록을 응답으로 변환한다")
+    void 진행_중인_요리_기록_응답_변환_성공() {
+        // given
+        CookingRecord cookingRecord = CookingRecord.builder().id(10L).build();
+
+        // when
+        CookingRecordInProgressResDto result = cookingRecordMapper
+                .toCookingRecordInProgressResDto(cookingRecord);
+
+        // then
+        assertThat(result.cookingRecordId()).isEqualTo(10L);
+    }
 
     @Test
     @DisplayName("완료된 요리 기록을 메뉴명과 완료 날짜 응답으로 변환한다")

@@ -9,6 +9,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartRe
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingCompleteResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordInProgressResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
@@ -37,6 +38,18 @@ public class CookingRecordController implements CookingRecordControllerDocs {
 
     private final CookingRecordService cookingRecordService;
     private final CookingAiService cookingAiService;
+
+    @Override
+    public ResponseEntity<GlobalResponse<CookingRecordInProgressResDto>>
+            getInProgressCookingRecord(String userNumber) {
+        CookingRecordInProgressResDto result = cookingRecordService
+                .getInProgressCookingRecord(userNumber);
+        return ResponseEntity.ok(GlobalResponse.success(
+                HttpStatus.CREATED.value(),
+                "해당 사용자가 진행 중인 요리 세션 조회에 성공했습니다.",
+                result
+        ));
+    }
 
     @Override
     public ResponseEntity<GlobalResponse<CookingRecordListResDto>> getCookingRecords(

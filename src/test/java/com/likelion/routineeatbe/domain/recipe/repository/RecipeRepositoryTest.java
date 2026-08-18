@@ -13,6 +13,7 @@ import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import com.likelion.routineeatbe.domain.menu.entity.MenuType;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.enums.RecipeSortType;
@@ -363,10 +364,10 @@ class RecipeRepositoryTest {
 
         // when
         Slice<RecipeSearchResult> firstPage = recipeRepository.searchRecipesByMenuName(
-                user.getId(), "감자", 1L, 2
+                user.getId(), "감자", createKeywordRequest(1L, 2)
         );
         Slice<RecipeSearchResult> secondPage = recipeRepository.searchRecipesByMenuName(
-                user.getId(), "감자", 3L, 2
+                user.getId(), "감자", createKeywordRequest(3L, 2)
         );
 
         // then
@@ -381,6 +382,89 @@ class RecipeRepositoryTest {
     }
 
     @Test
+    @DisplayName("메뉴명 검색 필터와 재료 일치도 정렬 및 찜 여부 조회 성공")
+    void 메뉴명_검색_필터와_재료_일치도_정렬_및_찜_여부_조회_성공() {
+        // given
+        User user = entityManager.persist(User.builder().loginNumber("7788").build());
+        FoodIngredient ownedPotato = persistFoodIngredient("보유 감자", 1000L);
+        FoodIngredient missingCarrot = persistFoodIngredient("미보유 당근", 1000L);
+        Recipe highIntegration = persistRecipe(
+                "감자국",
+                1L,
+                RecommendationType.DEFAULT,
+                15,
+                DifficultyLevel.LEVEL_2,
+                MenuType.KOREAN
+        );
+        Recipe lowIntegration = persistRecipe(
+                "감자전",
+                100L,
+                RecommendationType.DEFAULT,
+                15,
+                DifficultyLevel.LEVEL_2,
+                MenuType.KOREAN
+        );
+        persistRecipe(
+                "감자탕",
+                1000L,
+                RecommendationType.DEFAULT,
+                30,
+                DifficultyLevel.LEVEL_2,
+                MenuType.KOREAN
+        );
+        persistRecipe(
+                "감자죽",
+                1000L,
+                RecommendationType.DEFAULT,
+                15,
+                DifficultyLevel.LEVEL_1,
+                MenuType.KOREAN
+        );
+        persistRecipe(
+                "감자밥",
+                1000L,
+                RecommendationType.DEFAULT,
+                15,
+                DifficultyLevel.LEVEL_2,
+                MenuType.CHINESE
+        );
+        persistRequiredIngredient(highIntegration, ownedPotato, 100.0);
+        persistRequiredIngredient(lowIntegration, missingCarrot, 100.0);
+        entityManager.persist(UserFoodIngredient.builder()
+                .user(user)
+                .foodIngredient(ownedPotato)
+                .relationType(UserFoodIngredientType.OWN)
+                .primaryAmountValue(100.0)
+                .build());
+        favoriteRecipeRepository.save(FavoriteRecipe.create(user, highIntegration));
+        entityManager.flush();
+        entityManager.clear();
+        RecipeKeywordSearchReqDto request = new RecipeKeywordSearchReqDto(
+                "7788",
+                "감자",
+                1L,
+                10,
+                RecipeTimeRequiredFilter.WITHIN_15_MINUTES,
+                DifficultyLevel.LEVEL_2,
+                MenuType.KOREAN,
+                RecipeSortType.FOOD_INTEGRATION
+        );
+
+        // when
+        Slice<RecipeSearchResult> result = recipeRepository.searchRecipesByMenuName(
+                user.getId(), "감자", request
+        );
+
+        // then
+        assertThat(result.getContent()).extracting(RecipeSearchResult::recipeId)
+                .containsExactly(highIntegration.getId(), lowIntegration.getId());
+        assertThat(result.getContent().getFirst().matchedIngredientCount()).isEqualTo(1L);
+        assertThat(result.getContent().getFirst().isFavoriteRecipe()).isTrue();
+        assertThat(result.getContent().get(1).matchedIngredientCount()).isZero();
+        assertThat(result.getContent().get(1).isFavoriteRecipe()).isFalse();
+    }
+
+    @Test
     @DisplayName("LIKE 특수문자를 일반 문자로 처리한 메뉴명 검색 성공")
     void LIKE_특수문자를_일반_문자로_처리한_메뉴명_검색_성공() {
         // given
@@ -392,7 +476,7 @@ class RecipeRepositoryTest {
 
         // when
         Slice<RecipeSearchResult> result = recipeRepository.searchRecipesByMenuName(
-                user.getId(), "%", 1L, 10
+                user.getId(), "%", createKeywordRequest(1L, 10)
         );
 
         // then
@@ -454,6 +538,19 @@ class RecipeRepositoryTest {
         return createRequest(cursor, size, sortType, null);
     }
 
+    private RecipeKeywordSearchReqDto createKeywordRequest(Long cursor, int size) {
+        return new RecipeKeywordSearchReqDto(
+                "1234",
+                "감자",
+                cursor,
+                size,
+                null,
+                null,
+                null,
+                RecipeSortType.DEFAULT
+        );
+    }
+
     private RecipeSearchRequestDto createRequest(
             Long cursor,
             int size,
@@ -479,14 +576,32 @@ class RecipeRepositoryTest {
             RecommendationType recommendationType,
             Integer timeRequired
     ) {
+        return persistRecipe(
+                name,
+                cookingCount,
+                recommendationType,
+                timeRequired,
+                DifficultyLevel.LEVEL_1,
+                MenuType.KOREAN
+        );
+    }
+
+    private Recipe persistRecipe(
+            String name,
+            Long cookingCount,
+            RecommendationType recommendationType,
+            Integer timeRequired,
+            DifficultyLevel difficultyLevel,
+            MenuType menuType
+    ) {
         Menu menu = entityManager.persist(Menu.builder()
                 .name(name)
-                .type(MenuType.KOREAN)
+                .type(menuType)
                 .recommendationType(recommendationType)
                 .calory(100.0)
                 .ingredient_info_original("재료 정보")
                 .timeRequired(timeRequired)
-                .difficultyLevel(DifficultyLevel.LEVEL_1)
+                .difficultyLevel(difficultyLevel)
                 .build());
         return entityManager.persist(Recipe.builder()
                 .type(RecipeType.BASIC)

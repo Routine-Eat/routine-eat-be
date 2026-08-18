@@ -76,6 +76,7 @@ class RecipeSearchResponseDtoTest {
                 .recipeId(659L)
                 .menuName("감자미역국")
                 .foodIngredientUsingPercent(100L)
+                .isFavoriteRecipe(true)
                 .build();
 
         // when
@@ -83,6 +84,7 @@ class RecipeSearchResponseDtoTest {
 
         // then
         assertThat(json.path("foodIngredientUsingPercent").asLong()).isEqualTo(100L);
+        assertThat(json.path("isFavoriteRecipe").asBoolean()).isTrue();
     }
 
     @Test

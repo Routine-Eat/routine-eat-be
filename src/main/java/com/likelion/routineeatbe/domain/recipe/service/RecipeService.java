@@ -23,6 +23,8 @@ import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
+import com.likelion.routineeatbe.domain.userSearchHistory.entity.UserSearchHistory;
+import com.likelion.routineeatbe.domain.userSearchHistory.repository.UserSearchHistoryRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import com.likelion.routineeatbe.global.response.CursorSliceResponse;
 import java.util.ArrayList;
@@ -52,6 +54,7 @@ public class RecipeService {
     private final UserFoodIngredientRepository userFoodIngredientRepository;
     private final RecipeRepository recipeRepository;
     private final RecipeFoodIngredientRepository recipeFoodIngredientRepository;
+    private final UserSearchHistoryRepository userSearchHistoryRepository;
     private final RecipeMapper recipeMapper;
 
     /**
@@ -331,12 +334,13 @@ public class RecipeService {
     /**
      * 사용자와 메뉴/레시피명 검색어를 기준으로 레시피 목록을 조회합니다.
      * - 사용자 고유 식별번호의 존재 여부를 확인합니다.
-     * - 메뉴명 일치도 순으로 조회한 결과를 커서 기반 응답으로 변환합니다.
+     * - 최초 페이지 검색어를 사용자 검색 기록으로 저장합니다.
+     * - 메뉴명 일치도와 필터 및 정렬 조건으로 조회한 결과를 커서 기반 응답으로 변환합니다.
      *
      * @param request 사용자 식별번호, 검색어 및 커서 조회 조건
      * @return 검색어와 일치하는 레시피 커서 목록
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public CursorSliceResponse<RecipeKeywordSearchResDto> searchRecipesByMenuName(
             RecipeKeywordSearchReqDto request
     ) {
@@ -355,18 +359,26 @@ public class RecipeService {
                 .orElseThrow(() -> new CustomException(RecipeErrorCode.USER_NOT_FOUND));
 
         /*
-            2. 검색어 기반 레시피 조회
-            - 검색어 앞뒤 공백을 제거하고 메뉴명 일치도 순으로 기본 레시피를 조회합니다.
+            2. 검색어 정규화 및 검색 기록 저장
+            - 검색어 앞뒤 공백을 제거하고 최초 페이지 요청인 경우 사용자 검색 기록을 저장합니다.
+         */
+        String searchWord = request.searchWord().strip();
+        if (request.cursor().equals(1L)) {
+            userSearchHistoryRepository.save(UserSearchHistory.create(user, searchWord));
+        }
+
+        /*
+            3. 검색어 기반 레시피 조회
+            - 메뉴명 일치도와 선택 필터 및 정렬 조건으로 기본 레시피를 조회합니다.
          */
         Slice<RecipeSearchResult> recipeSlice = recipeRepository.searchRecipesByMenuName(
                         user.getId(),
-                        request.searchWord().strip(),
-                        request.cursor(),
-                        request.size()
+                        searchWord,
+                        request
                 );
 
         /*
-            3. 커서 기반 응답 변환
+            4. 커서 기반 응답 변환
             - 다음 데이터가 존재하면 다음 조회 위치를 계산하고 Mapper로 응답 DTO를 생성합니다.
          */
         Long nextCursor = recipeSlice.hasNext()

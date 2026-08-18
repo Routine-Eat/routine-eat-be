@@ -10,8 +10,12 @@ import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientUsageListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
+import com.likelion.routineeatbe.domain.recipe.enums.RecipeSortType;
 import com.likelion.routineeatbe.domain.recipe.enums.RecipeTimeRequiredFilter;
 import com.likelion.routineeatbe.domain.recipe.service.RecipeService;
+import com.likelion.routineeatbe.domain.userSearchHistory.dto.request.UserSearchHistoryReqDto;
+import com.likelion.routineeatbe.domain.userSearchHistory.dto.response.UserSearchHistoryResDto;
+import com.likelion.routineeatbe.domain.userSearchHistory.service.UserSearchHistoryService;
 import com.likelion.routineeatbe.global.response.CursorSliceResponse;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import java.util.List;
@@ -32,6 +36,9 @@ class RecipeControllerTest {
 
     @Mock
     private RecipeService recipeService;
+
+    @Mock
+    private UserSearchHistoryService userSearchHistoryService;
 
     @Test
     @DisplayName("레시피 상세 조회 API 201 응답 성공")
@@ -122,12 +129,13 @@ class RecipeControllerTest {
     void 검색어_기반_레시피_검색_API_200_응답_성공() {
         // given
         RecipeKeywordSearchReqDto request = new RecipeKeywordSearchReqDto(
-                "1234", "감자", 1L, 10
+                "1234", "감자", 1L, 10, null, null, null, RecipeSortType.DEFAULT
         );
         RecipeKeywordSearchResDto recipe = RecipeKeywordSearchResDto.builder()
                 .recipeId(659L)
                 .menuName("감자미역국")
                 .foodIngredientUsingPercent(100L)
+                .isFavoriteRecipe(true)
                 .build();
         CursorSliceResponse<RecipeKeywordSearchResDto> serviceResult =
                 CursorSliceResponse.<RecipeKeywordSearchResDto>builder()
@@ -152,6 +160,31 @@ class RecipeControllerTest {
         assertThat(response.getBody().getData().content()).containsExactly(recipe);
         assertThat(response.getBody().getData().content().getFirst().foodIngredientUsingPercent())
                 .isEqualTo(100L);
+        assertThat(response.getBody().getData().content().getFirst().isFavoriteRecipe()).isTrue();
         assertThat(response.getBody().getData().nextCursor()).isEqualTo(11L);
+    }
+
+    @Test
+    @DisplayName("최근 검색 기록 조회 API 201 응답 성공")
+    void 최근_검색_기록_조회_API_201_응답_성공() {
+        // given
+        UserSearchHistoryReqDto request = new UserSearchHistoryReqDto("1234");
+        UserSearchHistoryResDto serviceResult = UserSearchHistoryResDto.create(
+                List.of("브로콜리", "목이버섯", "오이")
+        );
+        given(userSearchHistoryService.getSearchHistories(request)).willReturn(serviceResult);
+
+        // when
+        ResponseEntity<GlobalResponse<UserSearchHistoryResDto>> response =
+                recipeController.getSearchHistories(request);
+
+        // then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().isSuccess()).isTrue();
+        assertThat(response.getBody().getCode()).isEqualTo(201);
+        assertThat(response.getBody().getMessage()).isEqualTo("성공했습니다.");
+        assertThat(response.getBody().getData().searchHistoryList())
+                .containsExactly("브로콜리", "목이버섯", "오이");
     }
 }

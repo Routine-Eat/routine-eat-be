@@ -163,7 +163,8 @@ public class RecipeMapper {
                 calculateFoodIngredientUsingPercent(
                         result.matchedIngredientCount(),
                         result.requiredIngredientCount()
-                )
+                ),
+                Boolean.TRUE.equals(result.isFavoriteRecipe())
         );
     }
 }

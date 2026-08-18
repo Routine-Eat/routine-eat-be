@@ -3,6 +3,7 @@ package com.likelion.routineeatbe.domain.recipe.repository;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeReRecommendRequest;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
@@ -53,18 +54,16 @@ public interface RecipeRepositoryCustom {
     );
 
     /**
-     * 메뉴명에 검색어가 포함된 기본 레시피를 일치도 및 인기순으로 조회합니다.
+     * 메뉴명에 검색어가 포함된 기본 레시피를 필터, 일치도 및 정렬 조건으로 조회합니다.
      * @param userId 음식 재료 활용률을 계산할 사용자 ID
      * @param searchWord 메뉴/레시피명 검색어
-     * @param cursor 1부터 시작하는 조회 위치
-     * @param size 한 번에 조회할 레시피 개수
+     * @param request 필터, 정렬, 위치 커서 및 조회 크기
      * @return 사용자 재료 집계가 포함된 검색 레시피 Slice
      */
     Slice<RecipeSearchResult> searchRecipesByMenuName(
             Long userId,
             String searchWord,
-            Long cursor,
-            Integer size
+            RecipeKeywordSearchReqDto request
     );
 
     /**

@@ -3,6 +3,7 @@ package com.likelion.routineeatbe.domain.recipe.repository;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeReRecommendRequest;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
@@ -171,78 +172,46 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
     }
 
     /**
-     * 메뉴명에 검색어가 포함된 기본 레시피를 일치도 및 인기순으로 조회합니다.
+     * 메뉴명에 검색어가 포함된 기본 레시피를 필터, 일치도 및 정렬 조건으로 조회합니다.
      * - 완전 일치, 접두어 일치, 부분 일치 순으로 정렬합니다.
-     * - 같은 일치도에서는 짧은 메뉴명, 요리 횟수, 레시피 PK 순으로 정렬합니다.
+     * - 같은 일치도에서는 짧은 메뉴명과 요청 정렬 조건을 적용합니다.
      * - size + 1건을 조회하여 다음 데이터 존재 여부를 판별합니다.
      *
      * @param userId 음식 재료 활용률을 계산할 사용자 ID
      * @param searchWord 메뉴/레시피명 검색어
-     * @param cursor 1부터 시작하는 조회 위치
-     * @param size 한 번에 조회할 레시피 개수
+     * @param request 필터, 정렬, 위치 커서 및 조회 크기
      * @return 사용자 재료 집계가 포함된 검색 레시피 Slice
      */
     @Override
     public Slice<RecipeSearchResult> searchRecipesByMenuName(
             Long userId,
             String searchWord,
-            Long cursor,
-            Integer size
+            RecipeKeywordSearchReqDto request
     ) {
         String normalizedSearchWord = searchWord.toLowerCase(Locale.ROOT);
         String escapedSearchWord = escapeLikePattern(normalizedSearchWord);
+        String jpql = createKeywordSearchJpql(request);
+        TypedQuery<RecipeSearchResult> query = entityManager.createQuery(
+                jpql,
+                RecipeSearchResult.class
+        );
+        bindKeywordSearchParameters(
+                query,
+                userId,
+                normalizedSearchWord,
+                escapedSearchWord,
+                request
+        );
+        query.setFirstResult(Math.toIntExact(request.cursor() - 1L));
+        query.setMaxResults(request.size() + 1);
 
-        List<RecipeSearchResult> content = new ArrayList<>(entityManager.createQuery("""
-                        select new com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult(
-                            recipe.id,
-                            menu.id,
-                            menu.name,
-                            menu.thumbnailUrl,
-                            menu.calory,
-                            menu.timeRequired,
-                            menu.difficultyLevel,
-                            menu.type,
-                            recipe.cookingCount,
-                            count(distinct userFoodIngredient.foodIngredient.id),
-                            count(distinct recipeFoodIngredient.id),
-                            cast(0 as long)
-                        )
-                        from Recipe recipe
-                        join recipe.menu menu
-                        left join RecipeFoodIngredient recipeFoodIngredient
-                            on recipeFoodIngredient.recipe = recipe
-                        left join UserFoodIngredient userFoodIngredient
-                            on userFoodIngredient.foodIngredient = recipeFoodIngredient.foodIngredient
-                            and userFoodIngredient.user.id = :userId
-                            and userFoodIngredient.relationType = :ownType
-                        where recipe.type = com.likelion.routineeatbe.domain.recipe.enums.RecipeType.BASIC
-                          and lower(menu.name) like :containsPattern escape '!'
-                        group by recipe, menu
-                        order by
-                            case
-                                when lower(menu.name) = :normalizedSearchWord then 0
-                                when lower(menu.name) like :prefixPattern escape '!' then 1
-                                else 2
-                            end asc,
-                            length(menu.name) asc,
-                            recipe.cookingCount desc,
-                            recipe.id desc
-                        """, RecipeSearchResult.class)
-                .setParameter("userId", userId)
-                .setParameter("ownType", UserFoodIngredientType.OWN)
-                .setParameter("normalizedSearchWord", normalizedSearchWord)
-                .setParameter("prefixPattern", escapedSearchWord + "%")
-                .setParameter("containsPattern", "%" + escapedSearchWord + "%")
-                .setFirstResult(Math.toIntExact(cursor - 1L))
-                .setMaxResults(size + 1)
-                .getResultList());
-
-        boolean hasNext = content.size() > size;
+        List<RecipeSearchResult> content = new ArrayList<>(query.getResultList());
+        boolean hasNext = content.size() > request.size();
         if (hasNext) {
             content.remove(content.size() - 1);
         }
 
-        return new SliceImpl<>(content, PageRequest.of(0, size), hasNext);
+        return new SliceImpl<>(content, PageRequest.of(0, request.size()), hasNext);
     }
 
     /**
@@ -318,6 +287,128 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
                 .replace("!", "!!")
                 .replace("%", "!%")
                 .replace("_", "!_");
+    }
+
+    /**
+     * 검색어 기반 레시피의 기본 정보, 재료 활용률 및 찜 여부를 조회하는 JPQL을 생성합니다.
+     * @param request 선택 필터 및 정렬 조건
+     * @return 실행할 검색 JPQL 문자열
+     */
+    private String createKeywordSearchJpql(RecipeKeywordSearchReqDto request) {
+        StringBuilder jpql = new StringBuilder("""
+                select new com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult(
+                    recipe.id,
+                    menu.id,
+                    menu.name,
+                    menu.thumbnailUrl,
+                    menu.calory,
+                    menu.timeRequired,
+                    menu.difficultyLevel,
+                    menu.type,
+                    recipe.cookingCount,
+                    count(distinct userFoodIngredient.foodIngredient.id),
+                    count(distinct recipeFoodIngredient.id),
+                    0L,
+                    case when count(distinct favoriteRecipe.id) > 0 then true else false end
+                )
+                from Recipe recipe
+                join recipe.menu menu
+                left join RecipeFoodIngredient recipeFoodIngredient
+                    on recipeFoodIngredient.recipe = recipe
+                left join UserFoodIngredient userFoodIngredient
+                    on userFoodIngredient.foodIngredient = recipeFoodIngredient.foodIngredient
+                    and userFoodIngredient.user.id = :userId
+                    and userFoodIngredient.relationType = :ownType
+                left join FavoriteRecipe favoriteRecipe
+                    on favoriteRecipe.recipe = recipe
+                    and favoriteRecipe.user.id = :userId
+                where recipe.type = com.likelion.routineeatbe.domain.recipe.enums.RecipeType.BASIC
+                  and lower(menu.name) like :containsPattern escape '!'
+                """);
+        appendKeywordSearchFilters(jpql, request);
+        jpql.append(" group by recipe, menu ");
+        appendKeywordSearchOrderBy(jpql, request.sortType());
+        return jpql.toString();
+    }
+
+    /**
+     * 검색어 기반 레시피 조회에 선택 시간, 난이도 및 카테고리 필터를 추가합니다.
+     * @param jpql 조건을 추가할 JPQL 빌더
+     * @param request 검색 필터 조건
+     */
+    private void appendKeywordSearchFilters(
+            StringBuilder jpql,
+            RecipeKeywordSearchReqDto request
+    ) {
+        if (request.timeRequired() != null) {
+            switch (request.timeRequired()) {
+                case WITHIN_15_MINUTES -> jpql.append(" and menu.timeRequired <= 15 ");
+                case WITHIN_30_MINUTES ->
+                        jpql.append(" and menu.timeRequired > 15 and menu.timeRequired <= 30 ");
+                case OVER_30_MINUTES -> jpql.append(" and menu.timeRequired > 30 ");
+            }
+        }
+        if (request.difficultyLevel() != null) {
+            jpql.append(" and menu.difficultyLevel = :difficultyLevel ");
+        }
+        if (request.category() != null) {
+            jpql.append(" and menu.type = :category ");
+        }
+    }
+
+    /**
+     * 검색 일치도와 요청 정렬 타입에 대응하는 ORDER BY 절을 추가합니다.
+     * @param jpql 정렬절을 추가할 JPQL 빌더
+     * @param sortType 적용할 정렬 타입
+     */
+    private void appendKeywordSearchOrderBy(StringBuilder jpql, RecipeSortType sortType) {
+        jpql.append("""
+                order by
+                    case
+                        when lower(menu.name) = :normalizedSearchWord then 0
+                        when lower(menu.name) like :prefixPattern escape '!' then 1
+                        else 2
+                    end asc,
+                    length(menu.name) asc,
+                """);
+        if (sortType == RecipeSortType.FOOD_INTEGRATION) {
+            jpql.append("""
+                    case when count(distinct recipeFoodIngredient.id) = 0 then 0.0
+                         else count(distinct userFoodIngredient.foodIngredient.id) * 1.0
+                              / count(distinct recipeFoodIngredient.id)
+                    end desc,
+                    count(distinct userFoodIngredient.foodIngredient.id) desc,
+                    """);
+        }
+        jpql.append(" recipe.cookingCount desc, recipe.id desc ");
+    }
+
+    /**
+     * 검색어 기반 레시피 조회 JPQL에 사용자, 검색어 및 선택 필터 값을 바인딩합니다.
+     * @param query 파라미터를 바인딩할 TypedQuery
+     * @param userId 사용자 ID
+     * @param normalizedSearchWord 소문자로 정규화한 검색어
+     * @param escapedSearchWord LIKE 특수문자를 이스케이프한 검색어
+     * @param request 검색 필터 조건
+     */
+    private void bindKeywordSearchParameters(
+            TypedQuery<RecipeSearchResult> query,
+            Long userId,
+            String normalizedSearchWord,
+            String escapedSearchWord,
+            RecipeKeywordSearchReqDto request
+    ) {
+        query.setParameter("userId", userId);
+        query.setParameter("ownType", UserFoodIngredientType.OWN);
+        query.setParameter("normalizedSearchWord", normalizedSearchWord);
+        query.setParameter("prefixPattern", escapedSearchWord + "%");
+        query.setParameter("containsPattern", "%" + escapedSearchWord + "%");
+        if (request.difficultyLevel() != null) {
+            query.setParameter("difficultyLevel", request.difficultyLevel());
+        }
+        if (request.category() != null) {
+            query.setParameter("category", request.category());
+        }
     }
 
     /**

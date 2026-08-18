@@ -38,6 +38,8 @@ import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
+import com.likelion.routineeatbe.domain.userSearchHistory.entity.UserSearchHistory;
+import com.likelion.routineeatbe.domain.userSearchHistory.repository.UserSearchHistoryRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import com.likelion.routineeatbe.global.response.CursorSliceResponse;
 import java.util.List;
@@ -45,6 +47,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -69,6 +72,9 @@ class RecipeServiceTest {
 
     @Mock
     private RecipeFoodIngredientRepository recipeFoodIngredientRepository;
+
+    @Mock
+    private UserSearchHistoryRepository userSearchHistoryRepository;
 
     @Mock
     private RecipeMapper recipeMapper;
@@ -323,24 +329,25 @@ class RecipeServiceTest {
     void 검색어_기반_레시피_검색_성공() {
         // given
         RecipeKeywordSearchReqDto request = new RecipeKeywordSearchReqDto(
-                "1234", " 감자 ", 1L, 10
+                "1234", " 감자 ", 1L, 10, null, null, null, RecipeSortType.DEFAULT
         );
         User user = User.builder().id(1L).loginNumber("1234").build();
         RecipeSearchResult searchResult = new RecipeSearchResult(
                 10L, 20L, "감자미역국", "thumbnail", 35.4, 20,
-                DifficultyLevel.LEVEL_2, MenuType.KOREAN, 0L, 2L, 2L, 0L
+                DifficultyLevel.LEVEL_2, MenuType.KOREAN, 0L, 2L, 2L, 0L, true
         );
         RecipeKeywordSearchResDto responseDto = RecipeKeywordSearchResDto.builder()
                 .recipeId(10L)
                 .menuName("감자미역국")
                 .foodIngredientUsingPercent(100L)
+                .isFavoriteRecipe(true)
                 .build();
         Slice<RecipeSearchResult> slice = new SliceImpl<>(
                 List.of(searchResult), PageRequest.of(0, 10), true
         );
 
         given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
-        given(recipeRepository.searchRecipesByMenuName(1L, "감자", 1L, 10)).willReturn(slice);
+        given(recipeRepository.searchRecipesByMenuName(1L, "감자", request)).willReturn(slice);
         given(recipeMapper.toRecipeKeywordSearchResDto(searchResult)).willReturn(responseDto);
 
         // when
@@ -350,9 +357,15 @@ class RecipeServiceTest {
         // then
         assertThat(result.content()).containsExactly(responseDto);
         assertThat(result.content().getFirst().foodIngredientUsingPercent()).isEqualTo(100L);
+        assertThat(result.content().getFirst().isFavoriteRecipe()).isTrue();
         assertThat(result.hasNext()).isTrue();
         assertThat(result.nextCursor()).isEqualTo(11L);
-        verify(recipeRepository).searchRecipesByMenuName(1L, "감자", 1L, 10);
+        ArgumentCaptor<UserSearchHistory> historyCaptor =
+                ArgumentCaptor.forClass(UserSearchHistory.class);
+        verify(userSearchHistoryRepository).save(historyCaptor.capture());
+        assertThat(historyCaptor.getValue().getContent()).isEqualTo("감자");
+        assertThat(historyCaptor.getValue().getUser()).isEqualTo(user);
+        verify(recipeRepository).searchRecipesByMenuName(1L, "감자", request);
         verify(recipeMapper).toRecipeKeywordSearchResDto(searchResult);
     }
 
@@ -361,7 +374,7 @@ class RecipeServiceTest {
     void 검색어_기반_레시피_검색_마지막_페이지_성공() {
         // given
         RecipeKeywordSearchReqDto request = new RecipeKeywordSearchReqDto(
-                "1234", "감자", 11L, 10
+                "1234", "감자", 11L, 10, null, null, null, RecipeSortType.DEFAULT
         );
         User user = User.builder().id(1L).loginNumber("1234").build();
         Slice<RecipeSearchResult> slice = new SliceImpl<>(
@@ -371,7 +384,7 @@ class RecipeServiceTest {
         );
 
         given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
-        given(recipeRepository.searchRecipesByMenuName(1L, "감자", 11L, 10)).willReturn(slice);
+        given(recipeRepository.searchRecipesByMenuName(1L, "감자", request)).willReturn(slice);
 
         // when
         CursorSliceResponse<RecipeKeywordSearchResDto> result =
@@ -381,6 +394,7 @@ class RecipeServiceTest {
         assertThat(result.content()).isEmpty();
         assertThat(result.hasNext()).isFalse();
         assertThat(result.nextCursor()).isNull();
+        verify(userSearchHistoryRepository, never()).save(any(UserSearchHistory.class));
     }
 
     @Test
@@ -388,7 +402,7 @@ class RecipeServiceTest {
     void 검색어_기반_레시피_검색_실패_존재하지_않는_사용자() {
         // given
         RecipeKeywordSearchReqDto request = new RecipeKeywordSearchReqDto(
-                "9999", "감자", 1L, 10
+                "9999", "감자", 1L, 10, null, null, null, RecipeSortType.DEFAULT
         );
         given(userRepository.findByLoginNumber("9999")).willReturn(Optional.empty());
 
@@ -396,6 +410,7 @@ class RecipeServiceTest {
         assertThatThrownBy(() -> recipeService.searchRecipesByMenuName(request))
                 .isInstanceOf(CustomException.class);
         verify(userRepository).findByLoginNumber("9999");
+        verify(userSearchHistoryRepository, never()).save(any(UserSearchHistory.class));
     }
 
     private RecipeSearchRequestDto createRequest(String userNumber) {

@@ -31,13 +31,9 @@ class FavoriteRecipeMapperTest {
         assertThat(result.recipeId()).isEqualTo(659L);
         assertThat(result.menuName()).isEqualTo("감자미역국");
         assertThat(result.thumbnailUrl()).isEqualTo("thumbnail");
-        assertThat(result.calory()).isEqualTo(35.4);
         assertThat(result.timeRequired()).isEqualTo(20);
         assertThat(result.difficultyLevel()).isEqualTo(DifficultyLevel.LEVEL_2);
-        assertThat(result.category()).isEqualTo(MenuType.KOREAN);
-        assertThat(result.matchedIngredientCount()).isEqualTo(1L);
-        assertThat(result.requiredIngredientCount()).isEqualTo(4L);
-        assertThat(result.requiredIngredientCost()).isEqualTo(10_000L);
+        assertThat(result.foodIngredientUsingPercent()).isEqualTo(25L);
     }
 
     @Test

@@ -21,14 +21,32 @@ public class FavoriteRecipeMapper {
                 result.recipeId(),
                 result.menuName(),
                 result.thumbnailUrl(),
-                result.calory(),
                 result.timeRequired(),
                 result.difficultyLevel(),
-                result.category(),
-                result.matchedIngredientCount(),
-                result.requiredIngredientCount(),
-                result.requiredIngredientCost()
+                calculateFoodIngredientUsingPercent(
+                        result.matchedIngredientCount(),
+                        result.requiredIngredientCount()
+                )
         );
+    }
+
+    /**
+     * 사용자가 보유한 필요 재료 수를 전체 필요 재료 수로 나누어 정수 백분율을 계산합니다.
+     *
+     * @param matchedIngredientCount 사용자가 보유한 필요 재료 개수
+     * @param requiredIngredientCount 전체 필요 재료 개수
+     * @return 0부터 100 사이의 음식 재료 활용률
+     */
+    private Long calculateFoodIngredientUsingPercent(
+            Long matchedIngredientCount,
+            Long requiredIngredientCount
+    ) {
+        if (requiredIngredientCount == null || requiredIngredientCount == 0L) {
+            return 0L;
+        }
+        long matchedCount = matchedIngredientCount == null ? 0L : matchedIngredientCount;
+        long percent = (long) Math.floor(matchedCount * 100.0 / requiredIngredientCount);
+        return Math.max(0L, Math.min(percent, 100L));
     }
 
     /**

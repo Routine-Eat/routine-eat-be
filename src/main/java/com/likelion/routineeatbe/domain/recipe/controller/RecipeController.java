@@ -1,10 +1,12 @@
 package com.likelion.routineeatbe.domain.recipe.controller;
 
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeDetailReqDto;
+import com.likelion.routineeatbe.domain.recipe.dto.request.CanCookReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeReRecommendRequest;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.AiRecipeRecommendResponse;
+import com.likelion.routineeatbe.domain.recipe.dto.response.CanCookResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
@@ -69,6 +71,21 @@ public class RecipeController implements RecipeControllerDocs {
                 "주어진 검색어로 레시피 검색에 성공했습니다.",
                 result
         ));
+    }
+
+    @Override
+    public ResponseEntity<GlobalResponse<CanCookResDto>> canCook(
+            Long recipeId,
+            CanCookReqDto request
+    ) {
+        CanCookResDto result = recipeService.canCook(recipeId, request);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(GlobalResponse.success(
+                        HttpStatus.CREATED.value(),
+                        "현재 사용자가 요리가 가능한지 여부 조회에 성공했습니다.",
+                        result
+                ));
     }
 
     @Override

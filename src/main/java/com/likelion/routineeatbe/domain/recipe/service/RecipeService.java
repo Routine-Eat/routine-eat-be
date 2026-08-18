@@ -2,13 +2,17 @@ package com.likelion.routineeatbe.domain.recipe.service;
 
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.favoriteRecipe.repository.FavoriteRecipeRepository;
+import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRepository;
+import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
 import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
 import com.likelion.routineeatbe.domain.recipe.dto.RecipeWithSimilarRecipes;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeDetailReqDto;
+import com.likelion.routineeatbe.domain.recipe.dto.request.CanCookReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.CanCookResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientUsageListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
@@ -29,6 +33,7 @@ import com.likelion.routineeatbe.domain.userSearchHistory.repository.UserSearchH
 import com.likelion.routineeatbe.global.exception.CustomException;
 import com.likelion.routineeatbe.global.response.CursorSliceResponse;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +53,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class RecipeService {
 
     private static final double AMOUNT_EPSILON = 1.0e-9;
+    private static final Set<CookingSessionStatus> BLOCKING_STATUSES =
+            EnumSet.of(CookingSessionStatus.IN_PROGRESS, CookingSessionStatus.COMPLETED);
 
     private final FindSimilarRecipeService findSimilarRecipeService;
 
@@ -56,8 +63,110 @@ public class RecipeService {
     private final UserFoodIngredientRepository userFoodIngredientRepository;
     private final RecipeRepository recipeRepository;
     private final RecipeFoodIngredientRepository recipeFoodIngredientRepository;
+    private final CookingRecordRepository cookingRecordRepository;
     private final UserSearchHistoryRepository userSearchHistoryRepository;
     private final RecipeMapper recipeMapper;
+
+    /**
+     * 사용자 보유 재료와 요청 인분 수를 기준으로 해당 레시피의 요리 가능 여부를 조회합니다.
+     * - 진행 중이거나 완료된 동일 레시피의 요리 세션이 있으면 false를 반환합니다.
+     * - OWN 재료의 주 단위 보유량을 합산하고 인분이 반영된 모든 필요량과 비교합니다.
+     *
+     * @param recipeId 조회할 레시피 PK
+     * @param request 사용자 고유 식별번호와 인분 수
+     * @return 해당 레시피의 요리 가능 여부
+     */
+    @Transactional(readOnly = true)
+    public CanCookResDto canCook(Long recipeId, CanCookReqDto request) {
+        log.info(
+                "[RecipeService] 요리 가능 여부 조회 | canCook() - START | recipeId: {}, userNumber: {}, servings: {}",
+                recipeId,
+                request.userNumber(),
+                request.servings()
+        );
+
+        /*
+            1. 사용자와 레시피 조회
+            - 사용자 또는 레시피가 존재하지 않으면 도메인 예외를 발생시킵니다.
+         */
+        User user = userRepository.findByLoginNumber(request.userNumber())
+                .orElseThrow(() -> new CustomException(RecipeErrorCode.USER_NOT_FOUND));
+        Recipe recipe = recipeRepository.findById(recipeId)
+                .orElseThrow(() -> new CustomException(RecipeErrorCode.RECIPE_NOT_FOUND));
+
+        /*
+            2. 차단 대상 요리 세션 확인
+            - 동일 사용자와 레시피에 진행 중이거나 완료된 세션이 있으면 즉시 false를 반환합니다.
+         */
+        if (cookingRecordRepository.existsBlockingSession(
+                user.getId(),
+                recipe.getId(),
+                BLOCKING_STATUSES
+        )) {
+            CanCookResDto result = CanCookResDto.create(false);
+            log.info(
+                    "[RecipeService] 요리 가능 여부 조회 | canCook() - END | recipeId: {}, canCook: {}",
+                    recipeId,
+                    result.canCook()
+            );
+            return result;
+        }
+
+        /*
+            3. 레시피 필요 재료 조회
+            - 필요 재료가 등록되지 않은 레시피는 요리할 수 없는 것으로 처리합니다.
+         */
+        List<RecipeFoodIngredient> requiredIngredients = recipeFoodIngredientRepository
+                .findAllByRecipeIdInWithFoodIngredient(List.of(recipe.getId()));
+        if (requiredIngredients.isEmpty()) {
+            CanCookResDto result = CanCookResDto.create(false);
+            log.info(
+                    "[RecipeService] 요리 가능 여부 조회 | canCook() - END | recipeId: {}, canCook: {}",
+                    recipeId,
+                    result.canCook()
+            );
+            return result;
+        }
+
+        /*
+            4. 사용자 보유 재료 수량 집계
+            - OWN 관계의 주 단위 보유량을 음식 재료 PK별로 합산하며 null 수량은 0으로 처리합니다.
+         */
+        Map<Long, Double> ownedAmountByFoodIngredient = userFoodIngredientRepository
+                .findAllWithFoodIngredientByUserIdAndRelationType(
+                        user.getId(),
+                        UserFoodIngredientType.OWN
+                ).stream()
+                .collect(Collectors.toMap(
+                        userFoodIngredient -> userFoodIngredient.getFoodIngredient().getId(),
+                        userFoodIngredient -> userFoodIngredient.getPrimaryAmountValue() == null
+                                ? 0.0
+                                : userFoodIngredient.getPrimaryAmountValue(),
+                        Double::sum
+                ));
+
+        /*
+            5. 인분별 필요량과 사용자 보유량 비교
+            - 모든 필수 재료의 주 단위 보유량이 인분별 필요량 이상일 때만 요리할 수 있습니다.
+         */
+        boolean canCook = requiredIngredients.stream().allMatch(requiredIngredient -> {
+            double requiredAmount = requiredIngredient.getPrimaryNeedAmountValue()
+                    * request.servings();
+            double ownedAmount = ownedAmountByFoodIngredient.getOrDefault(
+                    requiredIngredient.getFoodIngredient().getId(),
+                    0.0
+            );
+            return requiredAmount - ownedAmount <= AMOUNT_EPSILON;
+        });
+        CanCookResDto result = CanCookResDto.create(canCook);
+
+        log.info(
+                "[RecipeService] 요리 가능 여부 조회 | canCook() - END | recipeId: {}, canCook: {}",
+                recipeId,
+                result.canCook()
+        );
+        return result;
+    }
 
     /**
      * 사용자와 인분 수를 기준으로 레시피 상세 정보를 조회합니다.

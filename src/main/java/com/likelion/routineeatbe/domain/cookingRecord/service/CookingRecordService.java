@@ -6,12 +6,14 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordS
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingSessionLogSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingResultSaveReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingCompleteResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepMoveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingStepFoodIngredient;
@@ -42,6 +44,7 @@ import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
+import java.time.LocalDate;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -497,15 +500,15 @@ public class CookingRecordService {
      *
      * (2) 세부 작업 내용
      * - 사용자 소유 요리 기록과 세션을 비관적 쓰기 잠금으로 조회합니다.
-     * - 진행 중 세션의 현재 단계가 마지막이면 완료 상태로 변경합니다.
+     * - 진행 중 세션의 현재 단계가 마지막이면 완료 상태로 변경하고 메뉴명과 완료 날짜를 반환합니다.
      * - 마지막 단계가 아니면 현재 단계를 증가시키고 요리 팁과 사용 음식 재료를 포함한 다음 단계 상세 정보를 반환합니다.
      *
      * @param cookingRecordId 요리 기록 PK
      * @param userNumber 사용자 고유 식별번호
-     * @return 이동한 요리 단계 정보, 요리 완료 시 null
+     * @return 이동한 요리 단계 정보 또는 요리 완료 정보
      */
     @Transactional
-    public CookingStepNavigationResDto moveToNextCookingStep(
+    public CookingStepMoveResDto moveToNextCookingStep(
             Long cookingRecordId,
             String userNumber
     ) {
@@ -535,12 +538,17 @@ public class CookingRecordService {
 
         if (cookingSession.isLastStep()) {
             cookingSession.complete();
-            log.info(
-                    "[CookingRecordService] 다음 요리 단계 이동 종료 | moveToNextCookingStep() - END | cookingRecordId: {}, status: {}",
-                    cookingRecordId,
-                    cookingSession.getStatus()
+            CookingCompleteResDto result = cookingRecordMapper.toCookingCompleteResDto(
+                    cookingRecord,
+                    LocalDate.now()
             );
-            return null;
+            log.info(
+                    "[CookingRecordService] 다음 요리 단계 이동 종료 | moveToNextCookingStep() - END | cookingRecordId: {}, status: {}, cookedDate: {}",
+                    cookingRecordId,
+                    cookingSession.getStatus(),
+                    result.cookedDate()
+            );
+            return result;
         }
 
         cookingSession.moveToNextStep();

@@ -6,12 +6,14 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingRecordS
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingSessionLogSearchReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.request.CookingStartReqDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingCompleteResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingAiMultipartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepMoveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -256,8 +258,8 @@ public interface CookingRecordControllerDocs {
                     진행 중인 요리 세션을 다음 단계로 이동하고 해당 단계의 상세 정보를 반환합니다.
                     현재 단계 상세 정보에는 단계 PK, 번호, 제목, 이미지, 본문, 부연 설명과
                     연결된 요리 팁 콘텐츠 및 단계별 사용 음식 재료가 포함됩니다.
-                    현재 단계가 마지막 단계이면 요리 세션을 완료 상태로 변경합니다.
-                    이 경우 응답 data는 null입니다.
+                    현재 단계가 마지막 단계이면 요리 세션을 완료 상태로 변경하고
+                    요리된 메뉴 이름과 현재 날짜를 반환합니다.
 
                     [Path Variable]
                     - cookingRecordId: 요리 기록 PK
@@ -270,14 +272,19 @@ public interface CookingRecordControllerDocs {
             @ApiResponse(
                     responseCode = "201",
                     description = "다음 요리 단계 이동 또는 요리 완료 성공",
-                    content = @Content(schema = @Schema(implementation = CookingStepNavigationResDto.class))
+                    content = @Content(schema = @Schema(
+                            oneOf = {
+                                    CookingStepNavigationResDto.class,
+                                    CookingCompleteResDto.class
+                            }
+                    ))
             ),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 값", content = @Content),
             @ApiResponse(responseCode = "404", description = "사용자, 요리 기록 또는 단계를 찾을 수 없음", content = @Content),
             @ApiResponse(responseCode = "409", description = "진행 중인 세션이 아니거나 단계 상태가 잘못됨", content = @Content)
     })
     @PostMapping("/{cookingRecordId}/cooking-session/cooking-steps/next")
-    ResponseEntity<GlobalResponse<CookingStepNavigationResDto>> moveToNextCookingStep(
+    ResponseEntity<GlobalResponse<CookingStepMoveResDto>> moveToNextCookingStep(
             @Parameter(description = "요리 기록 PK", required = true)
             @Positive(message = "요리 기록 PK는 양수여야 합니다.")
             @PathVariable("cookingRecordId") Long cookingRecordId,

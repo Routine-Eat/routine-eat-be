@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeDetailReqDto;
+import com.likelion.routineeatbe.domain.recipe.dto.request.CanCookReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
+import com.likelion.routineeatbe.domain.recipe.dto.response.CanCookResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeIngredientUsageListResponseDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
@@ -40,6 +42,29 @@ class RecipeControllerTest {
 
     @Mock
     private UserSearchHistoryService userSearchHistoryService;
+
+    @Test
+    @DisplayName("요리 가능 여부 조회 API 201 응답 성공")
+    void 요리_가능_여부_조회_API_201_응답_성공() {
+        // given
+        CanCookReqDto request = new CanCookReqDto("1234", null);
+        CanCookResDto serviceResult = CanCookResDto.create(true);
+        given(recipeService.canCook(1L, request)).willReturn(serviceResult);
+
+        // when
+        ResponseEntity<GlobalResponse<CanCookResDto>> response =
+                recipeController.canCook(1L, request);
+
+        // then
+        assertThat(request.servings()).isEqualTo(1);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().isSuccess()).isTrue();
+        assertThat(response.getBody().getCode()).isEqualTo(201);
+        assertThat(response.getBody().getMessage())
+                .isEqualTo("현재 사용자가 요리가 가능한지 여부 조회에 성공했습니다.");
+        assertThat(response.getBody().getData().canCook()).isTrue();
+    }
 
     @Test
     @DisplayName("레시피 상세 조회 API 201 응답 성공")

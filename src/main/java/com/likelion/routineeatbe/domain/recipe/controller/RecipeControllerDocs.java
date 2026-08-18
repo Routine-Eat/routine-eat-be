@@ -1,10 +1,12 @@
 package com.likelion.routineeatbe.domain.recipe.controller;
 
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeDetailReqDto;
+import com.likelion.routineeatbe.domain.recipe.dto.request.CanCookReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeReRecommendRequest;
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.AiRecipeRecommendResponse;
+import com.likelion.routineeatbe.domain.recipe.dto.response.CanCookResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeDetailResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeKeywordSearchResDto;
 import com.likelion.routineeatbe.domain.recipe.dto.response.RecipeSearchResponseDto;
@@ -20,6 +22,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -135,6 +138,41 @@ public interface RecipeControllerDocs {
     @GetMapping("/search")
     ResponseEntity<GlobalResponse<CursorSliceResponse<RecipeKeywordSearchResDto>>> searchRecipesByMenuName(
             @Valid @ModelAttribute RecipeKeywordSearchReqDto request
+    );
+
+    @Operation(
+            summary = "요리 가능 여부 조회",
+            description = """
+                    사용자 보유 재료와 요청 인분 수를 기준으로 해당 레시피의 요리 가능 여부를 조회합니다.
+                    진행 중이거나 완료된 동일 레시피의 요리 세션이 있으면 요리할 수 없습니다.
+
+                    [Path Variable]
+                    - recipeId: 레시피 PK
+
+                    [Query Parameter]
+                    - userNumber: 4자리 사용자 고유 식별번호
+                    - servings: 요리할 인분 수, 기본값 1
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "요리 가능 여부 조회 성공",
+                    content = @Content(schema = @Schema(implementation = CanCookResDto.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "잘못된 조회 조건", content = @Content),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자 또는 레시피를 찾을 수 없음",
+                    content = @Content
+            )
+    })
+    @GetMapping("/{recipeId}/can-cook")
+    ResponseEntity<GlobalResponse<CanCookResDto>> canCook(
+            @Parameter(description = "레시피 PK", required = true)
+            @Positive(message = "레시피 PK는 양수여야 합니다.")
+            @PathVariable Long recipeId,
+            @Valid @ModelAttribute CanCookReqDto request
     );
 
     @Operation(

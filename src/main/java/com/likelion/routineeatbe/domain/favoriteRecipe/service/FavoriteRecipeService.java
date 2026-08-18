@@ -111,7 +111,7 @@ public class FavoriteRecipeService {
      * @param userNumber 사용자 고유 식별번호
      */
     @Transactional
-    public void removeFavorite(Long recipeId, Integer userNumber) {
+    public void removeFavorite(Long recipeId, String userNumber) {
         log.info(
                 "[FavoriteRecipeService] 레시피 찜 해제 | removeFavorite() - START | recipeId: {}, userNumber: {}",
                 recipeId,
@@ -122,7 +122,7 @@ public class FavoriteRecipeService {
             1. 사용자 조회
             - 사용자 고유 식별번호가 존재하지 않으면 USER_NOT_FOUND 예외를 발생시킵니다.
          */
-        User user = userRepository.findByLoginNumber(String.valueOf(userNumber))
+        User user = userRepository.findByLoginNumber(userNumber)
                 .orElseThrow(() -> new CustomException(
                         FavoriteRecipeErrorCode.USER_NOT_FOUND
                 ));

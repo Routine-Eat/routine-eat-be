@@ -23,6 +23,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingComple
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientAmountResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordInProgressResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogItemResDto;
@@ -74,6 +75,37 @@ class CookingRecordControllerTest {
 
     @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+
+    @Test
+    @DisplayName("진행 중인 요리 세션 조회 API 성공")
+    void 진행_중인_요리_세션_조회_API_성공() throws Exception {
+        // given
+        CookingRecordInProgressResDto response = CookingRecordInProgressResDto.create(1L);
+        given(cookingRecordService.getInProgressCookingRecord("1234"))
+                .willReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/cooking-records/current")
+                        .param("userNumber", "1234"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(201))
+                .andExpect(jsonPath("$.message").value(
+                        "해당 사용자가 진행 중인 요리 세션 조회에 성공했습니다."
+                ))
+                .andExpect(jsonPath("$.data.cookingRecordId").value(1));
+        then(cookingRecordService).should().getInProgressCookingRecord("1234");
+    }
+
+    @Test
+    @DisplayName("진행 중인 요리 세션 조회 API 실패 - 잘못된 사용자 고유 식별번호")
+    void 진행_중인_요리_세션_조회_API_실패_잘못된_사용자_고유_식별번호() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/v1/cooking-records/current")
+                        .param("userNumber", "12"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
+    }
 
     @Test
     @DisplayName("요리 중 AI 질문 API 성공 - multipart 응답 반환")

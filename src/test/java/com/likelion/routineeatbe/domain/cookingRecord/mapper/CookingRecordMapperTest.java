@@ -6,6 +6,7 @@ import static org.assertj.core.groups.Tuple.tuple;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.gemini.CookingStepGenerateGeminiResponseDto.GeneratedCookingStep;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.CookingRecordSearchResult;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingCompleteResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
@@ -47,6 +48,26 @@ import org.springframework.data.domain.SliceImpl;
 class CookingRecordMapperTest {
 
     private final CookingRecordMapper cookingRecordMapper = new CookingRecordMapper();
+
+    @Test
+    @DisplayName("완료된 요리 기록을 메뉴명과 완료 날짜 응답으로 변환한다")
+    void 완료된_요리_기록_응답_변환_성공() {
+        // given
+        Menu menu = Menu.builder().name("오징어볶음").build();
+        Recipe recipe = Recipe.builder().menu(menu).build();
+        CookingRecord cookingRecord = CookingRecord.builder().recipe(recipe).build();
+        LocalDate cookedDate = LocalDate.of(2026, 8, 21);
+
+        // when
+        CookingCompleteResDto result = cookingRecordMapper.toCookingCompleteResDto(
+                cookingRecord,
+                cookedDate
+        );
+
+        // then
+        assertThat(result.cookedMenuName()).isEqualTo("오징어볶음");
+        assertThat(result.cookedDate()).isEqualTo(cookedDate);
+    }
 
     @Test
     @DisplayName("요리 기록 조회 결과를 목록 응답으로 변환한다")

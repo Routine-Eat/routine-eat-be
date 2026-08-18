@@ -14,7 +14,7 @@ public record CookingStepNavigationResDto(
         Integer nextCookingStepLevel,
         @Schema(description = "현재 요리 단계 상세 정보")
         CookingStepDetailResDto currentCookingStep
-) {
+) implements CookingStepMoveResDto {
 
     public static CookingStepNavigationResDto create(
             Integer cookingStepCount,

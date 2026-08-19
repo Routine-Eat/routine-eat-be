@@ -55,25 +55,32 @@ import com.likelion.routineeatbe.domain.cookingTip.repository.CookingTipReposito
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
+import com.likelion.routineeatbe.domain.notification.entity.Notification;
+import com.likelion.routineeatbe.domain.notification.enums.NotificationType;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.entity.RecipeStep;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeStepRepository;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.repository.RecipeFoodIngredientRepository;
+import com.likelion.routineeatbe.domain.notification.service.NotificationService;
 import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
+import com.likelion.routineeatbe.domain.userStatistics.service.UserStatisticsService;
+import com.likelion.routineeatbe.domain.userStatistics.entity.UserStatistics;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
@@ -102,6 +109,8 @@ class CookingRecordServiceTest {
     @Mock private CookingRecordImageStorageService imageStorageService;
     @Mock private CookingRecordMapper cookingRecordMapper;
     @Mock private UserFoodIngredientRepository userFoodIngredientRepository;
+    @Mock private UserStatisticsService userStatisticsService;
+    @Mock private NotificationService notificationService;
 
     @Test
     @DisplayName("진행 중인 요리 세션을 조회한다")
@@ -577,6 +586,61 @@ class CookingRecordServiceTest {
         // then
         assertThat(result).isSameAs(expected);
         then(imageStorageService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("세 번째 요리 결과 저장 후 통계 생성과 리포트 도착 알림을 요청한다")
+    void 세_번째_요리_결과_저장_후_통계와_알림_생성_성공() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = createCookingRecord(10L, user, 3, 3);
+        cookingRecord.getCookingSession().complete();
+        CookingResultSaveReqDto request = new CookingResultSaveReqDto(
+                TasteRating.LEVEL_3,
+                DifficultyLevel.LEVEL_2,
+                null,
+                List.of()
+        );
+        UserStatistics statistics = UserStatistics.builder().id(20L).user(user).build();
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository
+                .findFirstByUser_IdAndCookingSession_StatusOrderByCreatedAtDescIdDesc(
+                        1L,
+                        CookingSessionStatus.COMPLETED
+                ))
+                .willReturn(Optional.of(cookingRecord));
+        given(cookingRecordRepository
+                .countByUser_IdAndCreatedAtGreaterThanEqualAndCreatedAtLessThanAndDifficultyLevelIsNotNull(
+                        eq(1L),
+                        any(),
+                        any()
+                ))
+                .willReturn(2L);
+        given(persistenceService.saveCookingResult(
+                1L,
+                10L,
+                TasteRating.LEVEL_3,
+                DifficultyLevel.LEVEL_2,
+                null,
+                List.of(),
+                null
+        )).willReturn(cookingRecord);
+        given(userStatisticsService.saveUserStatistics(user))
+                .willReturn(CompletableFuture.completedFuture(statistics));
+        given(cookingRecordMapper.toCookingResultSaveResDto(cookingRecord))
+                .willReturn(CookingResultSaveResDto.create(10L));
+
+        // when
+        cookingRecordService.saveCookingResult("1234", request, null);
+
+        // then
+        ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
+        then(userStatisticsService).should().saveUserStatistics(user);
+        then(notificationService).should().save(notificationCaptor.capture());
+        Notification notification = notificationCaptor.getValue();
+        assertThat(notification.getType()).isEqualTo(NotificationType.THREE_MEAL_REPORT_ARRIVED);
+        assertThat(notification.getContentId()).isEqualTo(20L);
+        assertThat(notification.getUser()).isSameAs(user);
     }
 
     @Test

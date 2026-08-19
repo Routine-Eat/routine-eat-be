@@ -46,8 +46,11 @@ import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
+import com.likelion.routineeatbe.domain.userStatistics.service.UserStatisticsService;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -66,6 +69,7 @@ public class CookingRecordService {
 
     private static final Set<CookingSessionStatus> BLOCKING_STATUSES =
             EnumSet.of(CookingSessionStatus.IN_PROGRESS, CookingSessionStatus.COMPLETED);
+    private static final ZoneId KOREA_ZONE_ID = ZoneId.of("Asia/Seoul");
 
     private final UserRepository userRepository;
     private final RecipeRepository recipeRepository;
@@ -82,6 +86,7 @@ public class CookingRecordService {
     private final CookingRecordPersistenceService persistenceService;
     private final CookingRecordImageStorageService imageStorageService;
     private final CookingRecordMapper cookingRecordMapper;
+    private final UserStatisticsService userStatisticsService;
 
     /**
      * (1) 작업 목적
@@ -449,6 +454,7 @@ public class CookingRecordService {
      * - 사용자의 가장 최근 완료 요리 기록을 조회합니다.
      * - 선택 이미지가 있으면 S3에 업로드한 후 별도 트랜잭션에서 회고를 저장합니다.
      * - 요청된 음식 재료 사용량을 보정한 뒤 수정된 사용량으로 사용자 보유량을 차감합니다.
+     * - 오늘 세 번째 요리 결과 저장 차례인지 확인하고, 저장 트랜잭션 종료 후 사용자 통계 갱신을 비동기로 예약합니다.
      * - DB 저장 실패 시 먼저 업로드된 S3 객체를 보상 삭제합니다.
      *
      * @param userNumber 사용자 고유 식별번호
@@ -476,6 +482,7 @@ public class CookingRecordService {
                 .orElseThrow(() -> new CustomException(
                         CookingRecordErrorCode.COMPLETED_COOKING_RECORD_NOT_FOUND
                 ));
+        boolean shouldSaveUserStatistics = isThirdCookingResultToday(user.getId());
 
         boolean imageUploaded = image != null && !image.isEmpty();
         String photoUrl = imageUploaded
@@ -503,11 +510,44 @@ public class CookingRecordService {
             throw exception;
         }
 
+        if (shouldSaveUserStatistics) {
+            userStatisticsService.saveUserStatistics(user);
+        }
+
         CookingResultSaveResDto result =
                 cookingRecordMapper.toCookingResultSaveResDto(savedCookingRecord);
         log.info(
                 "[CookingRecordService] 요리 결과 저장 종료 | saveCookingResult() - END | cookingRecordId: {}",
                 result.savedCookingRecordId()
+        );
+        return result;
+    }
+
+    /**
+     * 사용자의 오늘 요리 결과 저장 순서가 세 번째인지 확인합니다.
+     *
+     * @param userId 사용자 PK
+     * @return 오늘 저장된 결과가 두 건이면 true
+     */
+    private boolean isThirdCookingResultToday(Long userId) {
+        log.debug(
+                "[CookingRecordService] 오늘 세 번째 요리 결과 여부 확인 시작 | isThirdCookingResultToday() - START | userId: {}",
+                userId
+        );
+        LocalDate today = LocalDate.now(KOREA_ZONE_ID);
+        LocalDateTime startAt = today.atStartOfDay();
+        LocalDateTime endAt = today.plusDays(1).atStartOfDay();
+        long savedResultCount = cookingRecordRepository
+                .countByUser_IdAndCreatedAtGreaterThanEqualAndCreatedAtLessThanAndDifficultyLevelIsNotNull(
+                        userId,
+                        startAt,
+                        endAt
+                );
+        boolean result = savedResultCount == 2;
+        log.debug(
+                "[CookingRecordService] 오늘 세 번째 요리 결과 여부 확인 종료 | isThirdCookingResultToday() - END | savedResultCount: {}, result: {}",
+                savedResultCount,
+                result
         );
         return result;
     }

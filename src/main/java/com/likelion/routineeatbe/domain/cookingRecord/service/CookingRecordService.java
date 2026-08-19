@@ -11,6 +11,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecord
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordInProgressResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordStepTitlesResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
@@ -131,6 +132,63 @@ public class CookingRecordService {
         log.info(
                 "[CookingRecordService] 진행 중인 요리 세션 조회 종료 | getInProgressCookingRecord() - END | result: {}",
                 result
+        );
+        return result;
+    }
+
+    /**
+     * 진행 중인 요리 세션의 전체 단계 개수와 단계 제목을 조회합니다.
+     *
+     * @param userNumber 사용자 고유 식별번호
+     * @return 전체 요리 단계 개수와 단계 제목 목록
+     */
+    @Transactional(readOnly = true)
+    public CookingRecordStepTitlesResDto getInProgressCookingStepTitles(String userNumber) {
+        log.info(
+                "[CookingRecordService] 진행 중인 요리 전체 단계 조회 시작 | "
+                        + "getInProgressCookingStepTitles() - START | userNumber: {}",
+                userNumber
+        );
+
+        /*
+            1. 사용자 조회
+            - 사용자 고유 식별번호로 사용자를 조회하고, 존재하지 않으면 예외를 발생시킵니다.
+         */
+        User user = userRepository.findByLoginNumber(userNumber)
+                .orElseThrow(() -> new CustomException(CookingRecordErrorCode.USER_NOT_FOUND));
+
+        /*
+            2. 진행 중인 요리 기록 조회
+            - 사용자의 가장 최근 진행 중인 요리 기록을 조회합니다.
+         */
+        CookingRecord cookingRecord = cookingRecordRepository
+                .findFirstByUser_IdAndCookingSession_StatusOrderByCreatedAtDescIdDesc(
+                        user.getId(),
+                        CookingSessionStatus.IN_PROGRESS
+                )
+                .orElseThrow(() -> new CustomException(
+                        CookingRecordErrorCode.COOKING_SESSION_NOT_FOUND
+                ));
+
+        /*
+            3. 전체 요리 단계 조회
+            - 진행 중인 요리 세션에 연결된 단계를 단계 번호 오름차순으로 조회합니다.
+         */
+        CookingSession cookingSession = cookingRecord.getCookingSession();
+        List<CookingStep> cookingSteps = cookingStepRepository
+                .findAllByCookingSessionIdAndLevelGreaterThanOrderByLevelAsc(cookingSession.getId(), 0L);
+
+        /*
+            4. Response DTO Mapping
+            - 조회한 세션과 단계 목록을 전체 단계 제목 응답 DTO로 변환합니다.
+         */
+        CookingRecordStepTitlesResDto result = cookingRecordMapper
+                .toCookingRecordStepTitlesResDto(cookingSession, cookingSteps);
+
+        log.info(
+                "[CookingRecordService] 진행 중인 요리 전체 단계 조회 종료 | "
+                        + "getInProgressCookingStepTitles() - END | cookingStepCount: {}",
+                result.cookingStepCount()
         );
         return result;
     }

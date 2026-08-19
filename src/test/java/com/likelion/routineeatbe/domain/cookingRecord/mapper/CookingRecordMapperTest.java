@@ -12,6 +12,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecord
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordInProgressResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordStepTitlesResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
@@ -63,6 +64,32 @@ class CookingRecordMapperTest {
 
         // then
         assertThat(result.cookingRecordId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("진행 중인 요리 전체 단계 제목을 응답으로 변환한다")
+    void 진행_중인_요리_전체_단계_제목_응답_변환_성공() {
+        // given
+        CookingSession cookingSession = CookingSession.builder()
+                .cookingStepCount(2)
+                .build();
+        List<CookingStep> cookingSteps = List.of(
+                CookingStep.builder().level(1L).title("재료 준비").build(),
+                CookingStep.builder().level(2L).title("대파 볶기").build()
+        );
+
+        // when
+        CookingRecordStepTitlesResDto result = cookingRecordMapper
+                .toCookingRecordStepTitlesResDto(cookingSession, cookingSteps);
+
+        // then
+        assertThat(result.cookingStepCount()).isEqualTo(2);
+        assertThat(result.cookingStepTitles())
+                .extracting("stepLevel", "stepTitle")
+                .containsExactly(
+                        tuple(1L, "재료 준비"),
+                        tuple(2L, "대파 볶기")
+                );
     }
 
     @Test

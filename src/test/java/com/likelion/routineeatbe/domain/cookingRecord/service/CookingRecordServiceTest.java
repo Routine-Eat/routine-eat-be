@@ -21,6 +21,8 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecord
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordInProgressResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordStepTitlesResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTitleResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
@@ -125,6 +127,66 @@ class CookingRecordServiceTest {
         // then
         assertThat(result).isSameAs(expected);
         then(cookingRecordMapper).should().toCookingRecordInProgressResDto(cookingRecord);
+    }
+
+    @Test
+    @DisplayName("진행 중인 요리 전체 단계 제목을 조회한다")
+    void 진행_중인_요리_전체_단계_제목_조회_성공() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = CookingRecord.builder().id(10L).user(user).build();
+        CookingSession cookingSession = CookingSession.builder()
+                .id(100L)
+                .status(CookingSessionStatus.IN_PROGRESS)
+                .cookingStepCount(2)
+                .cookingRecord(cookingRecord)
+                .build();
+        cookingRecord.assignCookingSession(cookingSession);
+        CookingStep firstStep = CookingStep.builder()
+                .id(1L)
+                .level(1L)
+                .title("재료 준비")
+                .cookingSession(cookingSession)
+                .build();
+        CookingStep secondStep = CookingStep.builder()
+                .id(2L)
+                .level(2L)
+                .title("대파 볶기")
+                .cookingSession(cookingSession)
+                .build();
+        CookingRecordStepTitlesResDto expected = CookingRecordStepTitlesResDto.create(
+                2,
+                List.of(
+                        CookingStepTitleResDto.create(1L, "재료 준비"),
+                        CookingStepTitleResDto.create(2L, "대파 볶기")
+                )
+        );
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository
+                .findFirstByUser_IdAndCookingSession_StatusOrderByCreatedAtDescIdDesc(
+                        1L,
+                        CookingSessionStatus.IN_PROGRESS
+                ))
+                .willReturn(Optional.of(cookingRecord));
+        given(cookingStepRepository.findAllByCookingSessionIdOrderByLevelAsc(100L))
+                .willReturn(List.of(firstStep, secondStep));
+        given(cookingRecordMapper.toCookingRecordStepTitlesResDto(
+                cookingSession,
+                List.of(firstStep, secondStep)
+        )).willReturn(expected);
+
+        // when
+        CookingRecordStepTitlesResDto result = cookingRecordService
+                .getInProgressCookingStepTitles("1234");
+
+        // then
+        assertThat(result).isSameAs(expected);
+        then(cookingStepRepository).should()
+                .findAllByCookingSessionIdOrderByLevelAsc(100L);
+        then(cookingRecordMapper).should().toCookingRecordStepTitlesResDto(
+                cookingSession,
+                List.of(firstStep, secondStep)
+        );
     }
 
     @Test

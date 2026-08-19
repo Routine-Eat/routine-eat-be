@@ -26,6 +26,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecord
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordInProgressResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordStepTitlesResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogItemResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
@@ -98,6 +99,45 @@ class CookingRecordControllerTest {
                 ))
                 .andExpect(jsonPath("$.data.cookingRecordId").value(1));
         then(cookingRecordService).should().getInProgressCookingRecord("1234");
+    }
+
+    @Test
+    @DisplayName("진행 중인 요리 전체 단계 조회 API 성공")
+    void 진행_중인_요리_전체_단계_조회_API_성공() throws Exception {
+        // given
+        CookingRecordStepTitlesResDto response = CookingRecordStepTitlesResDto.create(
+                2,
+                List.of(
+                        CookingStepTitleResDto.create(1L, "재료 준비"),
+                        CookingStepTitleResDto.create(2L, "대파 볶기")
+                )
+        );
+        given(cookingRecordService.getInProgressCookingStepTitles("1234"))
+                .willReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/cooking-records/current/cooking-steps")
+                        .param("userNumber", "1234"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(201))
+                .andExpect(jsonPath("$.message").value("요리 전체 단계 조회에 성공했습니다."))
+                .andExpect(jsonPath("$.data.cookingStepCount").value(2))
+                .andExpect(jsonPath("$.data.cookingStepTitles[0].stepLevel").value(1))
+                .andExpect(jsonPath("$.data.cookingStepTitles[0].stepTitle").value("재료 준비"))
+                .andExpect(jsonPath("$.data.cookingStepTitles[1].stepLevel").value(2))
+                .andExpect(jsonPath("$.data.cookingStepTitles[1].stepTitle").value("대파 볶기"));
+        then(cookingRecordService).should().getInProgressCookingStepTitles("1234");
+    }
+
+    @Test
+    @DisplayName("진행 중인 요리 전체 단계 조회 API 실패 - 잘못된 사용자 고유 식별번호")
+    void 진행_중인_요리_전체_단계_조회_API_실패_잘못된_사용자_고유_식별번호() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/v1/cooking-records/current/cooking-steps")
+                        .param("userNumber", "12AB"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
     }
 
     @Test

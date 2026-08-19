@@ -10,6 +10,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecord
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordInProgressResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordStepTitlesResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogItemResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
@@ -56,6 +57,29 @@ public class CookingRecordMapper {
             CookingRecord cookingRecord
     ) {
         return CookingRecordInProgressResDto.create(cookingRecord.getId());
+    }
+
+    /**
+     * 진행 중인 요리 세션 Entity를 전체 단계 제목 응답 DTO로 변환합니다.
+     *
+     * @param cookingSession 진행 중인 요리 세션
+     * @param cookingSteps 요리 세션에 연결된 전체 요리 단계
+     * @return 전체 단계 개수와 단계 제목 목록이 포함된 응답 DTO
+     */
+    public CookingRecordStepTitlesResDto toCookingRecordStepTitlesResDto(
+            CookingSession cookingSession,
+            List<CookingStep> cookingSteps
+    ) {
+        List<CookingStepTitleResDto> cookingStepTitles = cookingSteps.stream()
+                .map(cookingStep -> CookingStepTitleResDto.create(
+                        cookingStep.getLevel(),
+                        cookingStep.getTitle()
+                ))
+                .toList();
+        return CookingRecordStepTitlesResDto.create(
+                cookingSession.getCookingStepCount(),
+                cookingStepTitles
+        );
     }
 
     /**

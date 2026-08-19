@@ -10,6 +10,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingComple
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordInProgressResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordStepTitlesResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingAiMultipartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
@@ -72,6 +73,36 @@ public interface CookingRecordControllerDocs {
     })
     @GetMapping("/current")
     ResponseEntity<GlobalResponse<CookingRecordInProgressResDto>> getInProgressCookingRecord(
+            @Parameter(description = "사용자 고유 식별번호", required = true)
+            @NotBlank(message = "사용자 고유 식별번호는 필수입니다.")
+            @Size(min = 4, max = 4, message = "사용자 고유 식별번호는 4자리여야 합니다.")
+            @Pattern(regexp = "^[0-9]{4}$", message = "사용자 고유 식별번호는 숫자 4자리여야 합니다.")
+            @RequestParam("userNumber") String userNumber
+    );
+
+    @Operation(
+            summary = "진행 중인 요리 전체 단계 조회",
+            description = """
+                    사용자의 가장 최근 진행 중인 요리 세션에 포함된 전체 단계 개수와
+                    단계별 제목을 단계 번호 오름차순으로 조회합니다.
+
+                    [Query Parameter]
+                    - userNumber: 4자리 사용자 고유 식별번호
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "요리 전체 단계 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = CookingRecordStepTitlesResDto.class)
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "잘못된 사용자 고유 식별번호", content = @Content),
+            @ApiResponse(responseCode = "404", description = "사용자 또는 진행 중인 요리 세션을 찾을 수 없음", content = @Content)
+    })
+    @GetMapping("/current/cooking-steps")
+    ResponseEntity<GlobalResponse<CookingRecordStepTitlesResDto>> getInProgressCookingStepTitles(
             @Parameter(description = "사용자 고유 식별번호", required = true)
             @NotBlank(message = "사용자 고유 식별번호는 필수입니다.")
             @Size(min = 4, max = 4, message = "사용자 고유 식별번호는 4자리여야 합니다.")

@@ -17,6 +17,16 @@ public interface CookingStepRepository extends JpaRepository<CookingStep, Long> 
     Optional<CookingStep> findByCookingSessionIdAndLevel(Long cookingSessionId, Long level);
 
     /**
+     * 요리 세션 PK에 연결된 요리 단계 중 level이 0보다 큰 단계를
+     * 단계 번호 오름차순으로 조회합니다.
+     *
+     * @param cookingSessionId 요리 세션 PK
+     * @param level 조회할 최소 단계 번호
+     * @return 단계 번호로 정렬된 요리 단계 목록
+     */
+    List<CookingStep> findAllByCookingSessionIdAndLevelGreaterThanOrderByLevelAsc(Long cookingSessionId, Long level);
+
+    /**
      * 요리 세션 PK에 연결된 실제 요리 단계를 단계 번호 오름차순으로 조회합니다.
      *
      * @param cookingSessionId 요리 세션 PK

@@ -14,6 +14,9 @@ import com.likelion.routineeatbe.domain.mealPlan.repository.MealPlanRepository;
 import com.likelion.routineeatbe.domain.mealPlan.repository.PlanMenuRepository;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import com.likelion.routineeatbe.domain.menu.repository.MenuRepository;
+import com.likelion.routineeatbe.domain.notification.entity.Notification;
+import com.likelion.routineeatbe.domain.notification.enums.NotificationType;
+import com.likelion.routineeatbe.domain.notification.service.NotificationService;
 import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.exception.UserFoodIngredientErrorCode;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
@@ -36,6 +39,7 @@ public class MealPlanService {
     private final UserRepository userRepository;
     private final MenuRepository menuRepository;
     private final PlanMenuRepository planMenuRepository;
+    private final NotificationService notificationService;
 
     /**
      * - 식단 저장 API
@@ -165,7 +169,16 @@ public class MealPlanService {
             throw new CustomException(MealPlanErrorCode.NOT_HAVE_USER);
         }
 
+        MealPlanStatus previousStatus = mealPlan.getStatus();
         mealPlan.updateMealPlanStatus(status);
+
+        if (status == MealPlanStatus.DONE && previousStatus != MealPlanStatus.DONE) {
+            notificationService.save(Notification.create(
+                    mealPlan.getUser(),
+                    NotificationType.MEAL_PLAN_COMPLETED,
+                    mealPlan.getId()
+            ));
+        }
 
         List<Long> planMenus = planMenuRepository.findIdsByMealPlan_IdIn(mealPlanId);
 

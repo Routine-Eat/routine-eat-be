@@ -17,6 +17,7 @@ import com.likelion.routineeatbe.domain.userStatistics.repository.UserStatistics
 import com.likelion.routineeatbe.domain.userStatistics.repository.UserStatisticsRecipeRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -39,10 +40,11 @@ public class UserStatisticsService {
      * 사용자의 요리 기록을 기반으로 통계를 생성해 비동기로 저장합니다.
      *
      * @param user 통계를 생성할 사용자
+     * @return 저장 완료된 사용자 통계 Future
      */
     @Async("userStatisticsTaskExecutor")
     @Transactional
-    public void saveUserStatistics(User user) {
+    public CompletableFuture<UserStatistics> saveUserStatistics(User user) {
         log.info(
                 "[UserStatisticsService] 사용자 요리 통계 저장 시작 | saveUserStatistics() - START | userId: {}",
                 user.getId()
@@ -67,6 +69,7 @@ public class UserStatisticsService {
                 foodIngredients.size(),
                 averageDifficultyLevel
         );
+        return CompletableFuture.completedFuture(savedStatistics);
     }
 
     /**

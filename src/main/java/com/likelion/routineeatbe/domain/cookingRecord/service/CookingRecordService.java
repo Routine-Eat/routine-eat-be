@@ -41,6 +41,9 @@ import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeStepRepository;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.repository.RecipeFoodIngredientRepository;
+import com.likelion.routineeatbe.domain.notification.entity.Notification;
+import com.likelion.routineeatbe.domain.notification.enums.NotificationType;
+import com.likelion.routineeatbe.domain.notification.service.NotificationService;
 import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
@@ -87,6 +90,7 @@ public class CookingRecordService {
     private final CookingRecordImageStorageService imageStorageService;
     private final CookingRecordMapper cookingRecordMapper;
     private final UserStatisticsService userStatisticsService;
+    private final NotificationService notificationService;
 
     /**
      * (1) 작업 목적
@@ -454,7 +458,7 @@ public class CookingRecordService {
      * - 사용자의 가장 최근 완료 요리 기록을 조회합니다.
      * - 선택 이미지가 있으면 S3에 업로드한 후 별도 트랜잭션에서 회고를 저장합니다.
      * - 요청된 음식 재료 사용량을 보정한 뒤 수정된 사용량으로 사용자 보유량을 차감합니다.
-     * - 오늘 세 번째 요리 결과 저장 차례인지 확인하고, 저장 트랜잭션 종료 후 사용자 통계 갱신을 비동기로 예약합니다.
+     * - 오늘 세 번째 요리 결과 저장 차례인지 확인하고, 저장 트랜잭션 종료 후 사용자 통계와 리포트 도착 알림 생성을 비동기로 예약합니다.
      * - DB 저장 실패 시 먼저 업로드된 S3 객체를 보상 삭제합니다.
      *
      * @param userNumber 사용자 고유 식별번호
@@ -511,7 +515,12 @@ public class CookingRecordService {
         }
 
         if (shouldSaveUserStatistics) {
-            userStatisticsService.saveUserStatistics(user);
+            userStatisticsService.saveUserStatistics(user)
+                    .thenAccept(savedStatistics -> notificationService.save(Notification.create(
+                            user,
+                            NotificationType.THREE_MEAL_REPORT_ARRIVED,
+                            savedStatistics.getId()
+                    )));
         }
 
         CookingResultSaveResDto result =

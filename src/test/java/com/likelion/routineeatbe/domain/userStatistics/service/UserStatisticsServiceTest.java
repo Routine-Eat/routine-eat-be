@@ -26,6 +26,7 @@ import com.likelion.routineeatbe.domain.userStatistics.repository.UserStatistics
 import com.likelion.routineeatbe.global.exception.CustomException;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -81,7 +82,7 @@ class UserStatisticsServiceTest {
                 .willAnswer(invocation -> invocation.getArgument(0));
 
         // when
-        userStatisticsService.saveUserStatistics(user);
+        CompletableFuture<UserStatistics> future = userStatisticsService.saveUserStatistics(user);
 
         // then
         ArgumentCaptor<UserStatistics> captor = ArgumentCaptor.forClass(UserStatistics.class);
@@ -92,6 +93,7 @@ class UserStatisticsServiceTest {
                 .isEqualTo(DifficultyLevel.LEVEL_3);
         assertThat(result.getRecipes()).hasSize(2);
         assertThat(result.getFoodIngredients()).hasSize(5);
+        assertThat(future.join()).isSameAs(result);
     }
 
     @Test

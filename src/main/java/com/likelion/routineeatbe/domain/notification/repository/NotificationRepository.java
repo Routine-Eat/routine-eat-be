@@ -4,7 +4,9 @@ import com.likelion.routineeatbe.domain.notification.entity.Notification;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface NotificationRepository extends JpaRepository<Notification, Long> {
+public interface NotificationRepository extends
+        JpaRepository<Notification, Long>,
+        NotificationRepositoryCustom {
 
     /**
      * 사용자 식별번호로 읽지 않은 알림을 최신순으로 조회합니다.

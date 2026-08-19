@@ -6,6 +6,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.likelion.routineeatbe.domain.notification.dto.response.NotificationPollingResDto;
+import com.likelion.routineeatbe.domain.notification.dto.request.NotificationSearchReqDto;
+import com.likelion.routineeatbe.domain.notification.dto.response.NotificationListResDto;
 import com.likelion.routineeatbe.domain.notification.dto.response.NotificationResDto;
 import com.likelion.routineeatbe.domain.notification.entity.Notification;
 import com.likelion.routineeatbe.domain.notification.enums.NotificationType;
@@ -17,6 +19,8 @@ import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.SliceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -87,5 +91,39 @@ class NotificationServiceTest {
                 .isInstanceOfSatisfying(CustomException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(NotificationErrorCode.NOT_EXIST_USER));
         then(notificationRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("알림 목록을 커서 기반으로 조회한다")
+    void 알림_목록_커서_조회_성공() {
+        // given
+        NotificationSearchReqDto request = new NotificationSearchReqDto("1234", 1, 1);
+        Notification notification = Notification.create(
+                User.builder().loginNumber("1234").build(),
+                NotificationType.MEAL_PLAN_COMPLETED,
+                20L
+        );
+        NotificationResDto notificationResDto = NotificationResDto.create(
+                2L,
+                NotificationType.MEAL_PLAN_COMPLETED,
+                "식단 완료",
+                "축하드려요, 식단을 완료했어요! 완료한 식단은 마이페이지에서 볼 수 있어요.",
+                false,
+                "2026-08-19 18:30",
+                20L
+        );
+        given(userRepository.findByLoginNumber("1234"))
+                .willReturn(Optional.of(notification.getUser()));
+        given(notificationRepository.searchByUserNumber("1234", 1, 1))
+                .willReturn(new SliceImpl<>(List.of(notification), PageRequest.of(0, 1), true));
+        given(notificationMapper.toNotificationResDto(notification)).willReturn(notificationResDto);
+
+        // when
+        NotificationListResDto result = notificationService.getNotifications(request);
+
+        // then
+        assertThat(result.content()).containsExactly(notificationResDto);
+        assertThat(result.hasNext()).isTrue();
+        assertThat(result.nextCursor()).isEqualTo(2);
     }
 }

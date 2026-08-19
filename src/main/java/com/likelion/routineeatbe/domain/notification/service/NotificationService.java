@@ -1,6 +1,9 @@
 package com.likelion.routineeatbe.domain.notification.service;
 
+import com.likelion.routineeatbe.domain.notification.dto.request.NotificationSearchReqDto;
+import com.likelion.routineeatbe.domain.notification.dto.response.NotificationListResDto;
 import com.likelion.routineeatbe.domain.notification.dto.response.NotificationPollingResDto;
+import com.likelion.routineeatbe.domain.notification.dto.response.NotificationResDto;
 import com.likelion.routineeatbe.domain.notification.entity.Notification;
 import com.likelion.routineeatbe.domain.notification.exception.NotificationErrorCode;
 import com.likelion.routineeatbe.domain.notification.mapper.NotificationMapper;
@@ -8,6 +11,7 @@ import com.likelion.routineeatbe.domain.notification.repository.NotificationRepo
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import java.util.List;
+import org.springframework.data.domain.Slice;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -63,6 +67,50 @@ public class NotificationService {
                 "[NotificationService] 신규 알림 조회 종료 | pollNotifications() - END | userNumber: {}, count: {}",
                 userNumber,
                 result.newNotificationCount()
+        );
+        return result;
+    }
+
+    /**
+     * 사용자의 알림 목록을 위치 커서 기반으로 조회합니다.
+     *
+     * @param request 사용자 번호, 커서와 조회 크기
+     * @return 알림 목록과 다음 조회 커서
+     */
+    @Transactional(readOnly = true)
+    public NotificationListResDto getNotifications(NotificationSearchReqDto request) {
+        log.info(
+                "[NotificationService] 알림 목록 조회 시작 | getNotifications() - START | userNumber: {}, cursor: {}, size: {}",
+                request.userNumber(),
+                request.cursor(),
+                request.size()
+        );
+
+        userRepository.findByLoginNumber(request.userNumber())
+                .orElseThrow(() -> new CustomException(NotificationErrorCode.NOT_EXIST_USER));
+
+        Slice<Notification> slice = notificationRepository.searchByUserNumber(
+                request.userNumber(),
+                request.cursor(),
+                request.size()
+        );
+        List<NotificationResDto> content = slice.getContent().stream()
+                .map(notificationMapper::toNotificationResDto)
+                .toList();
+        Integer nextCursor = slice.hasNext()
+                ? request.cursor() + request.size()
+                : null;
+        NotificationListResDto result = NotificationListResDto.create(
+                content,
+                slice.hasNext(),
+                nextCursor
+        );
+
+        log.info(
+                "[NotificationService] 알림 목록 조회 종료 | getNotifications() - END | userNumber: {}, contentSize: {}, nextCursor: {}",
+                request.userNumber(),
+                content.size(),
+                nextCursor
         );
         return result;
     }

@@ -1,6 +1,8 @@
 package com.likelion.routineeatbe.domain.notification.controller;
 
 import com.likelion.routineeatbe.domain.notification.dto.response.NotificationPollingResDto;
+import com.likelion.routineeatbe.domain.notification.dto.request.NotificationSearchReqDto;
+import com.likelion.routineeatbe.domain.notification.dto.response.NotificationListResDto;
 import com.likelion.routineeatbe.domain.notification.service.NotificationService;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,16 @@ public class NotificationController implements NotificationControllerDocs {
         return ResponseEntity.ok(GlobalResponse.success(
                 "신규 알림 정보 조회에 성공했습니다.",
                 notificationService.pollNotifications(userNumber)
+        ));
+    }
+
+    @Override
+    public ResponseEntity<GlobalResponse<NotificationListResDto>> getNotifications(
+            NotificationSearchReqDto request
+    ) {
+        return ResponseEntity.ok(GlobalResponse.success(
+                "알림 목록 조회에 성공했습니다.",
+                notificationService.getNotifications(request)
         ));
     }
 }

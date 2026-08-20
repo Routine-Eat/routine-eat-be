@@ -181,18 +181,21 @@ public class MealPlanAICreateService {
                 .collect(Collectors.joining("\n"));
 
         String requiredPlanTypes = useAllAvailable ? "PRACTICE, USEALL, SIMPLE, RECYCLING" : "PRACTICE, SIMPLE, RECYCLING";
-        // createPrompt 내부의 useAllInstruction 변수를 아래처럼 변경해 주세요.
 
         String useAllInstruction = useAllAvailable
                 ? "- USEALL: choose ONLY from these menu IDs: " + useAllCandidateMenuIds.stream().sorted().toList()
                 + ". These menus make the most use of the user's currently owned ingredients. Do not select any other ID for USEALL."
                 : "- USEALL: do not return this plan because the user has no registered ingredients.";
+
         return """
                 You MUST return exactly these plans: %s. Return each type exactly once.
-                Every plan MUST contain exactly three DISTINCT menu IDs.
-                Every plan MUST contain exactly three DISTINCT menu IDs.
-                Across all returned plans, AT MOST ONE menu ID can be reused (e.g., up to 1 shared menu ID total across plans).
-                Prefer completely distinct menu IDs if possible.
+                
+                [CRITICAL RULE: STRICTLY PREVENT OVERLAPPING]
+                1. Every plan MUST contain exactly three DISTINCT menu IDs.
+                2. Across ALL returned plans, menus MUST BE AS DISTINCT AS POSSIBLE.
+                3. DO NOT reuse the same menu IDs across different plans. All menu IDs chosen across all plans should ideally be completely different.
+                4. Especially, NEVER reuse a menu ID that was already used in the 'USEALL' plan for the 'SIMPLE' or 'PRACTICE' plans.
+                
                 Use only the listed candidate menu IDs.
                 All candidates already passed excluded-ingredient and required-cooking-equipment checks.
 
@@ -202,6 +205,7 @@ public class MealPlanAICreateService {
                 - SIMPLE: prefer lower difficulty and shorter timeRequiredMinutes.
                 - RECYCLING: choose three distinct menus that share the SAME primary/main food ingredient (e.g., salmon, chicken, pork, beef, tofu, egg, etc.). Do NOT count basic condiments or seasonings (e.g., soy sauce, salt, garlic, sugar, cooking oil) as the main ingredient.
                 Prefer menus with cookedBefore=false when the objective scores are comparable.
+                
                 Candidates:
                 %s
                 """.formatted(

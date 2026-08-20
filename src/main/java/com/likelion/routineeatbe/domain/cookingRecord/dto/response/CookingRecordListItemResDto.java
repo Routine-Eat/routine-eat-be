@@ -8,6 +8,8 @@ import lombok.Builder;
 @Builder
 @Schema(title = "CookingRecordListItemResDto", description = "요리 기록 목록 항목 DTO")
 public record CookingRecordListItemResDto(
+        @Schema(description = "요리 기록 PK", example = "1")
+        Long cookingRecordId,
         @Schema(description = "레시피 PK", example = "659")
         Long recipeId,
         @Schema(description = "메뉴 이름", example = "감자미역국")
@@ -25,6 +27,7 @@ public record CookingRecordListItemResDto(
 ) {
 
     public static CookingRecordListItemResDto create(
+            Long cookingRecordId,
             Long recipeId,
             String menuName,
             String thumbnailUrl,
@@ -34,6 +37,7 @@ public record CookingRecordListItemResDto(
             Long usedFoodIngredientCount
     ) {
         return CookingRecordListItemResDto.builder()
+                .cookingRecordId(cookingRecordId)
                 .recipeId(recipeId)
                 .menuName(menuName)
                 .thumbnailUrl(thumbnailUrl)

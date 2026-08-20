@@ -36,6 +36,7 @@ public class CookingRecordRepositoryCustomImpl implements CookingRecordRepositor
     ) {
         List<CookingRecordSearchResult> content = new ArrayList<>(entityManager.createQuery("""
                         select new com.likelion.routineeatbe.domain.cookingRecord.dto.CookingRecordSearchResult(
+                            cookingRecord.id,
                             recipe.id,
                             menu.name,
                             menu.thumbnailUrl,

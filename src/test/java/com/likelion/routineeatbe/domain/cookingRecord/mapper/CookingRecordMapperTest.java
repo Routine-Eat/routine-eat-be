@@ -117,6 +117,7 @@ class CookingRecordMapperTest {
     void 요리_기록_목록_응답_변환_성공() {
         // given
         CookingRecordSearchResult searchResult = new CookingRecordSearchResult(
+                1L,
                 30L,
                 "감자미역국",
                 "https://example.com/menu.jpg",
@@ -139,6 +140,7 @@ class CookingRecordMapperTest {
         assertThat(result.hasNext()).isTrue();
         assertThat(result.nextCursor()).isEqualTo(11);
         assertThat(result.content()).singleElement().satisfies(item -> {
+            assertThat(item.cookingRecordId()).isEqualTo(1L);
             assertThat(item.recipeId()).isEqualTo(30L);
             assertThat(item.menuName()).isEqualTo("감자미역국");
             assertThat(item.thumbnailUrl()).isEqualTo("https://example.com/menu.jpg");

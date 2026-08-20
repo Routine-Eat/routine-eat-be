@@ -4,6 +4,7 @@ import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
 import java.time.LocalDateTime;
 
 public record CookingRecordSearchResult(
+        Long cookingRecordId,
         Long recipeId,
         String menuName,
         String thumbnailUrl,

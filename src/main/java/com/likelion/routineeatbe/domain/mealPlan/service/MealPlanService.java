@@ -162,6 +162,7 @@ public class MealPlanService {
      */
     @Transactional
     public MealPlanResponse updateMealPlanStatus(Long userId,Long mealPlanId,MealPlanStatus status){
+        log.info("[MealPlanService] 식단 상태 변경 시작 | updateMealPlanStatus() - START | userId: {}, mealPlanId: {}, MealPlanStatus : {}", userId, mealPlanId, status);
         MealPlan mealPlan=mealPlanRepository.findById(mealPlanId)
                 .orElseThrow(()->new CustomException(MealPlanErrorCode.NOT_EXIST_PLAN));
 
@@ -183,6 +184,7 @@ public class MealPlanService {
         List<Long> planMenus = planMenuRepository.findIdsByMealPlan_IdIn(mealPlanId);
 
 
+        log.info("[MealPlanService] 식단 상태 변경 종료 | updateMealPlanStatus() - END | userId: {}, mealPlanId: {}, MealPlanStatus : {}", userId, mealPlanId, status);
         return MealPlanResponse.from(mealPlan,planMenus);
     }
 

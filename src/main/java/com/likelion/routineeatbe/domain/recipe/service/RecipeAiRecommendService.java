@@ -153,19 +153,20 @@ public class RecipeAiRecommendService {
                 User Skill Level: %s
                 
                 Selection Rules:
-                1. Pick the single recipe that best balances the user's skill level and higher ownedIngredientCount.
-                2. Prefer cookedBefore=false if available.
-                3. Write a concise and friendly Korean reason for recommending this recipe.
+                1. [CRITICAL RULE] You MUST STRICTLY prioritize the recipe with the HIGHEST `ownedIngredientCount`. This is your absolute first priority.
+                2. Balance the user's skill level only among the top recipes with the most owned ingredients.
+                3. Prefer cookedBefore=false if available.
+                4. Write a concise and friendly Korean reason for recommending this recipe, mentioning the ingredients the user already has.
 
                 %s
                 
                 Candidates:
                 %s
                 """.formatted(
-                        skillLevel == null ? "BEGINNER" : skillLevel.name(),
-                        RESPONSE_WRITING_RULES,
-                        candidateLines
-                );
+                skillLevel == null ? "BEGINNER" : skillLevel.name(),
+                RESPONSE_WRITING_RULES,
+                candidateLines
+        );
     }
 
     private AiRecipeRecommendResponse toResponse(

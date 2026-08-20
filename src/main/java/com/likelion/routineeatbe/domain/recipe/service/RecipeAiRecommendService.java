@@ -11,6 +11,7 @@ import com.likelion.routineeatbe.domain.recipe.dto.gemini.RecipeRecommendationGe
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeReRecommendRequest;
 import com.likelion.routineeatbe.domain.recipe.dto.response.AiRecipeRecommendResponse;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
+import com.likelion.routineeatbe.domain.recipe.exception.RecipeErrorCode;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
 import com.likelion.routineeatbe.domain.recipeCookingEquipment.entity.RecipeCookingEquipment;
 import com.likelion.routineeatbe.domain.recipeCookingEquipment.repository.RecipeCookingEquipmentRepository;
@@ -217,7 +218,7 @@ public class RecipeAiRecommendService {
                 userId, request.previousRecipeId());
 
         // ==========================================
-        // 1. DB 조회 및 후보군 생성 (루프 바깥에서 1회만 실행)
+        // 1. DB 조회 및 후보군 생성
         // ==========================================
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER));
@@ -238,21 +239,25 @@ public class RecipeAiRecommendService {
 
         Set<Long> ownedIngredientIds = ingredientIds(userId, UserFoodIngredientType.OWN);
 
-        // previousRecipeId가 존재할 경우 후보군에서 미리 완전히 제외
+        // [개선 1] 후보군 정렬 및 상위 N개 제한 (프롬프트 과부하 방지)
         List<Candidate> candidates = filteredRecipes.stream()
                 .filter(recipe -> request.previousRecipeId() == null
                         || !recipe.getId().equals(request.previousRecipeId()))
                 .map(recipe -> Candidate.from(recipe, ownedIngredientIds, cookedMenuIds))
+                .sorted(Comparator.comparingInt(Candidate::ownedIngredientCount).reversed()
+                        .thenComparing(Candidate::cookedBefore)
+                        .thenComparingInt(Candidate::difficultyScore)
+                        .thenComparingInt(Candidate::timeRequired))
+                .limit(MAX_AI_CANDIDATES)
                 .toList();
 
-        // 추천 가능한 후보군이 3개 미만이면 즉시 예외 반환
         if (candidates.size() < 3) {
             log.warn("[RecipeReRecommend] 후보군 부족으로 추천 불가 | candidateSize: {}", candidates.size());
             throw new CustomException(MealPlanErrorCode.NO_RECOMMENDABLE_RECIPE);
         }
 
         // ==========================================
-        // 2. Gemini AI 호출 및 검증 (최대 5회 재시도 루프)
+        // 2. Gemini AI 호출 및 검증 (최대 5회 재시도)
         // ==========================================
         int maxTries = 5;
         int currentTry = 0;
@@ -262,7 +267,6 @@ public class RecipeAiRecommendService {
             log.info("[RecipeReRecommend] AI 호출 시도: {}/{}", currentTry, maxTries);
 
             try {
-                // Gemini AI 호출
                 RecipeReRecommendGeminiResponse aiResult = geminiUtil.callFunction(
                         geminiProperties.menuAnalyzeModel(),
                         createReRecommendPrompt(candidates, user.getSkillLevel(), request),
@@ -270,20 +274,18 @@ public class RecipeAiRecommendService {
                         RecipeReRecommendGeminiResponse.class
                 );
 
-                // AI 결과 검증 및 DTO 변환 (내부에서 검증 실패 시 CustomException 발생)
                 List<AiRecipeRecommendResponse> responseList = toReRecommendResponse(aiResult, candidates);
-
                 log.info("[RecipeReRecommend] 재추천 성공 | 추천 개수: {}", responseList.size());
-                return responseList; // 성공 시 즉시 반환하며 루프 종료
+                return responseList;
 
             } catch (Exception e) {
                 log.warn("[RecipeReRecommend] AI 재추천 시도 실패 ({} / {}): {}", currentTry, maxTries, e.getMessage());
             }
         }
 
-        // 5회 모두 실패 시 예외 던짐 (무한 로딩 방지)
-        log.error("[RecipeReRecommend] 최대 재시도 횟수({})를 초과했습니다.", maxTries);
-        throw new CustomException(MealPlanErrorCode.NO_RECOMMENDABLE_RECIPE);
+        // [개선 2] 5회 연속 실패 시 예외를 던지지 않고 자바 자체 알고리즘으로 폴백하여 응답 보장
+        log.warn("[RecipeReRecommend] AI 호출 5회 실패로 인해 기본 알고리즘 폴백 추천을 진행합니다.");
+        return getFallbackRecommendations(candidates);
     }
 
     private String createReRecommendPrompt(
@@ -306,14 +308,15 @@ public class RecipeAiRecommendService {
         return """
         You MUST select EXACTLY THREE DISTINCT recipes from the candidate list below.
         
+        CRITICAL RULES:
+        1. Select recipeId STRICTLY from the provided Candidates list. NEVER invent or hallucinate new IDs.
+        2. Even if ownedIngredientCount is 0 for all candidates, ALWAYS select 3 recipes based on difficulty match, time required, and category diversity.
+        3. DIVERSITY RULE: Choose 3 recipes with DIFFERENT culinary styles/dish types (e.g., main dish, soup/stew, stir-fry, side dish).
+        4. Provide a friendly Korean reason for each recommendation.
+        
         User Info:
         - Cooking Skill: %s
         - Applied Filters: Difficulty=%s, TimeFilter=%s, DesiredIngredients=%s
-        
-        Selection Rules:
-        1. Choose 3 distinct recipes that best fit the candidate list and user filters.
-        2. DIVERSITY RULE: The 3 selected recipes MUST have DIFFERENT culinary styles or cooking categories (e.g., mix different categories like soup/stew, stir-fry, main dish, rice/noodle dish, side dish) to give the user diverse choices.
-        3. For each selected recipe, provide a compelling and natural Korean reason for the recommendation.
         
         Candidates:
         %s
@@ -324,6 +327,18 @@ public class RecipeAiRecommendService {
                 request.desiredIngredientIds(),
                 candidateLines
         );
+    }
+
+    // [개선 3] AI 연속 실패 시 안전하게 상위 3개 레시피를 반환하는 폴백 메서드
+    private List<AiRecipeRecommendResponse> getFallbackRecommendations(List<Candidate> candidates) {
+        return candidates.stream()
+                .limit(3)
+                .map(c -> AiRecipeRecommendResponse.from(
+                        c.recipe().getMenu(),
+                        c.recipeId(),
+                        "취향과 조리 난이도를 고려하여 추천하는 대표 레시피입니다."
+                ))
+                .toList();
     }
 
     private List<AiRecipeRecommendResponse> toReRecommendResponse(

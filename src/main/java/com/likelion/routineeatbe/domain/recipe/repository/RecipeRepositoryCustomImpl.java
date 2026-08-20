@@ -778,9 +778,9 @@ public class RecipeRepositoryCustomImpl implements RecipeRepositoryCustom {
         // 4. 동적 필터: 조리시간 3단계 (QUICK: ~15분, MEDIUM: 15~30분, LONG: 30분~)
         if (timeFilter != null) {
             switch (timeFilter) {
-                case QUICK -> jpql.append(" and menu.timeRequired <= 15 ");
-                case MEDIUM -> jpql.append(" and menu.timeRequired > 15 and menu.timeRequired <= 30 ");
-                case LONG -> jpql.append(" and menu.timeRequired > 30 ");
+                case QUICK -> jpql.append(" and menu.timeRequired <= 20 ");
+                case MEDIUM -> jpql.append(" and menu.timeRequired > 20 and menu.timeRequired <= 40 ");
+                case LONG -> jpql.append(" and menu.timeRequired > 40 ");
             }
         }
 

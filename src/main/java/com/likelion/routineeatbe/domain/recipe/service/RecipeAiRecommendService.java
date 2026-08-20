@@ -246,39 +246,51 @@ public class RecipeAiRecommendService {
         log.info("[RecipeReRecommend] 재추천 시작 | userId: {}, previousRecipeId: {}",
                 userId, request.previousRecipeId());
 
-        // ==========================================
-        // 1. DB 조회 및 후보군 생성
-        // ==========================================
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER));
 
         Set<Long> forbiddenIngredientIds = ingredientIds(userId, UserFoodIngredientType.EXCEPTION);
+        Set<Long> ownedIngredientIds = ingredientIds(userId, UserFoodIngredientType.OWN);
         Set<Long> ownedEquipmentIds = userCookingEquipmentRepository.findAllByUserId(userId).stream()
                 .map(userEquipment -> userEquipment.getCookingEquipment().getId())
                 .collect(Collectors.toSet());
         Set<Long> cookedMenuIds = new HashSet<>(planMenuRepository.findCompletedMenuIdsByUserId(userId));
 
+        // ==========================================
+        // 1. 단계적 후보군 생성 (Progressive Fallback)
+        // ==========================================
+
+        // [1차 시도] 사용자가 요청한 모든 필터 적용
         List<Recipe> filteredRecipes = recipeRepository.findCandidateRecipesByDbFilter(
-                forbiddenIngredientIds,
-                ownedEquipmentIds,
-                request.difficultyLevel(),
-                request.timeFilter(),
-                request.desiredIngredientIds()
+                forbiddenIngredientIds, ownedEquipmentIds,
+                request.difficultyLevel(), request.timeFilter(), request.desiredIngredientIds()
         );
+        List<Candidate> candidates = extractValidCandidates(filteredRecipes, request.previousRecipeId(), ownedIngredientIds, cookedMenuIds);
 
-        Set<Long> ownedIngredientIds = ingredientIds(userId, UserFoodIngredientType.OWN);
-
-        // previousRecipeId가 존재할 경우 후보군에서 미리 완전히 제외
-        List<Candidate> candidates = filteredRecipes.stream()
-                .filter(recipe -> request.previousRecipeId() == null
-                        || !recipe.getId().equals(request.previousRecipeId()))
-                .map(recipe -> Candidate.from(recipe, ownedIngredientIds, cookedMenuIds))
-                .toList();
-
-        // 추천 가능한 후보군이 3개 미만이면 즉시 예외 반환
+        // [2차 시도] 후보가 3개 미만이면 선택 조건(난이도, 시간, 원하는 재료) 해제
         if (candidates.size() < 3) {
-            log.warn("[RecipeReRecommend] 후보군 부족으로 추천 불가 | candidateSize: {}", candidates.size());
-            throw new CustomException(MealPlanErrorCode.NO_RECOMMENDABLE_RECIPE);
+            log.warn("[RecipeReRecommend] 1차 필터 후보 부족 ({}개). 선택 필터를 해제하고 재조회합니다.", candidates.size());
+            filteredRecipes = recipeRepository.findCandidateRecipesByDbFilter(
+                    forbiddenIngredientIds, ownedEquipmentIds,
+                    null, null, null // 선택 조건 완전 해제
+            );
+            candidates = extractValidCandidates(filteredRecipes, request.previousRecipeId(), ownedIngredientIds, cookedMenuIds);
+        }
+
+        // [3차 시도] 그래도 부족하면 필수 조건(금지 재료, 보유 도구)까지 완전 해제 (절대 에러 방어)
+        if (candidates.size() < 3) {
+            log.warn("[RecipeReRecommend] 2차 필터 후에도 후보 부족 ({}개). 모든 필터를 해제하여 전체 레시피 중 조회합니다.", candidates.size());
+            filteredRecipes = recipeRepository.findCandidateRecipesByDbFilter(
+                    Collections.emptySet(), Collections.emptySet(),
+                    null, null, null
+            );
+            candidates = extractValidCandidates(filteredRecipes, request.previousRecipeId(), ownedIngredientIds, cookedMenuIds);
+        }
+
+        // [최후 방어선] DB 내의 전체 레시피 자체가 3개 미만인 경우 AI를 호출하면 에러가 나므로, 즉시 있는 것만 반환
+        if (candidates.size() < 3) {
+            log.error("[RecipeReRecommend] DB 전체 레시피가 부족합니다. 현재 가능한 후보만 즉시 반환합니다. candidateSize: {}", candidates.size());
+            return getFallbackRecommendations(candidates); // Exception을 던지지 않고 안전하게 반환
         }
 
         // ==========================================
@@ -292,7 +304,6 @@ public class RecipeAiRecommendService {
             log.info("[RecipeReRecommend] AI 호출 시도: {}/{}", currentTry, maxTries);
 
             try {
-                // Gemini AI 호출
                 RecipeReRecommendGeminiResponse aiResult = geminiUtil.callFunction(
                         geminiProperties.menuAnalyzeModel(),
                         createReRecommendPrompt(candidates, user.getSkillLevel(), request),
@@ -300,7 +311,6 @@ public class RecipeAiRecommendService {
                         RecipeReRecommendGeminiResponse.class
                 );
 
-                // AI 결과 검증 및 DTO 변환 (내부에서 검증 실패 시 CustomException 발생)
                 List<AiRecipeRecommendResponse> responseList = toReRecommendResponse(aiResult, candidates);
 
                 log.info("[RecipeReRecommend] 재추천 성공 | 추천 개수: {}", responseList.size());
@@ -311,9 +321,23 @@ public class RecipeAiRecommendService {
             }
         }
 
-        //  5회 연속 실패 시 예외를 던지지 않고 자바 자체 알고리즘으로 폴백하여 응답 보장
         log.warn("[RecipeReRecommend] AI 호출 5회 실패로 인해 기본 알고리즘 폴백 추천을 진행합니다.");
         return getFallbackRecommendations(candidates);
+    }
+
+    /**
+     * 필터링된 레시피 목록에서 이전 레시피를 제외하고 Candidate DTO로 변환하는 헬퍼 메서드
+     */
+    private List<Candidate> extractValidCandidates(
+            List<Recipe> recipes,
+            Long previousRecipeId,
+            Set<Long> ownedIngredientIds,
+            Set<Long> cookedMenuIds
+    ) {
+        return recipes.stream()
+                .filter(recipe -> previousRecipeId == null || !recipe.getId().equals(previousRecipeId))
+                .map(recipe -> Candidate.from(recipe, ownedIngredientIds, cookedMenuIds))
+                .toList();
     }
 
     private String createReRecommendPrompt(

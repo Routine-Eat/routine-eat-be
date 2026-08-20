@@ -11,6 +11,7 @@ import com.likelion.routineeatbe.domain.recipe.dto.gemini.RecipeRecommendationGe
 import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeReRecommendRequest;
 import com.likelion.routineeatbe.domain.recipe.dto.response.AiRecipeRecommendResponse;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
+import com.likelion.routineeatbe.domain.recipe.exception.RecipeErrorCode;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
 import com.likelion.routineeatbe.domain.recipeCookingEquipment.entity.RecipeCookingEquipment;
 import com.likelion.routineeatbe.domain.recipeCookingEquipment.repository.RecipeCookingEquipmentRepository;
@@ -245,7 +246,7 @@ public class RecipeAiRecommendService {
                 userId, request.previousRecipeId());
 
         // ==========================================
-        // 1. DB 조회 및 후보군 생성 (루프 바깥에서 1회만 실행)
+        // 1. DB 조회 및 후보군 생성
         // ==========================================
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER));
@@ -302,16 +303,16 @@ public class RecipeAiRecommendService {
                 List<AiRecipeRecommendResponse> responseList = toReRecommendResponse(aiResult, candidates);
 
                 log.info("[RecipeReRecommend] 재추천 성공 | 추천 개수: {}", responseList.size());
-                return responseList; // 성공 시 즉시 반환하며 루프 종료
+                return responseList;
 
             } catch (Exception e) {
                 log.warn("[RecipeReRecommend] AI 재추천 시도 실패 ({} / {}): {}", currentTry, maxTries, e.getMessage());
             }
         }
 
-        // 5회 모두 실패 시 예외 던짐 (무한 로딩 방지)
-        log.error("[RecipeReRecommend] 최대 재시도 횟수({})를 초과했습니다.", maxTries);
-        throw new CustomException(MealPlanErrorCode.NO_RECOMMENDABLE_RECIPE);
+        //  5회 연속 실패 시 예외를 던지지 않고 자바 자체 알고리즘으로 폴백하여 응답 보장
+        log.warn("[RecipeReRecommend] AI 호출 5회 실패로 인해 기본 알고리즘 폴백 추천을 진행합니다.");
+        return getFallbackRecommendations(candidates);
     }
 
     private String createReRecommendPrompt(
@@ -334,6 +335,12 @@ public class RecipeAiRecommendService {
         return """
         You MUST select EXACTLY THREE DISTINCT recipes from the candidate list below.
         
+        CRITICAL RULES:
+        1. Select recipeId STRICTLY from the provided Candidates list. NEVER invent or hallucinate new IDs.
+        2. Even if ownedIngredientCount is 0 for all candidates, ALWAYS select 3 recipes based on difficulty match, time required, and category diversity.
+        3. DIVERSITY RULE: Choose 3 recipes with DIFFERENT culinary styles/dish types (e.g., main dish, soup/stew, stir-fry, side dish).
+        4. Provide a friendly Korean reason for each recommendation.
+        
         User Info:
         - Cooking Skill: %s
         - Applied Filters: Difficulty=%s, TimeFilter=%s, DesiredIngredients=%s
@@ -355,6 +362,18 @@ public class RecipeAiRecommendService {
                 RESPONSE_WRITING_RULES,
                 candidateLines
         );
+    }
+
+    // [개선 3] AI 연속 실패 시 안전하게 상위 3개 레시피를 반환하는 폴백 메서드
+    private List<AiRecipeRecommendResponse> getFallbackRecommendations(List<Candidate> candidates) {
+        return candidates.stream()
+                .limit(3)
+                .map(c -> AiRecipeRecommendResponse.from(
+                        c.recipe().getMenu(),
+                        c.recipeId(),
+                        "취향과 조리 난이도를 고려하여 추천하는 대표 레시피입니다."
+                ))
+                .toList();
     }
 
     private List<AiRecipeRecommendResponse> toReRecommendResponse(

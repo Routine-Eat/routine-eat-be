@@ -1,5 +1,6 @@
 package com.likelion.routineeatbe.domain.mealPlan.service;
 
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.mealPlan.dto.gemini.MealRecommendationFunctionDeclaration;
 import com.likelion.routineeatbe.domain.mealPlan.dto.gemini.MealRecommendationGeminiResponse;
 import com.likelion.routineeatbe.domain.mealPlan.dto.response.AiMealRecommendationResponse;
@@ -239,7 +240,8 @@ public class MealPlanAICreateService {
                         candidate.difficultyLevel,
                         candidate.timeRequired,
                         candidate.sameRate,
-                        candidate.price
+                        candidate.price,
+                        candidate.missingIngredients
                 );
             }).toList();
             return new AiMealRecommendationResponse.Plan(type, aiPlan.reason(), menus);
@@ -288,17 +290,20 @@ public class MealPlanAICreateService {
     /**
      * [내부 Record] Candidate에 sameRate와 price 필드 및 계산 로직 추가
      */
-    private record Candidate(Long menuId,
-                             String menuName,
-                             DifficultyLevel difficultyLevel,
-                             List<String> ingredientNames,
-                             int ownedIngredientCount,
-                             int totalIngredientCount,
-                             int difficultyScore,
-                             int timeRequired,
-                             boolean cookedBefore,
-                             Double sameRate,
-                             Long price) {
+    private record Candidate(
+            Long menuId,
+            String menuName,
+            DifficultyLevel difficultyLevel,
+            List<String> ingredientNames,
+            int ownedIngredientCount,
+            int totalIngredientCount,
+            int difficultyScore,
+            int timeRequired,
+            boolean cookedBefore,
+            Double sameRate,
+            Long price,
+            List<String> missingIngredients // 1. 필드 추가
+    ) {
         static Candidate from(Recipe recipe, Set<Long> ownedIngredientIds, Set<Long> cookedMenuIds) {
             int totalCount = recipe.getRecipeFoodIngredients().size();
 
@@ -307,20 +312,21 @@ public class MealPlanAICreateService {
                     .filter(ownedIngredientIds::contains)
                     .count();
 
-            // 1. 재료 일치율(sameRate) 계산 (Double)
+            // 2. 보유 재료에 없는 식재료 이름 리스트 추출
+            List<String> missingIngredients = recipe.getRecipeFoodIngredients().stream()
+                    .map(relation -> relation.getFoodIngredient())
+                    .filter(ingredient -> !ownedIngredientIds.contains(ingredient.getId()))
+                    .map(FoodIngredient::getName)
+                    .toList();
+
             double sameRate = totalCount == 0 ? 0.0 : Math.round(((double) ownedCount / totalCount) * 100);
 
-            // 2. 예상 재료 가격(price) 계산 (Long)
-            // Math.round()의 반환 타입이 long이므로 (int) 캐스팅을 제거합니다.
             long totalPrice = Math.round(
                     recipe.getRecipeFoodIngredients().stream()
                             .mapToDouble(relation -> {
                                 Long pricePerHundred = relation.getFoodIngredient().getPricePerHundred();
                                 Double capacity = relation.getPrimaryNeedAmountValue();
-
-                                if (pricePerHundred == null || capacity == null) {
-                                    return 0.0;
-                                }
+                                if (pricePerHundred == null || capacity == null) return 0.0;
                                 return (capacity / 100.0) * pricePerHundred;
                             })
                             .sum()
@@ -341,10 +347,10 @@ public class MealPlanAICreateService {
                     recipe.getMenu().getTimeRequired(),
                     cookedMenuIds.contains(recipe.getMenu().getId()),
                     sameRate,
-                    totalPrice
+                    totalPrice,
+                    missingIngredients // 3. 생성자에 전달
             );
         }
-
         boolean usesOnlyOwnedIngredients() {
             return totalIngredientCount > 0 && ownedIngredientCount == totalIngredientCount;
         }

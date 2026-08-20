@@ -1,5 +1,6 @@
 package com.likelion.routineeatbe.domain.mealPlan.service;
 
+import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.mealPlan.dto.request.CreateMealPlanRequest;
 import com.likelion.routineeatbe.domain.mealPlan.dto.request.CreatePlanMenuRequest;
 import com.likelion.routineeatbe.domain.mealPlan.dto.response.MealPlanDetailResponse;
@@ -17,8 +18,12 @@ import com.likelion.routineeatbe.domain.menu.repository.MenuRepository;
 import com.likelion.routineeatbe.domain.notification.entity.Notification;
 import com.likelion.routineeatbe.domain.notification.enums.NotificationType;
 import com.likelion.routineeatbe.domain.notification.service.NotificationService;
+import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
+import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
 import com.likelion.routineeatbe.domain.user.entity.User;
+import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.domain.user.exception.UserFoodIngredientErrorCode;
+import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import com.likelion.routineeatbe.global.response.GlobalResponse;
@@ -29,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +46,8 @@ public class MealPlanService {
     private final MenuRepository menuRepository;
     private final PlanMenuRepository planMenuRepository;
     private final NotificationService notificationService;
+    private final UserFoodIngredientRepository userFoodIngredientRepository;
+    private final RecipeRepository recipeRepository;
 
     /**
      * - 식단 저장 API
@@ -70,10 +78,8 @@ public class MealPlanService {
 
         List<PlanMenu> savedPlanMenus = planMenuRepository.saveAll(planMenus);
 
-        // 4. PlanMenuResponse 리스트 변환
-        List<PlanMenuResponse> planMenuResponses = savedPlanMenus.stream()
-                .map(PlanMenuResponse::from) // PlanMenuResponse.from(PlanMenu) 구현체 활용
-                .toList();
+        // 4. 부족한 식재료가 포함된 PlanMenuResponse 리스트 생성
+        List<PlanMenuResponse> planMenuResponses = createPlanMenuResponsesWithMissingIngredients(userId, savedPlanMenus);
 
         // 5. 최종 MealPlanResponse 반환
         return MealPlanDetailResponse.from(savedMealPlan, planMenuResponses);
@@ -142,10 +148,8 @@ public class MealPlanService {
         // 2. PlanMenuRepository에서 해당 식단에 연결된 PlanMenu 목록 조회
         List<PlanMenu> planMenus = planMenuRepository.findAllByMealPlan_Id(mealPlanId);
 
-        // 3. PlanMenu 엔티티 리스트를 PlanMenuResponse DTO 리스트로 변환
-        List<PlanMenuResponse> planMenuList = planMenus.stream()
-                .map(PlanMenuResponse::from)
-                .toList();
+        // 3. 부족한 식재료가 포함된 PlanMenuResponse 리스트 생성
+        List<PlanMenuResponse> planMenuList = createPlanMenuResponsesWithMissingIngredients(userId, planMenus);
 
         // 4. 최종 MealPlanDetailResponse DTO 생성 및 반환
         return MealPlanDetailResponse.from(mealPlan, planMenuList);
@@ -205,5 +209,52 @@ public class MealPlanService {
         }
 
         mealPlanRepository.deleteById(mealPlanId);
+    }
+
+    /**
+     * [공통 내부 메서드]
+     * PlanMenu 목록과 사용자의 보유 식재료(OWN)를 비교하여 부족한 식재료 목록을 포함한 PlanMenuResponse 리스트를 반환합니다.
+     */
+    private List<PlanMenuResponse> createPlanMenuResponsesWithMissingIngredients(Long userId, List<PlanMenu> planMenus) {
+        if (planMenus.isEmpty()) {
+            return List.of();
+        }
+
+        // 1. 사용자가 보유한 식재료 ID 추출
+        Set<Long> ownedIngredientIds = userFoodIngredientRepository
+                .findAllWithFoodIngredientByUserIdAndRelationType(userId, UserFoodIngredientType.OWN)
+                .stream()
+                .map(userIngredient -> userIngredient.getFoodIngredient().getId())
+                .collect(Collectors.toSet());
+
+        // 2. 메뉴 ID 추출
+        List<Long> menuIds = planMenus.stream()
+                .map(pm -> pm.getMenu().getId())
+                .distinct()
+                .toList();
+
+        // 3. 메뉴들의 Recipe 조회 및 Map 구성 (menuId -> Recipe)
+        List<Recipe> recipes = recipeRepository.findAllByMenu_IdIn(menuIds);
+        Map<Long, Recipe> recipeMap = recipes.stream()
+                .collect(Collectors.toMap(r -> r.getMenu().getId(), r -> r, (r1, r2) -> r1));
+
+        // 4. PlanMenu -> PlanMenuResponse 변환
+        return planMenus.stream()
+                .map(planMenu -> {
+                    Long menuId = planMenu.getMenu().getId();
+                    Recipe recipe = recipeMap.get(menuId);
+
+                    List<String> missingIngredients = List.of();
+                    if (recipe != null) {
+                        missingIngredients = recipe.getRecipeFoodIngredients().stream()
+                                .map(rfi -> rfi.getFoodIngredient())
+                                .filter(ingredient -> !ownedIngredientIds.contains(ingredient.getId()))
+                                .map(FoodIngredient::getName)
+                                .toList();
+                    }
+
+                    return PlanMenuResponse.from(planMenu, missingIngredients);
+                })
+                .toList();
     }
 }

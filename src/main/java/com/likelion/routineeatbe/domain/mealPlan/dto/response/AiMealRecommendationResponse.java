@@ -18,11 +18,17 @@ public record AiMealRecommendationResponse(Plan practice, Plan useAll, Plan simp
     public record Plan(MealPlanType type, String reason, List<Menu> menus) {
     }
 
-    /** 메뉴 식별자, 표시 이름, 식단 목적에 맞는 개별 추천 이유입니다. */
-    public record Menu(Long menuId, String menuName, DifficultyLevel difficultyLevel, Integer timeRequired,
-                       @Schema(description = "재료 일치율",example = "88")
-                       Double sameRate,
-                       @Schema(description = "예상 재료 가격",example = "1800")
-                       Long price) {
-    }
+    /** 메뉴 식별자, 표시 이름, 식단 목적에 맞는 개별 추천 정보 */
+    public record Menu(
+            Long menuId,
+            String menuName,
+            DifficultyLevel difficultyLevel,
+            Integer timeRequired,
+            @Schema(description = "재료 일치율", example = "88")
+            Double sameRate,
+            @Schema(description = "예상 재료 가격", example = "1800")
+            Long price,
+            @Schema(description = "부족한 식재료 목록", example = "[\"양파\", \"대파\"]")
+            List<String> missingIngredients
+    ) {}
 }

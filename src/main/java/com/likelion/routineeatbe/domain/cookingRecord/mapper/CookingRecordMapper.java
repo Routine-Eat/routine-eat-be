@@ -173,6 +173,7 @@ public class CookingRecordMapper {
             CookingRecordSearchResult result
     ) {
         return CookingRecordListItemResDto.create(
+                result.cookingRecordId(),
                 result.recipeId(),
                 result.menuName(),
                 result.thumbnailUrl(),

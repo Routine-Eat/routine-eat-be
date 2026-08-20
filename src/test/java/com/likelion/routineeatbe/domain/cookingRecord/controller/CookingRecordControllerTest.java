@@ -210,6 +210,7 @@ class CookingRecordControllerTest {
         // given
         CookingRecordListResDto response = CookingRecordListResDto.create(
                 List.of(CookingRecordListItemResDto.create(
+                        1L,
                         659L,
                         "감자미역국",
                         "https://example.com/menu.jpg",
@@ -233,6 +234,7 @@ class CookingRecordControllerTest {
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message")
                         .value("요리 기록(회고록) 조회에 성공했습니다."))
+                .andExpect(jsonPath("$.data.content[0].cookingRecordId").value(1))
                 .andExpect(jsonPath("$.data.content[0].recipeId").value(659))
                 .andExpect(jsonPath("$.data.content[0].menuName").value("감자미역국"))
                 .andExpect(jsonPath("$.data.content[0].thumbnailUrl")

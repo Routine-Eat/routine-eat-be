@@ -177,7 +177,7 @@ class CookingRecordServiceTest {
                         CookingSessionStatus.IN_PROGRESS
                 ))
                 .willReturn(Optional.of(cookingRecord));
-        given(cookingStepRepository.findAllByCookingSessionIdOrderByLevelAsc(100L))
+        given(cookingStepRepository.findAllByCookingSessionIdAndLevelGreaterThanOrderByLevelAsc(100L, 1L))
                 .willReturn(List.of(firstStep, secondStep));
         given(cookingRecordMapper.toCookingRecordStepTitlesResDto(
                 cookingSession,
@@ -191,7 +191,7 @@ class CookingRecordServiceTest {
         // then
         assertThat(result).isSameAs(expected);
         then(cookingStepRepository).should()
-                .findAllByCookingSessionIdOrderByLevelAsc(100L);
+                .findAllByCookingSessionIdAndLevelGreaterThanOrderByLevelAsc(100L, 1L);
         then(cookingRecordMapper).should().toCookingRecordStepTitlesResDto(
                 cookingSession,
                 List.of(firstStep, secondStep)

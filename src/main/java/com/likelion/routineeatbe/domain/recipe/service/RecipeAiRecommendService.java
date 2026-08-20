@@ -38,6 +38,28 @@ import java.util.stream.Collectors;
 public class RecipeAiRecommendService {
 
     private static final int MAX_AI_CANDIDATES = 30;
+    private static final String RESPONSE_WRITING_RULES = """
+            Response Writing Rules:
+            - 쉽고 자연스러운 해요체를 쓴다.
+            - 따뜻하되 유치하거나 과장되게 쓰지 않는다.
+            - 한 문장에는 한 가지 행동만 담는다.
+            - 실제 조리 순서에 맞춰 짧고 직접적으로 쓴다.
+            - 사용자가 해야 할 행동을 문장 앞에 쓴다.
+            - 시간, 온도, 불 세기, 수량, 크기는 제공된 값을 그대로 쓴다.
+            - 제공되지 않은 수치나 조리 정보를 추측하지 않는다.
+            - '적당히', '조금', '먹기 좋게', '알맞게'처럼 기준이 모호한 표현을 쓰지 않는다.
+            - 익은 정도나 완성 상태는 눈으로 확인할 수 있는 표현으로 쓴다.
+            - 예: '노릇하게 익혀요'보다 '아랫면이 연한 갈색이 될 때까지 익혀요'라고 쓴다.
+            - 전문적인 조리 용어는 쉬운 말로 바꾼다.
+            - 전문 용어가 꼭 필요하면 바로 뒤에서 짧게 설명한다.
+            - 같은 행동이나 정보를 반복하지 않는다.
+            - 재료명과 도구명은 등록된 명칭을 그대로 쓴다.
+            - 서로 다른 행동을 한 문장에 묶지 않는다.
+            - 주의사항은 위험 요소와 피해야 할 행동을 명확하게 쓴다.
+            - '누구나', '무조건', '완벽하게', '실패 없이'를 쓰지 않는다.
+            - '간단해요', '쉬워요'처럼 근거 없는 평가만 쓰지 않는다.
+            - 건강, 피부, 체중 변화나 효과를 단정하지 않는다.
+            """;
 
     private final UserRepository userRepository;
     private final UserFoodIngredientRepository userFoodIngredientRepository;
@@ -133,10 +155,16 @@ public class RecipeAiRecommendService {
                 1. Pick the single recipe that best balances the user's skill level and higher ownedIngredientCount.
                 2. Prefer cookedBefore=false if available.
                 3. Write a concise and friendly Korean reason for recommending this recipe.
+
+                %s
                 
                 Candidates:
                 %s
-                """.formatted(skillLevel == null ? "BEGINNER" : skillLevel.name(), candidateLines);
+                """.formatted(
+                        skillLevel == null ? "BEGINNER" : skillLevel.name(),
+                        RESPONSE_WRITING_RULES,
+                        candidateLines
+                );
     }
 
     private AiRecipeRecommendResponse toResponse(
@@ -285,6 +313,8 @@ public class RecipeAiRecommendService {
         1. Choose 3 distinct recipes that best fit the candidate list and user filters.
         2. DIVERSITY RULE: The 3 selected recipes MUST have DIFFERENT culinary styles or cooking categories (e.g., mix different categories like soup/stew, stir-fry, main dish, rice/noodle dish, side dish) to give the user diverse choices.
         3. For each selected recipe, provide a compelling and natural Korean reason for the recommendation.
+
+        %s
         
         Candidates:
         %s
@@ -293,6 +323,7 @@ public class RecipeAiRecommendService {
                 request.difficultyLevel(),
                 request.timeFilter(),
                 request.desiredIngredientIds(),
+                RESPONSE_WRITING_RULES,
                 candidateLines
         );
     }

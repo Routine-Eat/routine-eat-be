@@ -1,0 +1,60 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:mysql://${DEV_DB_HOST}:3306/${DEV_DB_NAME}?&useSSL=false&useUnicode=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&rewriteBatchedStatements=true
+    username: ${DEV_DB_USER}
+    password: ${DEV_DB_PW}
+  jpa:
+    show-sql: false       # SQL문 안봄(dev 서버 로그 과부하 방지)
+    hibernate:
+      ddl-auto: update
+  cloud:
+    cloudfront:
+      domain: ${DEV_CLOUDFRONT_DOMAIN}
+
+# DEV 서버 로깅 전략 - INFO, DEBUG 전부 보이게 설정
+logging:
+  level:
+    root: INFO                           # 정상 흐름만 출력
+    com.likelion.routineeatbe: DEBUG     # 프로젝트 루트 밑의 debug 로그는 허용
+    org.hibernate.SQL: WARN              # SQL은 경고 이상만 (show-sql: false와 맞춤)
+    org.springframework.web: INFO        # 요청/응답 흐름 확인
+    org.springframework.security: INFO   # 인증/인가 흐름 확인
+
+# server.servlet.session.cookie.true: HTTPS에서만 브라우저가 세션 쿠키를 전송하는 옵션
+server:
+  forward-headers-strategy: framework   # Nginx 프록시 뒤 HTTPS 환경에서 forwarded header 처리
+  url: https://api.nahjjun.cloud
+  servlet:
+    session:
+      cookie:
+        secure: true
+
+# Dev 서버 Swagger UI 설정 - Dev 서버에서 Swagger 접속 가능하게 설정 (운영 서버에서는 비활성화)
+springdoc:
+  swagger-ui:
+    enabled: true
+
+storage:
+  s3:
+    bucket: ${DEV_S3_BUCKET}
+    cloudfront-domain: ${DEV_CLOUDFRONT_DOMAIN}
+
+data:
+  crawling:
+    food-safety-korea:
+      base-url: http://openapi.foodsafetykorea.go.kr/api
+      service-id: ${FOOD_SAFETY_KOREA_RECIPE_SERVICE_ID}
+      data-type: ${FOOD_SAFETY_KOREA_RECIPE_DATA_TYPE}
+      api-key: ${FOOD_SAFETY_KOREA_RECIPE_API_KEY}
+gemini:
+  base-url: https://generativelanguage.googleapis.com/v1beta/interactions
+  api-key: ${ROUTINE_EAT_GEMINI_API_KEY}
+  cooking-generate-model: ${ROUTINE_EAT_COOKING_GENERATE_GEMINI_MODEL}
+  cooking-translate-model: ${ROUTINE_EAT_COOKING_TRANSLATE_GEMINI_MODEL}
+  menu-analyze-model: ${ROUTINE_EAT_MENU_ANALYZE_GEMINI_MODEL}
+  food-ingredient-analyze-model: ${ROUTINE_EAT_FOOD_INGREDIENT_ANALYZE_GEMINI_MODEL}
+  cooking-equipment-analyze-model: ${ROUTINE_EAT_COOKING_EQUIPMENT_ANALYZE_GEMINI_MODEL}
+  cooking-step-generate-model: ${ROUTINE_EAT_COOKING_STEP_GENERATE_GEMINI_MODEL}

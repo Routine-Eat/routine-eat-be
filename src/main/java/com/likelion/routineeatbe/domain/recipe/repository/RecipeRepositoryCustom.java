@@ -1,0 +1,94 @@
+package com.likelion.routineeatbe.domain.recipe.repository;
+
+import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
+import com.likelion.routineeatbe.domain.menu.entity.RecommendationType;
+import com.likelion.routineeatbe.domain.recipe.dto.RecipeSearchResult;
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeKeywordSearchReqDto;
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeReRecommendRequest;
+import com.likelion.routineeatbe.domain.recipe.dto.request.RecipeSearchRequestDto;
+import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
+import java.util.List;
+import java.util.Set;
+import org.springframework.data.domain.Slice;
+
+public interface RecipeRepositoryCustom {
+
+    /**
+     * 필터, 정렬 및 목록 유형 조건에 따라 기본 레시피 목록을 위치 커서 기반으로 조회합니다.
+     * @param userId 재료 일치도와 부족 재료비를 계산할 사용자 ID
+     * @param request 레시피 조회 조건
+     * @param recommendationType Service에서 지정한 목록 유형 조건
+     * @return 레시피 조회 결과 Slice
+     */
+    Slice<RecipeSearchResult> searchRecipes(
+            Long userId,
+            RecipeSearchRequestDto request,
+            RecommendationType recommendationType
+    );
+
+    /**
+     * 사용자가 가장 많이 보유한 음식 재료가 포함된 기본 레시피를 위치 커서 기반으로 조회합니다.
+     * @param userId 재료 일치도와 부족 재료비를 계산할 사용자 ID
+     * @param foodIngredientId 레시피에 포함되어야 하는 음식 재료 PK
+     * @param request 레시피 조회 조건
+     * @return 대상 음식 재료가 포함된 레시피 조회 결과 Slice
+     */
+    Slice<RecipeSearchResult> searchRecipesByFoodIngredient(
+            Long userId,
+            Long foodIngredientId,
+            RecipeSearchRequestDto request
+    );
+
+    /**
+     * 사용자가 찜한 레시피를 최신 찜순으로 위치 커서 기반 조회합니다.
+     *
+     * @param userId 재료 일치도와 부족 재료 정보를 계산할 사용자 ID
+     * @param cursor 1부터 시작하는 조회 위치
+     * @param size 한 번에 조회할 찜 레시피 개수
+     * @return 찜한 레시피 조회 결과 Slice
+     */
+    Slice<RecipeSearchResult> searchFavoriteRecipes(
+            Long userId,
+            Long cursor,
+            Integer size
+    );
+
+    /**
+     * 메뉴명에 검색어가 포함된 기본 레시피를 필터, 일치도 및 정렬 조건으로 조회합니다.
+     * @param userId 음식 재료 활용률을 계산할 사용자 ID
+     * @param searchWord 메뉴/레시피명 검색어
+     * @param request 필터, 정렬, 위치 커서 및 조회 크기
+     * @return 사용자 재료 집계가 포함된 검색 레시피 Slice
+     */
+    Slice<RecipeSearchResult> searchRecipesByMenuName(
+            Long userId,
+            String searchWord,
+            RecipeKeywordSearchReqDto request
+    );
+
+    /**
+     * 대상 레시피와 음식 재료 구성 차이가 정확히 일치하는 기본 레시피 후보를 조회합니다.
+     * - 음식 재료의 추가, 제거, 교체를 각각 차이 1로 계산합니다.
+     * - 차이값의 단계적 확장과 최종 후보 선정은 FindSimilarRecipeService에서 담당합니다.
+     *
+     * @param targetRecipeId 제외할 대상 레시피 PK
+     * @param targetFoodIngredientIds 대상 레시피의 음식 재료 PK 집합
+     * @param ingredientDifference 조회할 정확한 재료 차이 개수
+     * @param limit 최대 조회 개수
+     * @return 재료 차이 조건을 만족하는 레시피 후보 목록
+     */
+    List<Recipe> findRecipeCandidatesByExactIngredientDifference(
+            Long targetRecipeId,
+            Set<Long> targetFoodIngredientIds,
+            int ingredientDifference,
+            int limit
+    );
+
+    List<Recipe> findCandidateRecipesByDbFilter(
+            Set<Long> forbiddenIngredientIds,
+            Set<Long> ownedEquipmentIds,
+            DifficultyLevel difficultyLevel,
+            RecipeReRecommendRequest.CookingTimeFilter timeFilter,
+            List<Long> desiredIngredientIds
+    );
+}

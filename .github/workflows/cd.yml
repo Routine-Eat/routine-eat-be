@@ -1,0 +1,398 @@
+# Github Actions 워크플로우 이름 설정
+name: Deploy To EC2
+
+# 트리거 설정: 언제 이 워크플로우를 실행할지
+on:
+  push:
+    branches: [ main, develop ]
+    # -> main 또는 develop 브랜치에 push 이벤트가 발생할 때만 실행
+    #   예: git push origin main → 워크플로우 자동 시작
+    #   예: PR 머지도 push로 간주되어 트리거됨
+
+jobs:
+  # JOB 1. Spring Boot 빌드
+  build-springboot:
+    # GitHub가 제공하는 Ubuntu Runner에서 Job 실행
+    runs-on: ubuntu-latest
+
+    # 소스 코드를 내려받기 위한 읽기 권한만 부여
+    permissions:
+      contents: read
+
+    steps:
+      # 1. 현재 push된 커밋의 소스 코드를 Runner 작업 디렉터리에 내려받음
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      # 2. 프로젝트의 Java Toolchain과 동일한 Temurin JDK 21 설치
+      #    Gradle 의존성 캐시를 사용해 이후 빌드 시간을 단축
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      # 3. Linux Runner에서 Gradle Wrapper를 실행할 수 있도록 권한 부여
+      - name: Grant execute permission for Gradle Wrapper
+        run: chmod +x gradlew
+
+      # 4. 기존 산출물을 정리하고 실행 가능한 Spring Boot JAR 생성
+      - name: Build Spring Boot JAR
+        run: ./gradlew clean bootJar
+
+      # 5. 이후 배포 Job이 내려받을 수 있도록 생성된 JAR를 Artifact로 보관
+      - name: Upload Spring Boot JAR
+        uses: actions/upload-artifact@v4
+        with:
+          # download-artifact에서 사용할 Artifact 이름
+          name: springboot-jar
+          # Spring Boot Gradle Plugin이 생성한 JAR 경로
+          path: build/libs/*.jar
+          # JAR가 생성되지 않으면 배포가 진행되지 않도록 Job 실패 처리
+          if-no-files-found: error
+
+  # JOB 2. Docker 이미지 빌드
+  build-docker-image:
+    # JAR 빌드가 성공한 경우에만 Docker 이미지 빌드 시작
+    needs: build-springboot
+
+    # GitHub가 제공하는 Ubuntu Runner에서 Docker Buildx 실행
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Dockerfile을 포함한 소스 코드를 내려받기 위한 읽기 권한
+      contents: read
+
+    steps:
+      # 1. Dockerfile과 Docker 빌드 컨텍스트로 사용할 프로젝트 파일 내려받기
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      # 2. 이전 Job이 업로드한 Spring Boot JAR를 Dockerfile의 COPY 경로에 복원
+      - name: Download Spring Boot JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: springboot-jar
+          path: build/libs
+
+      # 3. x86 GitHub Runner에서 EC2 ARM64용 이미지를 만들 수 있도록 QEMU 에뮬레이션 설정
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # 4. 멀티 아키텍처 빌드를 지원하는 Docker Buildx Builder 설정
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 5. 복원한 JAR와 Dockerfile을 이용해 EC2 ARM64용 Docker 이미지를 생성
+      #    --load 옵션으로 생성한 이미지를 현재 Runner의 Docker 엔진에 적재
+      - name: Build Docker image
+        run: >-
+          docker buildx build
+          --platform linux/arm64
+          --file docker/ec2-springboot/Dockerfile
+          --tag spring-api-server:latest
+          --load
+          .
+
+      # 6. Registry를 거치지 않고 Host로 전달할 수 있도록 Docker 이미지를 TAR 파일로 내보냄
+      - name: Export Docker image
+        run: docker save --output spring-api-server.tar spring-api-server:latest
+
+      # 7. 다음 배포 Job에서 다운로드할 수 있도록 Docker 이미지 TAR 파일을 보관
+      - name: Upload Docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: spring-api-server-image
+          path: spring-api-server.tar
+          if-no-files-found: error
+
+  # JOB 3. Nginx 설정 배포 및 컨테이너 기동
+  deploy-nginx:
+    # SSH 및 SCP 명령을 실행할 GitHub Ubuntu Runner
+    runs-on: ubuntu-latest
+
+    # Git 저장소의 Nginx 설정 파일을 내려받기 위한 읽기 권한
+    permissions:
+      contents: read
+
+    # GitHub Secrets를 SSH 접속 정보로만 사용하며 로그에 직접 출력하지 않음
+    env:
+      NGINX_HOST: ${{ secrets.DEV_EC2_NGINX_HOST }}
+      NGINX_SSH_USER: ${{ secrets.DEV_EC2_NGINX_SSH_USER }}
+      NGINX_SSH_KEY: ${{ secrets.DEV_EC2_NGINX_SSH_KEY }}
+      NGINX_DEPLOY_PATH: /home/ubuntu/docker/ec2-nginx
+
+    steps:
+      # 1. 배포할 docker-compose.yml과 nginx.conf를 Runner에 내려받음
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      # 2. GitHub Secret에 저장된 개인 키로 SSH 인증을 설정
+      #    키 파일은 GitHub-hosted Runner가 Job 종료 후 폐기하면서 함께 삭제됨
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s' "$NGINX_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$NGINX_HOST" >> ~/.ssh/known_hosts
+
+      # 3. 원격 Nginx 서버에 배포 디렉터리를 생성
+      #    ubuntu 계정이 /docker 경로에 쓰기 권한을 가지고 있어야 함
+      - name: Create remote deployment directory
+        run: >-
+          ssh -i ~/.ssh/id_ed25519
+          "$NGINX_SSH_USER@$NGINX_HOST"
+          "mkdir -p $NGINX_DEPLOY_PATH"
+
+      # 4. Nginx Compose 설정과 프록시 설정 파일을 원격 서버로 복사
+      - name: Copy Nginx configuration files
+        run: >-
+          scp -i ~/.ssh/id_ed25519
+          docker/ec2-nginx/docker-compose.yml
+          docker/ec2-nginx/nginx.conf
+          "$NGINX_SSH_USER@$NGINX_HOST:$NGINX_DEPLOY_PATH/"
+
+      # 5. 복사한 Compose 파일로 Nginx 컨테이너를 생성하거나 최신 설정으로 재생성
+      - name: Start Nginx container
+        run: >-
+          ssh -i ~/.ssh/id_ed25519
+          "$NGINX_SSH_USER@$NGINX_HOST"
+          "cd $NGINX_DEPLOY_PATH && docker compose up -d --force-recreate"
+
+  # JOB 4. MySQL 컨테이너 배포
+  deploy-mysql-redis:
+
+    # SSH와 SCP 명령을 실행할 GitHub Ubuntu Runner
+    runs-on: ubuntu-latest
+
+    # Git 저장소의 MySQL Compose 파일을 내려받기 위한 읽기 권한
+    permissions:
+      contents: read
+
+    # MySQL/Redis 서버는 사설 IP이므로 공개 Nginx 서버를 SSH 배스천으로 사용
+    # SSH 접속 정보와 MySQL 초기 계정 정보는 GitHub Secrets에서만 읽음
+    env:
+      NGINX_HOST: ${{ secrets.DEV_EC2_NGINX_HOST }}
+      NGINX_SSH_USER: ${{ secrets.DEV_EC2_NGINX_SSH_USER }}
+      NGINX_SSH_KEY: ${{ secrets.DEV_EC2_NGINX_SSH_KEY }}
+      MYSQL_HOST: ${{ secrets.DEV_EC2_MYSQL_REDIS_HOST }}
+      MYSQL_SSH_USER: ${{ secrets.DEV_EC2_MYSQL_REDIS_SSH_USER }}
+      MYSQL_SSH_KEY: ${{ secrets.DEV_EC2_MYSQL_REDIS_SSH_KEY }}
+      DEV_DB_NAME: ${{ secrets.DEV_DB_NAME }}
+      DEV_DB_USER: ${{ secrets.DEV_DB_USER }}
+      DEV_DB_PW: ${{ secrets.DEV_DB_PW }}
+      MYSQL_DEPLOY_PATH: /home/ubuntu/docker/ec2-mysql-redis
+
+    steps:
+      # 1. 배포할 MySQL docker-compose.yml을 Runner에 내려받음
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      # 2. Nginx 배스천과 MySQL/Redis 서버에서 사용할 SSH 키 및 접속 경로 설정
+      #    MySQL/Redis 서버의 최초 Host Key는 Job 동안만 Runner의 known_hosts에 저장
+      - name: Configure SSH through Nginx bastion
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s' "$NGINX_SSH_KEY" > ~/.ssh/nginx_key
+          printf '%s' "$MYSQL_SSH_KEY" > ~/.ssh/mysql_redis_key
+          chmod 600 ~/.ssh/nginx_key ~/.ssh/mysql_redis_key
+          ssh-keyscan -H "$NGINX_HOST" >> ~/.ssh/known_hosts
+
+          printf '%s\n' \
+            'Host nginx-bastion' \
+            "  HostName $NGINX_HOST" \
+            "  User $NGINX_SSH_USER" \
+            '  IdentityFile ~/.ssh/nginx_key' \
+            '  IdentitiesOnly yes' \
+            '  StrictHostKeyChecking yes' \
+            'Host mysql-redis-server' \
+            "  HostName $MYSQL_HOST" \
+            "  User $MYSQL_SSH_USER" \
+            '  IdentityFile ~/.ssh/mysql_redis_key' \
+            '  IdentitiesOnly yes' \
+            '  ProxyJump nginx-bastion' \
+            '  StrictHostKeyChecking accept-new' \
+            > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+      # 3. 원격 MySQL 서버에 Compose 파일을 보관할 배포 디렉터리를 생성
+      #    ubuntu 계정이 /docker 경로에 쓰기 권한을 가지고 있어야 함
+      - name: Create remote deployment directory
+        run: ssh mysql-redis-server "mkdir -p $MYSQL_DEPLOY_PATH"
+
+      # 4. MySQL 서비스 정의가 담긴 Compose 파일을 원격 서버로 복사
+      - name: Copy MySQL Compose file
+        run: >-
+          scp
+          docker/ec2-mysql-redis/docker-compose.yml
+          "mysql-redis-server:$MYSQL_DEPLOY_PATH/"
+
+      # 5. Compose 변수에 사용할 DB 정보를 Base64로 인코딩해 SSH 명령에 안전하게 전달
+      #    원격 Host에 .env 파일을 남기지 않고, 컨테이너 생성 시점에만 환경변수로 사용
+      - name: Start MySQL container
+        run: |
+          DB_NAME_B64="$(printf '%s' "$DEV_DB_NAME" | base64 --wrap=0)"
+          DB_USER_B64="$(printf '%s' "$DEV_DB_USER" | base64 --wrap=0)"
+          DB_PW_B64="$(printf '%s' "$DEV_DB_PW" | base64 --wrap=0)"
+
+          ssh mysql-redis-server "
+            export DEV_DB_NAME=\$(printf '%s' '$DB_NAME_B64' | base64 --decode)
+            export DEV_DB_USER=\$(printf '%s' '$DB_USER_B64' | base64 --decode)
+            export DEV_DB_PW=\$(printf '%s' '$DB_PW_B64' | base64 --decode)
+            cd $MYSQL_DEPLOY_PATH
+            docker compose up -d --force-recreate
+          "
+
+  # JOB 5. Spring Boot 이미지 및 컨테이너 배포
+  deploy-springboot:
+    # Nginx와 MySQL/Redis 배포가 모두 성공한 뒤 Spring Boot 배포를 진행
+    needs: [deploy-nginx, deploy-mysql-redis, build-docker-image]
+
+    # Docker 이미지 Artifact 다운로드와 SSH 명령을 실행할 GitHub Ubuntu Runner
+    runs-on: ubuntu-latest
+
+    # Compose 파일을 내려받기 위한 저장소 읽기 권한
+    permissions:
+      contents: read
+
+    # Spring Boot 서버는 사설 IP이므로 공개 Nginx 서버를 SSH 배스천으로 사용
+    # DB 접속 정보는 컨테이너 생성 시점에만 원격 셸의 환경변수로 전달
+    env:
+      NGINX_HOST: ${{ secrets.DEV_EC2_NGINX_HOST }}
+      NGINX_SSH_USER: ${{ secrets.DEV_EC2_NGINX_SSH_USER }}
+      NGINX_SSH_KEY: ${{ secrets.DEV_EC2_NGINX_SSH_KEY }}
+      SPRINGBOOT_HOST: ${{ secrets.DEV_EC2_SPRINGBOOT_HOST }}
+      SPRINGBOOT_SSH_USER: ${{ secrets.DEV_EC2_SPRINGBOOT_SSH_USER }}
+      SPRINGBOOT_SSH_KEY: ${{ secrets.DEV_EC2_SPRINGBOOT_SSH_KEY }}
+      DEV_DB_HOST: ${{ secrets.DEV_DB_HOST }}
+      DEV_DB_NAME: ${{ secrets.DEV_DB_NAME }}
+      DEV_DB_USER: ${{ secrets.DEV_DB_USER }}
+      DEV_DB_PW: ${{ secrets.DEV_DB_PW }}
+      DEV_CLOUDFRONT_DOMAIN: ${{ secrets.DEV_CLOUDFRONT_DOMAIN }}
+      DEV_S3_BUCKET: ${{ secrets.DEV_S3_BUCKET }}
+      FOOD_SAFETY_KOREA_RECIPE_SERVICE_ID: ${{ secrets.FOOD_SAFETY_KOREA_RECIPE_SERVICE_ID }}
+      FOOD_SAFETY_KOREA_RECIPE_DATA_TYPE: ${{ secrets.FOOD_SAFETY_KOREA_RECIPE_DATA_TYPE }}
+      FOOD_SAFETY_KOREA_RECIPE_API_KEY: ${{ secrets.FOOD_SAFETY_KOREA_RECIPE_API_KEY }}
+      ROUTINE_EAT_GEMINI_API_KEY: ${{ secrets.ROUTINE_EAT_GEMINI_API_KEY }}
+      ROUTINE_EAT_MENU_ANALYZE_GEMINI_MODEL: ${{ secrets.ROUTINE_EAT_MENU_ANALYZE_GEMINI_MODEL }}
+      ROUTINE_EAT_FOOD_INGREDIENT_ANALYZE_GEMINI_MODEL: ${{ secrets.ROUTINE_EAT_FOOD_INGREDIENT_ANALYZE_GEMINI_MODEL }}
+      ROUTINE_EAT_COOKING_EQUIPMENT_ANALYZE_GEMINI_MODEL: ${{ secrets.ROUTINE_EAT_COOKING_EQUIPMENT_ANALYZE_GEMINI_MODEL }}
+      ROUTINE_EAT_COOKING_GENERATE_GEMINI_MODEL: ${{ secrets.ROUTINE_EAT_COOKING_GENERATE_GEMINI_MODEL }}
+      ROUTINE_EAT_COOKING_TRANSLATE_GEMINI_MODEL: ${{ secrets.ROUTINE_EAT_COOKING_TRANSLATE_GEMINI_MODEL }}
+      ROUTINE_EAT_COOKING_STEP_GENERATE_GEMINI_MODEL: ${{ secrets.ROUTINE_EAT_COOKING_STEP_GENERATE_GEMINI_MODEL }}
+
+      SPRINGBOOT_DEPLOY_PATH: /home/ubuntu/docker/ec2-springboot
+
+    steps:
+      # 1. Spring Boot Compose 파일을 Runner에 내려받음
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      # 2. JOB 2에서 빌드하고 TAR로 내보낸 Docker 이미지 Artifact를 다운로드
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: spring-api-server-image
+          path: .
+
+      # 3. Nginx 배스천과 Spring Boot 서버에서 사용할 SSH 키 및 접속 경로 설정
+      #    Spring Boot 서버의 최초 Host Key는 Job 동안만 Runner의 known_hosts에 저장
+      - name: Configure SSH through Nginx bastion
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s' "$NGINX_SSH_KEY" > ~/.ssh/nginx_key
+          printf '%s' "$SPRINGBOOT_SSH_KEY" > ~/.ssh/springboot_key
+          chmod 600 ~/.ssh/nginx_key ~/.ssh/springboot_key
+          ssh-keyscan -H "$NGINX_HOST" >> ~/.ssh/known_hosts
+
+          printf '%s\n' \
+            'Host nginx-bastion' \
+            "  HostName $NGINX_HOST" \
+            "  User $NGINX_SSH_USER" \
+            '  IdentityFile ~/.ssh/nginx_key' \
+            '  IdentitiesOnly yes' \
+            '  StrictHostKeyChecking yes' \
+            'Host springboot-server' \
+            "  HostName $SPRINGBOOT_HOST" \
+            "  User $SPRINGBOOT_SSH_USER" \
+            '  IdentityFile ~/.ssh/springboot_key' \
+            '  IdentitiesOnly yes' \
+            '  ProxyJump nginx-bastion' \
+            '  StrictHostKeyChecking accept-new' \
+            > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+      # 4. 원격 배포 디렉터리를 만들고 새 이미지 복사에 필요한 디스크 공간 확보
+      #    실행 중인 컨테이너 이미지는 유지하고 기존 TAR와 미사용 이미지만 정리
+      - name: Prepare remote deployment directory
+        run: |
+          ssh springboot-server "
+            set -e
+            mkdir -p $SPRINGBOOT_DEPLOY_PATH
+            rm --force $SPRINGBOOT_DEPLOY_PATH/spring-api-server.tar
+            docker image prune --all --force
+          "
+
+      # 5. Docker 이미지 TAR와 Compose 파일을 Nginx 배스천을 거쳐 Spring Boot 서버로 복사
+      - name: Copy Spring Boot deployment files
+        run: >-
+          scp
+          spring-api-server.tar
+          docker/ec2-springboot/docker-compose.yml
+          "springboot-server:$SPRINGBOOT_DEPLOY_PATH/"
+
+      # 6. DB 접속 정보를 SSH 명령에 안전하게 전달할 수 있도록 Base64로 인코딩
+      #    원격 서버에 .env 파일을 생성하지 않고 현재 SSH 세션에서만 사용
+      - name: Load image and start Spring Boot container
+        run: |
+          DB_HOST_B64="$(printf '%s' "$DEV_DB_HOST" | base64 --wrap=0)"
+          DB_NAME_B64="$(printf '%s' "$DEV_DB_NAME" | base64 --wrap=0)"
+          DB_USER_B64="$(printf '%s' "$DEV_DB_USER" | base64 --wrap=0)"
+          DB_PW_B64="$(printf '%s' "$DEV_DB_PW" | base64 --wrap=0)"
+          DEV_CLOUDFRONT_DOMAIN_B64="$(printf '%s' "$DEV_CLOUDFRONT_DOMAIN" | base64 --wrap=0)"
+          DEV_S3_BUCKET_B64="$(printf '%s' "$DEV_S3_BUCKET" | base64 --wrap=0)"
+          FOOD_SAFETY_KOREA_RECIPE_SERVICE_ID_B64="$(printf '%s' "$FOOD_SAFETY_KOREA_RECIPE_SERVICE_ID" | base64 --wrap=0)"
+          FOOD_SAFETY_KOREA_RECIPE_DATA_TYPE_B64="$(printf '%s' "$FOOD_SAFETY_KOREA_RECIPE_DATA_TYPE" | base64 --wrap=0)"
+          FOOD_SAFETY_KOREA_RECIPE_API_KEY_B64="$(printf '%s' "$FOOD_SAFETY_KOREA_RECIPE_API_KEY" | base64 --wrap=0)"
+          ROUTINE_EAT_GEMINI_API_KEY_B64="$(printf '%s' "$ROUTINE_EAT_GEMINI_API_KEY" | base64 --wrap=0)"
+          ROUTINE_EAT_MENU_ANALYZE_GEMINI_MODEL_B64="$(printf '%s' "$ROUTINE_EAT_MENU_ANALYZE_GEMINI_MODEL" | base64 --wrap=0)"
+          ROUTINE_EAT_FOOD_INGREDIENT_ANALYZE_GEMINI_MODEL_B64="$(printf '%s' "$ROUTINE_EAT_FOOD_INGREDIENT_ANALYZE_GEMINI_MODEL" | base64 --wrap=0)"
+          ROUTINE_EAT_COOKING_EQUIPMENT_ANALYZE_GEMINI_MODEL_B64="$(printf '%s' "$ROUTINE_EAT_COOKING_EQUIPMENT_ANALYZE_GEMINI_MODEL" | base64 --wrap=0)"
+          ROUTINE_EAT_COOKING_GENERATE_GEMINI_MODEL_B64="$(printf '%s' "$ROUTINE_EAT_COOKING_GENERATE_GEMINI_MODEL" | base64 --wrap=0)"
+          ROUTINE_EAT_COOKING_TRANSLATE_GEMINI_MODEL_B64="$(printf '%s' "$ROUTINE_EAT_COOKING_TRANSLATE_GEMINI_MODEL" | base64 --wrap=0)"
+          ROUTINE_EAT_COOKING_STEP_GENERATE_GEMINI_MODEL_B64="$(printf '%s' "$ROUTINE_EAT_COOKING_STEP_GENERATE_GEMINI_MODEL" | base64 --wrap=0)"
+          
+          
+          ssh springboot-server "
+            set -e
+
+            export DEV_DB_HOST=\$(printf '%s' '$DB_HOST_B64' | base64 --decode)
+            export DEV_DB_NAME=\$(printf '%s' '$DB_NAME_B64' | base64 --decode)
+            export DEV_DB_USER=\$(printf '%s' '$DB_USER_B64' | base64 --decode)
+            export DEV_DB_PW=\$(printf '%s' '$DB_PW_B64' | base64 --decode)
+            export DEV_CLOUDFRONT_DOMAIN=\$(printf '%s' '$DEV_CLOUDFRONT_DOMAIN_B64' | base64 --decode)
+            export DEV_S3_BUCKET=\$(printf '%s' '$DEV_S3_BUCKET_B64' | base64 --decode)
+            export FOOD_SAFETY_KOREA_RECIPE_SERVICE_ID=\$(printf '%s' '$FOOD_SAFETY_KOREA_RECIPE_SERVICE_ID_B64' | base64 --decode)
+            export FOOD_SAFETY_KOREA_RECIPE_DATA_TYPE=\$(printf '%s' '$FOOD_SAFETY_KOREA_RECIPE_DATA_TYPE_B64' | base64 --decode)
+            export FOOD_SAFETY_KOREA_RECIPE_API_KEY=\$(printf '%s' '$FOOD_SAFETY_KOREA_RECIPE_API_KEY_B64' | base64 --decode)
+            export ROUTINE_EAT_GEMINI_API_KEY=\$(printf '%s' '$ROUTINE_EAT_GEMINI_API_KEY_B64' | base64 --decode)
+            export ROUTINE_EAT_MENU_ANALYZE_GEMINI_MODEL=\$(printf '%s' '$ROUTINE_EAT_MENU_ANALYZE_GEMINI_MODEL_B64' | base64 --decode)
+            export ROUTINE_EAT_FOOD_INGREDIENT_ANALYZE_GEMINI_MODEL=\$(printf '%s' '$ROUTINE_EAT_FOOD_INGREDIENT_ANALYZE_GEMINI_MODEL_B64' | base64 --decode)
+            export ROUTINE_EAT_COOKING_EQUIPMENT_ANALYZE_GEMINI_MODEL=\$(printf '%s' '$ROUTINE_EAT_COOKING_EQUIPMENT_ANALYZE_GEMINI_MODEL_B64' | base64 --decode)
+            export ROUTINE_EAT_COOKING_GENERATE_GEMINI_MODEL=\$(printf '%s' '$ROUTINE_EAT_COOKING_GENERATE_GEMINI_MODEL_B64' | base64 --decode)
+            export ROUTINE_EAT_COOKING_TRANSLATE_GEMINI_MODEL=\$(printf '%s' '$ROUTINE_EAT_COOKING_TRANSLATE_GEMINI_MODEL_B64' | base64 --decode)
+            export ROUTINE_EAT_COOKING_STEP_GENERATE_GEMINI_MODEL=\$(printf '%s' '$ROUTINE_EAT_COOKING_STEP_GENERATE_GEMINI_MODEL_B64' | base64 --decode)
+            cd $SPRINGBOOT_DEPLOY_PATH
+
+            docker load --input spring-api-server.tar
+            rm --force spring-api-server.tar
+
+            docker compose up -d --force-recreate
+
+            expected_image_id=\$(docker image inspect spring-api-server:latest --format '{{.Id}}')
+            running_image_id=\$(docker inspect spring-api-server --format '{{.Image}}')
+            test \"\$expected_image_id\" = \"\$running_image_id\"
+
+            docker image prune --all --force
+          "

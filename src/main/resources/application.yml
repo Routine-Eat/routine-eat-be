@@ -1,7 +1,6 @@
 spring:
   application:
     name: routine-eat-be
-
   datasource:
     url:  jdbc:mysql://${DB_HOST}:3306/${DB_NAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&rewriteBatchedStatements=true
     username: ${DB_USER}
@@ -12,8 +11,41 @@ spring:
       ddl-auto: update
 
 cors:
-  allowed-origins: http://localhost:3000,http://localhost:5173
+  allowed-origins: http://localhost:3000,http://localhost:5173,https://routine-eat.netlify.app,https://routine-eat.site
+
 logging:
   level:
     root: INFO
     com.likelion.routineeatbe: DEBUG
+
+# swagger 설정
+springdoc:
+  swagger-ui:
+    path: /swagger-ui # Swagger UI 접근을 위한 경로 설정 (기본값 : /swagger-ui/index.html)
+    display-request-duration: true # Swagger UI에서 API 요청 소요 시간을 표시하도록 설정 (밀리초, ms단위)
+    tags-sorter: alpha # Swagger UI에서 태그(컨트롤러/그룹) 목록 정렬 기준 설정 (alpha : 알파벳 순)
+    operations-sorter: method # 각 태그에 속한 오퍼레이션(API) 목록 정렬 기준 설정 => method: HTTP 메서드 순서(GET, POST, PUT, DELETE)로 정렬
+  api-docs:
+    path: /v3/api-docs # OpenAPI JSON 문서를 제공하는 엔드포인트. (기본값 /v3/api-docs임) => 외부툴/REST 클라이언트에서 사용할 API 스펙(JSON) 파일 경로 설정
+
+
+data:
+  crawling:
+    food-safety-korea:
+      max-request-count: ${FOOD_SAFETY_KOREA_MAX_REQUEST_COUNT:100}
+
+gemini:
+  cooking-generate-model: ${ROUTINE_EAT_COOKING_GENERATE_GEMINI_MODEL}
+  cooking-translate-model: ${ROUTINE_EAT_COOKING_TRANSLATE_GEMINI_MODEL}
+  cooking-step-generate-model: ${ROUTINE_EAT_COOKING_STEP_GENERATE_GEMINI_MODEL}
+  batch-size: ${ROUTINE_EAT_GEMINI_BATCH_SIZE:10}
+  retry:
+    max-attempts: ${ROUTINE_EAT_GEMINI_RETRY_MAX_ATTEMPTS:4}
+    initial-delay: ${ROUTINE_EAT_GEMINI_RETRY_INITIAL_DELAY:1s}
+    max-delay: ${ROUTINE_EAT_GEMINI_RETRY_MAX_DELAY:8s}
+    jitter-ratio: ${ROUTINE_EAT_GEMINI_RETRY_JITTER_RATIO:0.25}
+
+storage:
+  s3:
+    bucket: ${S3_BUCKET}
+    cloudfront-domain: ${CLOUDFRONT_DOMAIN}

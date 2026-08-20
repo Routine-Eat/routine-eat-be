@@ -14,7 +14,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SwaggerConfig {
 
-    @Value("${server.servlet.context-path:}")
+    // application.yml의 server url 값을 유동적으로 받는다.(local, dev, prod), 없으면 localhost로 지정해준다.
+    @Value("${server.url:http://localhost:8080}")
     private String contextPath;
 
     @Bean

@@ -25,6 +25,10 @@ public class GlobalResponse<T> {
         return new GlobalResponse<>(true, 200, "요청이 성공적으로 처리되었습니다.", data);
     }
 
+    public static <T> GlobalResponse<T> success(String message) {
+        return new GlobalResponse<>(true, 200, message, null);
+    }
+
     public static <T> GlobalResponse<T> success(String message, T data) {
         return new GlobalResponse<>(true, 200, message, data);
     }

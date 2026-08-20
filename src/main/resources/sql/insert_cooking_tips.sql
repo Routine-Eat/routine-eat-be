@@ -103,28 +103,28 @@ CREATE TEMPORARY TABLE `cooking_tip_content_seed` (
 INSERT INTO `cooking_tip_content_seed` (`title`, `sort_order`, `type`, `content`) VALUES
   ('대파 써는 법', 1, 'TEXT', '대파는 흐르는 물에 씻고 뿌리와 시든 겉잎을 제거해 주세요.'),
   ('대파 써는 법', 2, 'TEXT', '송송썰기는 세로로 놓고 일정한 간격으로 썰어주세요.'),
-  ('대파 써는 법', 3, 'IMAGE', 'https:/api-img.nahjjun.cloud/tips/1/1.png'),
-  ('대파 써는 법', 4, 'IMAGE', 'https:/api-img.nahjjun.cloud/tips/1/2.png'),
+  ('대파 써는 법', 3, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/1/1.png'),
+  ('대파 써는 법', 4, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/1/2.png'),
   ('대파 써는 법', 5, 'TEXT', '어슷썰기는 칼을 비스듬히 눕혀 썰어 주세요. 파채는 5cm 길이로 자른 뒤 세로로 가늘게 썹니다.'),
-  ('대파 써는 법', 6, 'IMAGE', 'https:/api-img.nahjjun.cloud/tips/1/3.png'),
-  ('대파 써는 법', 7, 'IMAGE', 'https:/api-img.nahjjun.cloud/tips/1/4.png'),
+  ('대파 써는 법', 6, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/1/3.png'),
+  ('대파 써는 법', 7, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/1/4.png'),
   ('대파 써는 법', 8, 'TEXT', '파채는 5cm 길이로 자른 뒤 세로로 가늘게 썹니다.'),
-  ('대파 써는 법', 9, 'IMAGE', 'https:/api-img.nahjjun.cloud/tips/1/5.png'),
-  ('대파 써는 법', 10, 'IMAGE', 'https:/api-img.nahjjun.cloud/tips/1/6.png'),
+  ('대파 써는 법', 9, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/1/5.png'),
+  ('대파 써는 법', 10, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/1/6.png'),
 
   ('양파 써는 법', 1, 'TEXT', '양파의 윗부분을 자르고 껍질을 벗긴 뒤 뿌리 쪽이 남도록 반으로 갈라 주세요. 뿌리를 남기면 써는 동안 양파가 흩어지지 않습니다.'),
-  ('양파 써는 법', 2, 'IMAGE', 'https:/api-img.nahjjun.cloud/tips/2/1.png'),
+  ('양파 써는 법', 2, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/2/1.png'),
   ('양파 써는 법', 3, 'TEXT', '채썰기는 결 방향 또는 결 반대 방향으로 얇게 썰어주세요.'),
-  ('양파 써는 법', 4, 'IMAGE', 'https:/api-img.nahjjun.cloud/tips/2/2.png'),
-  ('양파 써는 법', 5, 'IMAGE', 'https:/api-img.nahjjun.cloud/tips/2/3.png'),
+  ('양파 써는 법', 4, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/2/2.png'),
+  ('양파 써는 법', 5, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/2/3.png'),
   ('양파 써는 법', 6, 'TEXT', '다지기는 세로와 가로로 칼집을 낸 뒤 끝에서부터 잘게 썰어 주세요.'),
-  ('양파 써는 법', 7, 'IMAGE', 'https:/api-img.nahjjun.cloud/tips/2/4.png'),
-  ('양파 써는 법', 8, 'IMAGE', 'https:/api-img.nahjjun.cloud/tips/2/5.png'),
+  ('양파 써는 법', 7, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/2/4.png'),
+  ('양파 써는 법', 8, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/2/5.png'),
 
   ('마늘 다지는 법', 1, 'TEXT', '마늘의 꼭지를 제거하고 칼 옆면으로 살짝 눌러 으깨 주세요.'),
-  ('마늘 다지는 법', 2, 'IMAGE', 'https:/api-img.nahjjun.cloud/tips/3/1.png'),
+  ('마늘 다지는 법', 2, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/3/1.png'),
   ('마늘 다지는 법', 3, 'TEXT', '으깬 마늘을 한곳에 모아 칼끝을 도마에 둔 채 여러 방향으로 반복해서 썰면 고르게 다질 수 있습니다.'),
-  ('마늘 다지는 법', 4, 'IMAGE', 'https:/api-img.nahjjun.cloud/tips/3/2.png'),
+  ('마늘 다지는 법', 4, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/3/2.png'),
 
   ('고추 써는 법', 1, 'TEXT', '고추는 씻은 뒤 물기를 닦고 꼭지를 제거해 주세요. 매운 고추를 만진 손으로 눈이나 얼굴을 만지지 마세요.'),
   ('고추 써는 법', 2, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/4/1.png'),
@@ -177,7 +177,6 @@ INSERT INTO `cooking_tip_content_seed` (`title`, `sort_order`, `type`, `content`
   ('가지 떫은맛 제거하는 법', 1, 'TEXT', '가지를 썬 뒤 소금을 얇게 뿌려 10분 정도 두면 떫은맛과 여분의 수분을 줄일 수 있습니다.'),
   ('가지 떫은맛 제거하는 법', 2, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/10/1.png'),
   ('가지 떫은맛 제거하는 법', 3, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/10/2.png'),
-  ('가지 떫은맛 제거하는 법', 3, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/10/3.png'),
   ('가지 떫은맛 제거하는 법', 4, 'TEXT', '표면에 맺힌 물을 가볍게 헹군 뒤 키친타월로 완전히 닦아 조리해 주세요.'),
   ('가지 떫은맛 제거하는 법', 5, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/10/3.png'),
   ('가지 떫은맛 제거하는 법', 6, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/10/4.png'),
@@ -590,7 +589,7 @@ INSERT INTO `cooking_tip_content_seed` (`title`, `sort_order`, `type`, `content`
   ('조리도구 안전하게 사용하는 법', 3, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/68/2.png'),
   ('조리도구 안전하게 사용하는 법', 4, 'TEXT', '칼이 떨어질 때는 잡으려 하지 말고 물러서세요. 전기 조리도구는 칼날이나 부품을 만지기 전에 전원을 끄고 플러그를 뽑습니다.'),
   ('조리도구 안전하게 사용하는 법', 5, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/68/3.png'),
-  ('조리도구 안전하게 사용하는 법', 6, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/68/4.png'),
+  ('조리도구 안전하게 사용하는 법', 6, 'IMAGE', 'https://api-img.nahjjun.cloud/tips/68/4.png');
 
 -- 시드에 포함된 팁의 콘텐츠는 현재 파일의 내용과 순서로 동기화한다.
 DELETE content
@@ -619,21 +618,6 @@ FROM `cooking_tip_content_seed` AS seed_content
          JOIN `cooking_tip` AS tip
               ON tip.`title` = seed_content.`title`
 ORDER BY tip.`cooking_tip_id`, seed_content.`sort_order`;
-
--- IMAGE 콘텐츠는 INSERT로 발급된 실제 PK를 사용해 접근 URL을 완성한다.
-UPDATE `cooking_tip_content` AS content
-    JOIN `cooking_tip` AS tip
-    ON tip.`cooking_tip_id` = content.`cooking_tip_id`
-    JOIN `cooking_tip_seed` AS seed
-    ON seed.`title` = tip.`title`
-SET content.`content` = CONCAT(
-        'https://api-img.nahjjun.cloud/tip/',
-        tip.`cooking_tip_id`,
-        '/',
-        content.`cooking_tip_content_id`
-    ),
-    content.`updated_at` = CURRENT_TIMESTAMP
-WHERE content.`type` = 'IMAGE';
 
 DROP TEMPORARY TABLE `cooking_tip_content_seed`;
 DROP TEMPORARY TABLE `cooking_tip_seed`;

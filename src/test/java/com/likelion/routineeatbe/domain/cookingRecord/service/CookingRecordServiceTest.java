@@ -1102,6 +1102,90 @@ class CookingRecordServiceTest {
     }
 
     @Test
+    @DisplayName("진행 중인 요리 세션을 마지막 단계로 변경한다")
+    void 진행_중_요리_세션_마지막_단계_변경_성공() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = createCookingRecord(10L, user, 2, 3);
+        CookingSession cookingSession = cookingRecord.getCookingSession();
+        CookingStep cookingStep = CookingStep.builder()
+                .id(21L)
+                .level(3L)
+                .title("요리 완성")
+                .content("불을 끄고 요리를 완성하세요.")
+                .cookingSession(cookingSession)
+                .build();
+        CurrentCookingStepResDto expected = CurrentCookingStepResDto.create(
+                3,
+                2,
+                null,
+                CurrentCookingStepDetailResDto.create(
+                        3L,
+                        "요리 완성",
+                        null,
+                        "불을 끄고 요리를 완성하세요.",
+                        null,
+                        List.of(),
+                        List.of()
+                )
+        );
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository.findByIdAndUserIdForUpdate(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+        given(cookingStepRepository.findByCookingSessionIdAndLevel(100L, 3L))
+                .willReturn(Optional.of(cookingStep));
+        given(cookingStepTipRepository
+                .findAllWithCookingTipAndContentsByCookingStepId(21L))
+                .willReturn(List.of());
+        given(cookingStepFoodIngredientRepository
+                .findAllWithCookingRecordFoodIngredientByCookingStepId(21L))
+                .willReturn(List.of());
+        given(cookingRecordMapper.toCurrentCookingStepResDto(
+                cookingSession,
+                cookingStep,
+                List.of(),
+                List.of()
+        )).willReturn(expected);
+
+        // when
+        CurrentCookingStepResDto result = cookingRecordService.moveToLastCookingStep(
+                10L,
+                "1234"
+        );
+
+        // then
+        assertThat(result).isSameAs(expected);
+        assertThat(cookingSession.getCurrentCookingStepLevel()).isEqualTo(3);
+        assertThat(cookingSession.getStatus()).isEqualTo(CookingSessionStatus.IN_PROGRESS);
+        then(cookingRecordRepository).should().findByIdAndUserIdForUpdate(10L, 1L);
+        then(cookingRecordMapper).should().toCurrentCookingStepResDto(
+                cookingSession,
+                cookingStep,
+                List.of(),
+                List.of()
+        );
+    }
+
+    @Test
+    @DisplayName("완료된 요리 세션은 마지막 단계 변경에 실패한다")
+    void 완료된_요리_세션_마지막_단계_변경_실패() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = createCookingRecord(10L, user, 3, 3);
+        cookingRecord.getCookingSession().complete();
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository.findByIdAndUserIdForUpdate(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+
+        // when & then
+        assertThatThrownBy(() -> cookingRecordService.moveToLastCookingStep(10L, "1234"))
+                .isInstanceOf(CustomException.class)
+                .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
+                        .isEqualTo(CookingRecordErrorCode.COOKING_SESSION_NOT_IN_PROGRESS));
+        then(cookingStepRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
     @DisplayName("완료된 요리 세션은 현재 단계 조회에 실패한다")
     void 완료된_요리_세션_현재_단계_조회_실패() {
         // given

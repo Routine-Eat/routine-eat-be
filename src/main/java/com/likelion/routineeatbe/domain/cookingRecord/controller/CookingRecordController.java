@@ -163,6 +163,25 @@ public class CookingRecordController implements CookingRecordControllerDocs {
     }
 
     @Override
+    public ResponseEntity<GlobalResponse<CurrentCookingStepResDto>> moveToLastCookingStep(
+            Long cookingRecordId,
+            String userNumber
+    ) {
+        CurrentCookingStepResDto result = cookingRecordService.moveToLastCookingStep(
+                cookingRecordId,
+                userNumber
+        );
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(GlobalResponse.success(
+                        HttpStatus.CREATED.value(),
+                        "마지막 요리 단계로 이동했습니다. 현재 %d번째 단계입니다."
+                                .formatted(result.currentCookingStep().level()),
+                        result
+                ));
+    }
+
+    @Override
     public ResponseEntity<GlobalResponse<CookingStepMoveResDto>> moveToNextCookingStep(
             Long cookingRecordId,
             String userNumber

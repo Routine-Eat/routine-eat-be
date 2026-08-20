@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -755,6 +756,72 @@ class CookingRecordControllerTest {
                         "$.data.currentCookingStep.foodIngredients[0].primaryUsedAmountValue"
                 ).doesNotExist());
         then(cookingRecordService).should().getCurrentCookingStep(10L, "1234");
+    }
+
+    @Test
+    @DisplayName("마지막 요리 단계 변경 API 성공 - 201 반환")
+    void 마지막_요리_단계_변경_API_성공_201_반환() throws Exception {
+        // given
+        CurrentCookingStepResDto response = CurrentCookingStepResDto.create(
+                10,
+                9,
+                null,
+                CurrentCookingStepDetailResDto.create(
+                        10L,
+                        "요리 완성",
+                        "https://example.com/last-step.jpg",
+                        "불을 끄고 요리를 완성하세요.",
+                        "그릇에 조심히 담아주세요.",
+                        createNavigationTips(),
+                        List.of(CurrentCookingStepFoodIngredientResDto.create(
+                                30L,
+                                7L,
+                                "대파",
+                                60.0,
+                                PrimaryUnit.G,
+                                0.5,
+                                SecondaryUnit.JULGI
+                        ))
+                )
+        );
+        given(cookingRecordService.moveToLastCookingStep(10L, "1234"))
+                .willReturn(response);
+
+        // when & then
+        mockMvc.perform(patch(
+                        "/api/v1/cooking-records/{cookingRecordId}/cooking-session/cooking-steps/last",
+                        10L
+                ).param("userNumber", "1234"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(201))
+                .andExpect(jsonPath("$.message").value(
+                        "마지막 요리 단계로 이동했습니다. 현재 10번째 단계입니다."
+                ))
+                .andExpect(jsonPath("$.data.cookingStepCount").value(10))
+                .andExpect(jsonPath("$.data.prevCookingStepLevel").value(9))
+                .andExpect(jsonPath("$.data.nextCookingStepLevel").doesNotExist())
+                .andExpect(jsonPath("$.data.currentCookingStep.level").value(10))
+                .andExpect(jsonPath("$.data.currentCookingStep.cookingStepId")
+                        .doesNotExist())
+                .andExpect(jsonPath("$.data.currentCookingStep.tips[0].cookingTipType")
+                        .value("TEXT"))
+                .andExpect(jsonPath(
+                        "$.data.currentCookingStep.foodIngredients[0].primaryAmountValue"
+                ).value(60.0));
+        then(cookingRecordService).should().moveToLastCookingStep(10L, "1234");
+    }
+
+    @Test
+    @DisplayName("마지막 요리 단계 변경 API 실패 - 잘못된 사용자 번호")
+    void 마지막_요리_단계_변경_API_실패_잘못된_사용자_번호() throws Exception {
+        // when & then
+        mockMvc.perform(patch(
+                        "/api/v1/cooking-records/{cookingRecordId}/cooking-session/cooking-steps/last",
+                        10L
+                ).param("userNumber", "12AB"))
+                .andExpect(status().isBadRequest());
+        then(cookingRecordService).shouldHaveNoInteractions();
     }
 
     @Test

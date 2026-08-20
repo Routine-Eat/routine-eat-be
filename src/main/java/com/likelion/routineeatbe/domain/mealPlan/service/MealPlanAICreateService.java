@@ -236,6 +236,7 @@ public class MealPlanAICreateService {
                 // sameRate와 price 적용
                 return new AiMealRecommendationResponse.Menu(
                         candidate.menuId,
+                        candidate.menuThumbnailUrl,
                         candidate.menuName,
                         candidate.difficultyLevel,
                         candidate.timeRequired,
@@ -292,6 +293,7 @@ public class MealPlanAICreateService {
      */
     private record Candidate(
             Long menuId,
+            String menuThumbnailUrl,
             String menuName,
             DifficultyLevel difficultyLevel,
             List<String> ingredientNames,
@@ -338,6 +340,7 @@ public class MealPlanAICreateService {
 
             return new Candidate(
                     recipe.getMenu().getId(),
+                    recipe.getMenu().getThumbnailUrl(),
                     recipe.getMenu().getName(),
                     recipe.getMenu().getDifficultyLevel(),
                     ingredientNames,

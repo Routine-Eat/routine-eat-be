@@ -40,6 +40,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.mapper.CookingRecordMapper
 import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRepository;
 import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingStepFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.cookingRecord.service.gemini.CookingStepGenerateGeminiService;
+import com.likelion.routineeatbe.domain.cookingRecord.service.gemini.CookingTipGenerateGeminiService;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingStepStage;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSessionLog;
@@ -105,6 +106,7 @@ class CookingRecordServiceTest {
     @Mock private CookingStepTipRepository cookingStepTipRepository;
     @Mock private CookingStepFoodIngredientRepository cookingStepFoodIngredientRepository;
     @Mock private CookingStepGenerateGeminiService geminiService;
+    @Mock private CookingTipGenerateGeminiService cookingTipGenerateGeminiService;
     @Mock private CookingRecordPersistenceService persistenceService;
     @Mock private CookingRecordImageStorageService imageStorageService;
     @Mock private CookingRecordMapper cookingRecordMapper;
@@ -553,7 +555,6 @@ class CookingRecordServiceTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_3,
                 DifficultyLevel.LEVEL_2,
-                "참기름을 조금 더 넣으면 맛있습니다.",
                 List.of()
         );
         CookingResultSaveResDto expected = CookingResultSaveResDto.create(10L);
@@ -564,12 +565,16 @@ class CookingRecordServiceTest {
                         CookingSessionStatus.COMPLETED
                 ))
                 .willReturn(Optional.of(cookingRecord));
+        given(cookingStepRepository
+                .findAllByCookingSessionIdAndLevelGreaterThanEqualOrderByLevelAsc(100L, 1L))
+                .willReturn(List.of(CookingStep.builder().level(1L).build()));
+        given(cookingTipGenerateGeminiService.generate(any())).willReturn("불 조절에 유의하세요.");
         given(persistenceService.saveCookingResult(
                 1L,
                 10L,
                 TasteRating.LEVEL_3,
                 DifficultyLevel.LEVEL_2,
-                "참기름을 조금 더 넣으면 맛있습니다.",
+                "불 조절에 유의하세요.",
                 List.of(),
                 null
         )).willReturn(cookingRecord);
@@ -598,7 +603,6 @@ class CookingRecordServiceTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_3,
                 DifficultyLevel.LEVEL_2,
-                null,
                 List.of()
         );
         UserStatistics statistics = UserStatistics.builder().id(20L).user(user).build();
@@ -609,6 +613,10 @@ class CookingRecordServiceTest {
                         CookingSessionStatus.COMPLETED
                 ))
                 .willReturn(Optional.of(cookingRecord));
+        given(cookingStepRepository
+                .findAllByCookingSessionIdAndLevelGreaterThanEqualOrderByLevelAsc(100L, 1L))
+                .willReturn(List.of(CookingStep.builder().level(1L).build()));
+        given(cookingTipGenerateGeminiService.generate(any())).willReturn("불 조절에 유의하세요.");
         given(cookingRecordRepository
                 .countByUser_IdAndCreatedAtGreaterThanEqualAndCreatedAtLessThanAndDifficultyLevelIsNotNull(
                         eq(1L),
@@ -621,7 +629,7 @@ class CookingRecordServiceTest {
                 10L,
                 TasteRating.LEVEL_3,
                 DifficultyLevel.LEVEL_2,
-                null,
+                "불 조절에 유의하세요.",
                 List.of(),
                 null
         )).willReturn(cookingRecord);
@@ -653,7 +661,6 @@ class CookingRecordServiceTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_2,
                 DifficultyLevel.LEVEL_3,
-                null,
                 List.of(new ModifiedCookingRecordFoodIngredientReqDto(
                         40L,
                         80.0,
@@ -675,13 +682,17 @@ class CookingRecordServiceTest {
                         CookingSessionStatus.COMPLETED
                 ))
                 .willReturn(Optional.of(cookingRecord));
+        given(cookingStepRepository
+                .findAllByCookingSessionIdAndLevelGreaterThanEqualOrderByLevelAsc(100L, 1L))
+                .willReturn(List.of(CookingStep.builder().level(1L).build()));
+        given(cookingTipGenerateGeminiService.generate(any())).willReturn("불 조절에 유의하세요.");
         given(imageStorageService.upload(1L, 10L, image)).willReturn(photoUrl);
         given(persistenceService.saveCookingResult(
                 1L,
                 10L,
                 TasteRating.LEVEL_2,
                 DifficultyLevel.LEVEL_3,
-                null,
+                "불 조절에 유의하세요.",
                 request.modifiedCookingRecordFoodIngredients(),
                 photoUrl
         )).willReturn(cookingRecord);
@@ -709,7 +720,6 @@ class CookingRecordServiceTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_2,
                 DifficultyLevel.LEVEL_2,
-                null,
                 List.of()
         );
         given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
@@ -744,7 +754,6 @@ class CookingRecordServiceTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_1,
                 DifficultyLevel.LEVEL_4,
-                null,
                 List.of()
         );
         MockMultipartFile image = new MockMultipartFile(
@@ -761,13 +770,17 @@ class CookingRecordServiceTest {
                         CookingSessionStatus.COMPLETED
                 ))
                 .willReturn(Optional.of(cookingRecord));
+        given(cookingStepRepository
+                .findAllByCookingSessionIdAndLevelGreaterThanEqualOrderByLevelAsc(100L, 1L))
+                .willReturn(List.of(CookingStep.builder().level(1L).build()));
+        given(cookingTipGenerateGeminiService.generate(any())).willReturn("불 조절에 유의하세요.");
         given(imageStorageService.upload(1L, 10L, image)).willReturn(photoUrl);
         given(persistenceService.saveCookingResult(
                 1L,
                 10L,
                 TasteRating.LEVEL_1,
                 DifficultyLevel.LEVEL_4,
-                null,
+                "불 조절에 유의하세요.",
                 List.of(),
                 photoUrl
         )).willThrow(new CustomException(CookingRecordErrorCode.COOKING_RECORD_NOT_FOUND));

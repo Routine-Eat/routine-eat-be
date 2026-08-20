@@ -25,6 +25,7 @@ import com.likelion.routineeatbe.domain.cookingRecord.mapper.CookingRecordMapper
 import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingRecordRepository;
 import com.likelion.routineeatbe.domain.cookingRecord.repository.CookingStepFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.cookingRecord.service.gemini.CookingStepGenerateGeminiService;
+import com.likelion.routineeatbe.domain.cookingRecord.service.gemini.CookingTipGenerateGeminiService;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSession;
 import com.likelion.routineeatbe.domain.cookingSession.entity.CookingSessionLog;
@@ -86,6 +87,7 @@ public class CookingRecordService {
     private final CookingStepTipRepository cookingStepTipRepository;
     private final CookingStepFoodIngredientRepository cookingStepFoodIngredientRepository;
     private final CookingStepGenerateGeminiService geminiService;
+    private final CookingTipGenerateGeminiService cookingTipGenerateGeminiService;
     private final CookingRecordPersistenceService persistenceService;
     private final CookingRecordImageStorageService imageStorageService;
     private final CookingRecordMapper cookingRecordMapper;
@@ -452,10 +454,11 @@ public class CookingRecordService {
 
     /**
      * (1) 작업 목적
-     * 사용자의 최근 완료 요리 기록에 맛 평가, 난이도와 선택 이미지를 저장합니다.
+     * 사용자의 최근 완료 요리 기록에 맛 평가, 난이도, Gemini가 생성한 한 줄 요리 팁과 선택 이미지를 저장합니다.
      *
      * (2) 세부 작업 내용
      * - 사용자의 가장 최근 완료 요리 기록을 조회합니다.
+     * - 완료된 실제 요리 단계를 Gemini에 전달해 한 줄 요리 팁을 생성합니다.
      * - 선택 이미지가 있으면 S3에 업로드한 후 별도 트랜잭션에서 회고를 저장합니다.
      * - 요청된 음식 재료 사용량을 보정한 뒤 수정된 사용량으로 사용자 보유량을 차감합니다.
      * - 오늘 세 번째 요리 결과 저장 차례인지 확인하고, 저장 트랜잭션 종료 후 사용자 통계와 리포트 도착 알림 생성을 비동기로 예약합니다.
@@ -486,6 +489,12 @@ public class CookingRecordService {
                 .orElseThrow(() -> new CustomException(
                         CookingRecordErrorCode.COMPLETED_COOKING_RECORD_NOT_FOUND
                 ));
+        List<CookingStep> cookingSteps = cookingStepRepository
+                .findAllByCookingSessionIdAndLevelGreaterThanEqualOrderByLevelAsc(
+                        cookingRecord.getCookingSession().getId(),
+                        1L
+                );
+        String cookingTip = cookingTipGenerateGeminiService.generate(cookingSteps);
         boolean shouldSaveUserStatistics = isThirdCookingResultToday(user.getId());
 
         boolean imageUploaded = image != null && !image.isEmpty();
@@ -499,7 +508,7 @@ public class CookingRecordService {
                     cookingRecord.getId(),
                     request.tasteRating(),
                     request.difficultyLevel(),
-                    request.cookingTip(),
+                    cookingTip,
                     request.modifiedCookingRecordFoodIngredients(),
                     photoUrl
             );

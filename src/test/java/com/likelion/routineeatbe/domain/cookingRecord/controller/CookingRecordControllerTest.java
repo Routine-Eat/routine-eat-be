@@ -448,7 +448,6 @@ class CookingRecordControllerTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_3,
                 DifficultyLevel.LEVEL_2,
-                "참기름을 조금 더 넣으면 맛있습니다.",
                 List.of(new ModifiedCookingRecordFoodIngredientReqDto(
                         1L,
                         80.0,
@@ -491,7 +490,6 @@ class CookingRecordControllerTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_2,
                 DifficultyLevel.LEVEL_1,
-                null,
                 List.of()
         );
         CookingResultSaveResDto response = CookingResultSaveResDto.create(10L);
@@ -520,7 +518,6 @@ class CookingRecordControllerTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 null,
                 DifficultyLevel.LEVEL_1,
-                null,
                 List.of()
         );
         MockMultipartFile requestPart = new MockMultipartFile(
@@ -545,37 +542,11 @@ class CookingRecordControllerTest {
         CookingResultSaveReqDto request = new CookingResultSaveReqDto(
                 TasteRating.LEVEL_2,
                 DifficultyLevel.LEVEL_1,
-                null,
                 List.of(new ModifiedCookingRecordFoodIngredientReqDto(
                         1L,
                         -1.0,
                         null
                 ))
-        );
-        MockMultipartFile requestPart = new MockMultipartFile(
-                "request",
-                "request.json",
-                MediaType.APPLICATION_JSON_VALUE,
-                objectMapper.writeValueAsBytes(request)
-        );
-
-        // when & then
-        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/v1/cooking-records")
-                        .file(requestPart)
-                        .param("userNumber", "1234"))
-                .andExpect(status().isBadRequest());
-        then(cookingRecordService).shouldHaveNoInteractions();
-    }
-
-    @Test
-    @DisplayName("요리 결과 저장 API 실패 - 요리 팁 500자 초과")
-    void 요리_결과_저장_API_실패_요리_팁_길이_초과() throws Exception {
-        // given
-        CookingResultSaveReqDto request = new CookingResultSaveReqDto(
-                TasteRating.LEVEL_2,
-                DifficultyLevel.LEVEL_1,
-                "가".repeat(501),
-                List.of()
         );
         MockMultipartFile requestPart = new MockMultipartFile(
                 "request",

@@ -21,6 +21,7 @@ public record AiMealRecommendationResponse(Plan practice, Plan useAll, Plan simp
     /** 메뉴 식별자, 표시 이름, 식단 목적에 맞는 개별 추천 정보 */
     public record Menu(
             Long menuId,
+            String menuThumbnailUrl,
             String menuName,
             DifficultyLevel difficultyLevel,
             Integer timeRequired,

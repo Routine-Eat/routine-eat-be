@@ -237,7 +237,7 @@ public interface CookingRecordControllerDocs {
                     - userNumber: 4자리 사용자 고유 식별번호
 
                     [Multipart Part]
-                    - request: application/json 형식의 맛 평가, 난이도와 음식 재료 실제 사용량
+                    - request: application/json 형식의 맛 평가, 실제 난이도와 음식 재료 실제 사용량
                     - image: 선택 이미지 파일
                     """
     )

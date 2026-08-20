@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -36,6 +37,7 @@ public interface CookingRecordRepository extends
      * @param status 요리 세션 상태
      * @return 생성일과 PK 기준 가장 최근 요리 기록
      */
+    @EntityGraph(attributePaths = "cookingSession")
     Optional<CookingRecord>
             findFirstByUser_IdAndCookingSession_StatusOrderByCreatedAtDescIdDesc(
                     Long userId,

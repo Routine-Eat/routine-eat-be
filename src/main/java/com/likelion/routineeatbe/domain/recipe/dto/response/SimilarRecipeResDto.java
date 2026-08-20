@@ -12,6 +12,8 @@ public record SimilarRecipeResDto(
         String name,
         @Schema(description = "추가로 필요한 음식 재료 개수", example = "1")
         Long additionalFoodIngredientCount,
+        @Schema(description = "레시피 썸네일 이미지", example = "https://...")
+        String recipeThumbnailUrl,
         @Schema(description = "사용자가 찜한 레시피 여부", example = "true")
         boolean isFavoriteRecipe
 ) {
@@ -20,12 +22,14 @@ public record SimilarRecipeResDto(
             Long id,
             String name,
             Long additionalFoodIngredientCount,
+            String recipeThumbnailUrl,
             boolean isFavoriteRecipe
     ) {
         return SimilarRecipeResDto.builder()
                 .id(id)
                 .name(name)
                 .additionalFoodIngredientCount(additionalFoodIngredientCount)
+                .recipeThumbnailUrl(recipeThumbnailUrl)
                 .isFavoriteRecipe(isFavoriteRecipe)
                 .build();
     }

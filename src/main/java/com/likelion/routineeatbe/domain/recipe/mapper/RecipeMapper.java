@@ -52,12 +52,14 @@ public class RecipeMapper {
     public SimilarRecipeResDto toSimilarRecipeResDto(
             Recipe recipe,
             Long additionalFoodIngredientCount,
+            String recipeThumbnailUrl,
             boolean isFavoriteRecipe
     ) {
         return SimilarRecipeResDto.create(
                 recipe.getId(),
                 recipe.getMenu().getName(),
                 additionalFoodIngredientCount,
+                recipeThumbnailUrl,
                 isFavoriteRecipe
         );
     }

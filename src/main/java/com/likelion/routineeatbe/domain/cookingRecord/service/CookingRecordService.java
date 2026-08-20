@@ -747,6 +747,97 @@ public class CookingRecordService {
 
     /**
      * (1) 작업 목적
+     * 사용자의 진행 중인 요리 세션을 마지막 요리 단계로 변경합니다.
+     *
+     * (2) 세부 작업 내용
+     * - 사용자 소유 요리 기록과 세션을 비관적 쓰기 잠금으로 조회합니다.
+     * - 진행 중 세션의 마지막 단계 번호로 현재 단계를 변경합니다.
+     * - 마지막 단계의 요리 팁과 음식 재료를 조회해 응답 DTO로 변환합니다.
+     *
+     * @param cookingRecordId 요리 기록 PK
+     * @param userNumber 사용자 고유 식별번호
+     * @return 마지막 요리 단계 상세 정보
+     */
+    @Transactional
+    public CurrentCookingStepResDto moveToLastCookingStep(
+            Long cookingRecordId,
+            String userNumber
+    ) {
+        log.info(
+                "[CookingRecordService] 마지막 요리 단계 이동 시작 | moveToLastCookingStep() - START | cookingRecordId: {}, userNumber: {}",
+                cookingRecordId,
+                userNumber
+        );
+
+        /*
+            1. 사용자 및 요리 기록 조회
+            - 사용자와 사용자 소유 요리 기록을 조회하고 동시 변경을 방지하기 위해 잠금을 적용합니다.
+         */
+        User user = userRepository.findByLoginNumber(userNumber)
+                .orElseThrow(() -> new CustomException(CookingRecordErrorCode.USER_NOT_FOUND));
+        CookingRecord cookingRecord = cookingRecordRepository
+                .findByIdAndUserIdForUpdate(cookingRecordId, user.getId())
+                .orElseThrow(() -> new CustomException(
+                        CookingRecordErrorCode.COOKING_RECORD_NOT_FOUND
+                ));
+
+        /*
+            2. 요리 세션 상태 검증 및 마지막 단계 이동
+            - 요리 세션 존재 여부와 진행 상태를 검증한 뒤 마지막 단계로 변경합니다.
+         */
+        CookingSession cookingSession = cookingRecord.getCookingSession();
+        if (cookingSession == null) {
+            throw new CustomException(CookingRecordErrorCode.COOKING_SESSION_NOT_FOUND);
+        }
+        if (cookingSession.getStatus() != CookingSessionStatus.IN_PROGRESS) {
+            throw new CustomException(
+                    CookingRecordErrorCode.COOKING_SESSION_NOT_IN_PROGRESS
+            );
+        }
+        validateCookingStepState(cookingSession);
+        Integer lastCookingStepLevel = cookingSession.getCookingStepCount();
+        cookingSession.moveToStep(lastCookingStepLevel);
+
+        /*
+            3. 마지막 요리 단계와 연관 정보 조회
+            - 마지막 단계와 연결된 요리 팁 및 음식 재료를 조회합니다.
+         */
+        CookingStep cookingStep = cookingStepRepository.findByCookingSessionIdAndLevel(
+                        cookingSession.getId(),
+                        lastCookingStepLevel.longValue()
+                )
+                .orElseThrow(() -> new CustomException(
+                        CookingRecordErrorCode.COOKING_STEP_NOT_FOUND
+                ));
+        List<CookingStepTip> cookingStepTips = cookingStepTipRepository
+                .findAllWithCookingTipAndContentsByCookingStepId(cookingStep.getId());
+        List<CookingStepFoodIngredient> cookingStepFoodIngredients =
+                cookingStepFoodIngredientRepository
+                        .findAllWithCookingRecordFoodIngredientByCookingStepId(
+                                cookingStep.getId()
+                        );
+
+        /*
+            4. 마지막 요리 단계 응답 변환
+            - 변경된 요리 세션과 마지막 단계 연관 정보를 응답 DTO로 변환합니다.
+         */
+        CurrentCookingStepResDto result = cookingRecordMapper.toCurrentCookingStepResDto(
+                cookingSession,
+                cookingStep,
+                cookingStepTips,
+                cookingStepFoodIngredients
+        );
+
+        log.info(
+                "[CookingRecordService] 마지막 요리 단계 이동 종료 | moveToLastCookingStep() - END | cookingRecordId: {}, currentLevel: {}",
+                cookingRecordId,
+                result.currentCookingStep().level()
+        );
+        return result;
+    }
+
+    /**
+     * (1) 작업 목적
      * 사용자의 요리 세션을 다음 요리 단계로 이동하거나 마지막 단계에서 완료 처리합니다.
      *
      * (2) 세부 작업 내용

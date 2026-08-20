@@ -21,12 +21,16 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecord
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordInProgressResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordStepTitlesResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepTitleResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepDetailResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepMoveResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CurrentCookingStepDetailResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CurrentCookingStepResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingStepFoodIngredient;
@@ -51,25 +55,32 @@ import com.likelion.routineeatbe.domain.cookingTip.repository.CookingTipReposito
 import com.likelion.routineeatbe.domain.foodIngredient.entity.FoodIngredient;
 import com.likelion.routineeatbe.domain.menu.entity.Menu;
 import com.likelion.routineeatbe.domain.menu.entity.DifficultyLevel;
+import com.likelion.routineeatbe.domain.notification.entity.Notification;
+import com.likelion.routineeatbe.domain.notification.enums.NotificationType;
 import com.likelion.routineeatbe.domain.recipe.entity.Recipe;
 import com.likelion.routineeatbe.domain.recipe.entity.RecipeStep;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeRepository;
 import com.likelion.routineeatbe.domain.recipe.repository.RecipeStepRepository;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.entity.RecipeFoodIngredient;
 import com.likelion.routineeatbe.domain.recipeFoodIngredient.repository.RecipeFoodIngredientRepository;
+import com.likelion.routineeatbe.domain.notification.service.NotificationService;
 import com.likelion.routineeatbe.domain.user.entity.User;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredient;
 import com.likelion.routineeatbe.domain.user.entity.UserFoodIngredientType;
 import com.likelion.routineeatbe.domain.user.repository.UserFoodIngredientRepository;
 import com.likelion.routineeatbe.domain.user.repository.UserRepository;
+import com.likelion.routineeatbe.domain.userStatistics.service.UserStatisticsService;
+import com.likelion.routineeatbe.domain.userStatistics.entity.UserStatistics;
 import com.likelion.routineeatbe.global.exception.CustomException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
@@ -98,6 +109,8 @@ class CookingRecordServiceTest {
     @Mock private CookingRecordImageStorageService imageStorageService;
     @Mock private CookingRecordMapper cookingRecordMapper;
     @Mock private UserFoodIngredientRepository userFoodIngredientRepository;
+    @Mock private UserStatisticsService userStatisticsService;
+    @Mock private NotificationService notificationService;
 
     @Test
     @DisplayName("진행 중인 요리 세션을 조회한다")
@@ -123,6 +136,66 @@ class CookingRecordServiceTest {
         // then
         assertThat(result).isSameAs(expected);
         then(cookingRecordMapper).should().toCookingRecordInProgressResDto(cookingRecord);
+    }
+
+    @Test
+    @DisplayName("진행 중인 요리 전체 단계 제목을 조회한다")
+    void 진행_중인_요리_전체_단계_제목_조회_성공() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = CookingRecord.builder().id(10L).user(user).build();
+        CookingSession cookingSession = CookingSession.builder()
+                .id(100L)
+                .status(CookingSessionStatus.IN_PROGRESS)
+                .cookingStepCount(2)
+                .cookingRecord(cookingRecord)
+                .build();
+        cookingRecord.assignCookingSession(cookingSession);
+        CookingStep firstStep = CookingStep.builder()
+                .id(1L)
+                .level(1L)
+                .title("재료 준비")
+                .cookingSession(cookingSession)
+                .build();
+        CookingStep secondStep = CookingStep.builder()
+                .id(2L)
+                .level(2L)
+                .title("대파 볶기")
+                .cookingSession(cookingSession)
+                .build();
+        CookingRecordStepTitlesResDto expected = CookingRecordStepTitlesResDto.create(
+                2,
+                List.of(
+                        CookingStepTitleResDto.create(1L, "재료 준비"),
+                        CookingStepTitleResDto.create(2L, "대파 볶기")
+                )
+        );
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository
+                .findFirstByUser_IdAndCookingSession_StatusOrderByCreatedAtDescIdDesc(
+                        1L,
+                        CookingSessionStatus.IN_PROGRESS
+                ))
+                .willReturn(Optional.of(cookingRecord));
+        given(cookingStepRepository.findAllByCookingSessionIdOrderByLevelAsc(100L))
+                .willReturn(List.of(firstStep, secondStep));
+        given(cookingRecordMapper.toCookingRecordStepTitlesResDto(
+                cookingSession,
+                List.of(firstStep, secondStep)
+        )).willReturn(expected);
+
+        // when
+        CookingRecordStepTitlesResDto result = cookingRecordService
+                .getInProgressCookingStepTitles("1234");
+
+        // then
+        assertThat(result).isSameAs(expected);
+        then(cookingStepRepository).should()
+                .findAllByCookingSessionIdOrderByLevelAsc(100L);
+        then(cookingRecordMapper).should().toCookingRecordStepTitlesResDto(
+                cookingSession,
+                List.of(firstStep, secondStep)
+        );
     }
 
     @Test
@@ -516,6 +589,61 @@ class CookingRecordServiceTest {
     }
 
     @Test
+    @DisplayName("세 번째 요리 결과 저장 후 통계 생성과 리포트 도착 알림을 요청한다")
+    void 세_번째_요리_결과_저장_후_통계와_알림_생성_성공() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = createCookingRecord(10L, user, 3, 3);
+        cookingRecord.getCookingSession().complete();
+        CookingResultSaveReqDto request = new CookingResultSaveReqDto(
+                TasteRating.LEVEL_3,
+                DifficultyLevel.LEVEL_2,
+                null,
+                List.of()
+        );
+        UserStatistics statistics = UserStatistics.builder().id(20L).user(user).build();
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository
+                .findFirstByUser_IdAndCookingSession_StatusOrderByCreatedAtDescIdDesc(
+                        1L,
+                        CookingSessionStatus.COMPLETED
+                ))
+                .willReturn(Optional.of(cookingRecord));
+        given(cookingRecordRepository
+                .countByUser_IdAndCreatedAtGreaterThanEqualAndCreatedAtLessThanAndDifficultyLevelIsNotNull(
+                        eq(1L),
+                        any(),
+                        any()
+                ))
+                .willReturn(2L);
+        given(persistenceService.saveCookingResult(
+                1L,
+                10L,
+                TasteRating.LEVEL_3,
+                DifficultyLevel.LEVEL_2,
+                null,
+                List.of(),
+                null
+        )).willReturn(cookingRecord);
+        given(userStatisticsService.saveUserStatistics(user))
+                .willReturn(CompletableFuture.completedFuture(statistics));
+        given(cookingRecordMapper.toCookingResultSaveResDto(cookingRecord))
+                .willReturn(CookingResultSaveResDto.create(10L));
+
+        // when
+        cookingRecordService.saveCookingResult("1234", request, null);
+
+        // then
+        ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
+        then(userStatisticsService).should().saveUserStatistics(user);
+        then(notificationService).should().save(notificationCaptor.capture());
+        Notification notification = notificationCaptor.getValue();
+        assertThat(notification.getType()).isEqualTo(NotificationType.THREE_MEAL_REPORT_ARRIVED);
+        assertThat(notification.getContentId()).isEqualTo(20L);
+        assertThat(notification.getUser()).isSameAs(user);
+    }
+
+    @Test
     @DisplayName("요리 결과 이미지를 업로드하고 회고를 저장한다")
     void 요리_결과_이미지_업로드_회고_저장_성공() {
         // given
@@ -905,6 +1033,90 @@ class CookingRecordServiceTest {
         assertThat(((CookingCompleteResDto) result).cookedDate()).isEqualTo(LocalDate.now());
         assertThat(cookingRecord.getCookingSession().getStatus())
                 .isEqualTo(CookingSessionStatus.COMPLETED);
+        then(cookingStepRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("진행 중인 요리 세션의 현재 단계를 조회한다")
+    void 진행_중_요리_세션_현재_단계_조회_성공() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = createCookingRecord(10L, user, 2, 3);
+        CookingSession cookingSession = cookingRecord.getCookingSession();
+        CookingStep cookingStep = CookingStep.builder()
+                .id(20L)
+                .level(2L)
+                .title("볶기")
+                .content("재료를 볶아주세요.")
+                .cookingSession(cookingSession)
+                .build();
+        CurrentCookingStepResDto expected = CurrentCookingStepResDto.create(
+                3,
+                1,
+                3,
+                CurrentCookingStepDetailResDto.create(
+                        2L,
+                        "볶기",
+                        null,
+                        "재료를 볶아주세요.",
+                        null,
+                        List.of(),
+                        List.of()
+                )
+        );
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository.findByIdAndUserIdWithCookingSession(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+        given(cookingStepRepository.findByCookingSessionIdAndLevel(100L, 2L))
+                .willReturn(Optional.of(cookingStep));
+        given(cookingStepTipRepository
+                .findAllWithCookingTipAndContentsByCookingStepId(20L))
+                .willReturn(List.of());
+        given(cookingStepFoodIngredientRepository
+                .findAllWithCookingRecordFoodIngredientByCookingStepId(20L))
+                .willReturn(List.of());
+        given(cookingRecordMapper.toCurrentCookingStepResDto(
+                cookingSession,
+                cookingStep,
+                List.of(),
+                List.of()
+        )).willReturn(expected);
+
+        // when
+        CurrentCookingStepResDto result = cookingRecordService.getCurrentCookingStep(
+                10L,
+                "1234"
+        );
+
+        // then
+        assertThat(result).isSameAs(expected);
+        assertThat(cookingSession.getCurrentCookingStepLevel()).isEqualTo(2);
+        then(cookingRecordRepository).should()
+                .findByIdAndUserIdWithCookingSession(10L, 1L);
+        then(cookingRecordMapper).should().toCurrentCookingStepResDto(
+                cookingSession,
+                cookingStep,
+                List.of(),
+                List.of()
+        );
+    }
+
+    @Test
+    @DisplayName("완료된 요리 세션은 현재 단계 조회에 실패한다")
+    void 완료된_요리_세션_현재_단계_조회_실패() {
+        // given
+        User user = User.builder().id(1L).loginNumber("1234").build();
+        CookingRecord cookingRecord = createCookingRecord(10L, user, 3, 3);
+        cookingRecord.getCookingSession().complete();
+        given(userRepository.findByLoginNumber("1234")).willReturn(Optional.of(user));
+        given(cookingRecordRepository.findByIdAndUserIdWithCookingSession(10L, 1L))
+                .willReturn(Optional.of(cookingRecord));
+
+        // when & then
+        assertThatThrownBy(() -> cookingRecordService.getCurrentCookingStep(10L, "1234"))
+                .isInstanceOf(CustomException.class)
+                .satisfies(exception -> assertThat(((CustomException) exception).getErrorCode())
+                        .isEqualTo(CookingRecordErrorCode.COOKING_SESSION_NOT_IN_PROGRESS));
         then(cookingStepRepository).shouldHaveNoInteractions();
     }
 

@@ -12,10 +12,12 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecord
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordInProgressResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListItemResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordStepTitlesResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CurrentCookingStepResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecordFoodIngredient;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingStepFoodIngredient;
@@ -62,6 +64,32 @@ class CookingRecordMapperTest {
 
         // then
         assertThat(result.cookingRecordId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("진행 중인 요리 전체 단계 제목을 응답으로 변환한다")
+    void 진행_중인_요리_전체_단계_제목_응답_변환_성공() {
+        // given
+        CookingSession cookingSession = CookingSession.builder()
+                .cookingStepCount(2)
+                .build();
+        List<CookingStep> cookingSteps = List.of(
+                CookingStep.builder().level(1L).title("재료 준비").build(),
+                CookingStep.builder().level(2L).title("대파 볶기").build()
+        );
+
+        // when
+        CookingRecordStepTitlesResDto result = cookingRecordMapper
+                .toCookingRecordStepTitlesResDto(cookingSession, cookingSteps);
+
+        // then
+        assertThat(result.cookingStepCount()).isEqualTo(2);
+        assertThat(result.cookingStepTitles())
+                .extracting("stepLevel", "stepTitle")
+                .containsExactly(
+                        tuple(1L, "재료 준비"),
+                        tuple(2L, "대파 볶기")
+                );
     }
 
     @Test
@@ -463,6 +491,65 @@ class CookingRecordMapperTest {
                     assertThat(foodIngredient.secondaryUnit()).isEqualTo(SecondaryUnit.JULGI);
                 });
         assertThat(result.cookingStepTitles()).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("현재 요리 단계 조회 응답을 명세 필드로 변환한다")
+    void 현재_요리_단계_조회_응답_변환_성공() {
+        // given
+        CookingSession cookingSession = CookingSession.builder()
+                .cookingStepCount(3)
+                .currentCookingStepLevel(2)
+                .build();
+        CookingStep cookingStep = CookingStep.builder()
+                .level(2L)
+                .title("볶기")
+                .thumbnailUrl("https://example.com/step.jpg")
+                .content("재료를 볶아주세요.")
+                .subContent("약불을 사용해도 괜찮아요.")
+                .build();
+        FoodIngredient greenOnion = FoodIngredient.builder()
+                .id(7L)
+                .name("대파")
+                .primaryUnit(PrimaryUnit.G)
+                .secondaryUnit(SecondaryUnit.JULGI)
+                .build();
+        CookingRecordFoodIngredient recordFoodIngredient =
+                CookingRecordFoodIngredient.builder()
+                        .id(30L)
+                        .foodIngredient(greenOnion)
+                        .primaryUsedAmountValue(60.0)
+                        .secondaryUsedAmountValue(0.5)
+                        .build();
+        CookingStepFoodIngredient stepFoodIngredient = CookingStepFoodIngredient.create(
+                cookingStep,
+                recordFoodIngredient
+        );
+
+        // when
+        CurrentCookingStepResDto result = cookingRecordMapper.toCurrentCookingStepResDto(
+                cookingSession,
+                cookingStep,
+                List.of(),
+                List.of(stepFoodIngredient)
+        );
+
+        // then
+        assertThat(result.cookingStepCount()).isEqualTo(3);
+        assertThat(result.prevCookingStepLevel()).isEqualTo(1);
+        assertThat(result.nextCookingStepLevel()).isEqualTo(3);
+        assertThat(result.currentCookingStep().level()).isEqualTo(2L);
+        assertThat(result.currentCookingStep().foodIngredients())
+                .singleElement()
+                .satisfies(foodIngredient -> {
+                    assertThat(foodIngredient.cookingRecordFoodIngredientId()).isEqualTo(30L);
+                    assertThat(foodIngredient.foodIngredientId()).isEqualTo(7L);
+                    assertThat(foodIngredient.name()).isEqualTo("대파");
+                    assertThat(foodIngredient.primaryAmountValue()).isEqualTo(60.0);
+                    assertThat(foodIngredient.primaryUnit()).isEqualTo(PrimaryUnit.G);
+                    assertThat(foodIngredient.secondaryAmountValue()).isEqualTo(0.5);
+                    assertThat(foodIngredient.secondaryUnit()).isEqualTo(SecondaryUnit.JULGI);
+                });
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.likelion.routineeatbe.domain.cookingRecord.repository;
 import com.likelion.routineeatbe.domain.cookingRecord.entity.CookingRecord;
 import com.likelion.routineeatbe.domain.cookingSession.enums.CookingSessionStatus;
 import jakarta.persistence.LockModeType;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,6 +14,20 @@ import org.springframework.data.repository.query.Param;
 public interface CookingRecordRepository extends
         JpaRepository<CookingRecord, Long>,
         CookingRecordRepositoryCustom {
+
+    /**
+     * 사용자의 특정 기간 내 요리 결과 저장 건수를 조회합니다.
+     *
+     * @param userId 사용자 PK
+     * @param startAt 조회 시작 시각
+     * @param endAt 조회 종료 시각 미만
+     * @return 요리 결과 저장 건수
+     */
+    long countByUser_IdAndCreatedAtGreaterThanEqualAndCreatedAtLessThanAndDifficultyLevelIsNotNull(
+            Long userId,
+            LocalDateTime startAt,
+            LocalDateTime endAt
+    );
 
     /**
      * 사용자와 세션 상태에 해당하는 가장 최근 요리 기록을 조회합니다.

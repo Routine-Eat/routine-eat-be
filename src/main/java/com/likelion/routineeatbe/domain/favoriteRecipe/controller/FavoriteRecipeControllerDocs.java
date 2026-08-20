@@ -11,8 +11,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -86,9 +89,10 @@ public interface FavoriteRecipeControllerDocs {
             @Positive(message = "레시피 PK는 양수여야 합니다.")
             @PathVariable("recipeId") Long recipeId,
             @Parameter(description = "사용자 고유 식별번호", required = true)
-            @NotNull(message = "사용자 고유 식별번호는 필수입니다.")
-            @Positive(message = "사용자 고유 식별번호는 양수여야 합니다.")
-            @RequestParam("userNumber") Integer userNumber
+            @NotBlank(message = "사용자 고유 식별번호는 필수입니다.")
+            @Size(min = 4, max = 4, message = "사용자 고유 식별번호는 4자리여야 합니다.")
+            @Pattern(regexp = "^[0-9]{4}$", message = "사용자 고유 식별번호는 숫자 4자리여야 합니다.")
+            @RequestParam("userNumber") String userNumber
     );
 
     @Operation(

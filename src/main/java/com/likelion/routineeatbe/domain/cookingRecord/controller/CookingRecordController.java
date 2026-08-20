@@ -11,9 +11,11 @@ import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingComple
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordFoodIngredientsResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordInProgressResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordListResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingRecordStepTitlesResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingSessionLogListResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingResultSaveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStartResDto;
+import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CurrentCookingStepResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepMoveResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.dto.response.CookingStepNavigationResDto;
 import com.likelion.routineeatbe.domain.cookingRecord.service.CookingRecordService;
@@ -47,6 +49,19 @@ public class CookingRecordController implements CookingRecordControllerDocs {
         return ResponseEntity.ok(GlobalResponse.success(
                 HttpStatus.CREATED.value(),
                 "해당 사용자가 진행 중인 요리 세션 조회에 성공했습니다.",
+                result
+        ));
+    }
+
+    @Override
+    public ResponseEntity<GlobalResponse<CookingRecordStepTitlesResDto>> getInProgressCookingStepTitles(
+            String userNumber
+    ) {
+        CookingRecordStepTitlesResDto result = cookingRecordService
+                .getInProgressCookingStepTitles(userNumber);
+        return ResponseEntity.ok(GlobalResponse.success(
+                HttpStatus.CREATED.value(),
+                "요리 전체 단계 조회에 성공했습니다.",
                 result
         ));
     }
@@ -128,6 +143,23 @@ public class CookingRecordController implements CookingRecordControllerDocs {
                         "요리 시작에 성공했습니다.",
                         result
                 ));
+    }
+
+    @Override
+    public ResponseEntity<GlobalResponse<CurrentCookingStepResDto>> getCurrentCookingStep(
+            Long cookingRecordId,
+            String userNumber
+    ) {
+        CurrentCookingStepResDto result = cookingRecordService.getCurrentCookingStep(
+                cookingRecordId,
+                userNumber
+        );
+        return ResponseEntity.ok(GlobalResponse.success(
+                HttpStatus.CREATED.value(),
+                "현재 %d번째 단계입니다."
+                        .formatted(result.currentCookingStep().level()),
+                result
+        ));
     }
 
     @Override

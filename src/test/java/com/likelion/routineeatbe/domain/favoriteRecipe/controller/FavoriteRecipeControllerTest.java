@@ -75,11 +75,11 @@ class FavoriteRecipeControllerTest {
     void 레시피_찜_해제_API_성공_201_반환() throws Exception {
         // given
         Long recipeId = 10L;
-        Integer userNumber = 1234;
+        String userNumber = "1234";
 
         // when & then
         mockMvc.perform(delete("/api/v1/recipes/{recipeId}/favorites", recipeId)
-                        .param("userNumber", userNumber.toString()))
+                        .param("userNumber", userNumber))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value(201))
@@ -97,8 +97,8 @@ class FavoriteRecipeControllerTest {
     }
 
     @Test
-    @DisplayName("레시피 찜 해제 API 실패 - 양수가 아닌 userNumber")
-    void 레시피_찜_해제_API_실패_양수가_아닌_userNumber() throws Exception {
+    @DisplayName("레시피 찜 해제 API 실패 - 숫자 4자리가 아닌 userNumber")
+    void 레시피_찜_해제_API_실패_숫자_4자리가_아닌_userNumber() throws Exception {
         // when & then
         mockMvc.perform(delete("/api/v1/recipes/{recipeId}/favorites", 10L)
                         .param("userNumber", "0"))

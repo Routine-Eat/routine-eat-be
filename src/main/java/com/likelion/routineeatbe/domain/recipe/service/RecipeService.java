@@ -314,6 +314,7 @@ public class RecipeService {
                     return recipeMapper.toSimilarRecipeResDto(
                             similarRecipe,
                             additionalCount,
+                            similarRecipe.getMenu().getThumbnailUrl(),
                             isFavoriteRecipe
                     );
                 })

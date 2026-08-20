@@ -167,7 +167,7 @@ class FavoriteRecipeServiceTest {
                 .willReturn(Optional.of(favoriteRecipe));
 
         // when
-        favoriteRecipeService.removeFavorite(10L, 1234);
+        favoriteRecipeService.removeFavorite(10L, "1234");
 
         // then
         then(favoriteRecipeRepository).should().delete(favoriteRecipe);
@@ -180,7 +180,7 @@ class FavoriteRecipeServiceTest {
         given(userRepository.findByLoginNumber("9999")).willReturn(Optional.empty());
 
         // when & then
-        assertThatThrownBy(() -> favoriteRecipeService.removeFavorite(10L, 9999))
+        assertThatThrownBy(() -> favoriteRecipeService.removeFavorite(10L, "9999"))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(FavoriteRecipeErrorCode.USER_NOT_FOUND);
@@ -197,7 +197,7 @@ class FavoriteRecipeServiceTest {
         given(recipeRepository.findById(999L)).willReturn(Optional.empty());
 
         // when & then
-        assertThatThrownBy(() -> favoriteRecipeService.removeFavorite(999L, 1234))
+        assertThatThrownBy(() -> favoriteRecipeService.removeFavorite(999L, "1234"))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(FavoriteRecipeErrorCode.RECIPE_NOT_FOUND);
@@ -216,7 +216,7 @@ class FavoriteRecipeServiceTest {
                 .willReturn(Optional.empty());
 
         // when & then
-        assertThatThrownBy(() -> favoriteRecipeService.removeFavorite(10L, 1234))
+        assertThatThrownBy(() -> favoriteRecipeService.removeFavorite(10L, "1234"))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(FavoriteRecipeErrorCode.FAVORITE_RECIPE_NOT_FOUND);

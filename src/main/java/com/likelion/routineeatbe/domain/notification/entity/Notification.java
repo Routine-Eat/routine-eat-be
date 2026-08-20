@@ -56,6 +56,9 @@ public class Notification extends BaseTimeEntity {
     @Column(length = 500)
     private String content;
 
+    @Column(name = "content_id")
+    private Long contentId;
+
     @Builder.Default
     @Column(name = "is_read", nullable = false)
     private boolean isRead = false;
@@ -70,14 +73,14 @@ public class Notification extends BaseTimeEntity {
     public static Notification create(
             User user,
             NotificationType type,
-            String title,
-            String content
+            Long contentId
     ) {
         return Notification.builder()
                 .user(user)
                 .type(type)
-                .title(title)
-                .content(content)
+                .title(type.getTitle())
+                .content(type.getContent())
+                .contentId(contentId)
                 .build();
     }
 

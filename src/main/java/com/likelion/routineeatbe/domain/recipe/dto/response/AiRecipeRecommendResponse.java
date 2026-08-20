@@ -26,6 +26,7 @@ public record AiRecipeRecommendResponse(
         return AiRecipeRecommendResponse.builder()
                 .menuId(menu.getId())
                 .menuName(menu.getName())
+                .menuThumbnailUrl(menu.getThumbnailUrl())
                 .recipeId(recipeId)
                 .reason(reason)
                 .build();

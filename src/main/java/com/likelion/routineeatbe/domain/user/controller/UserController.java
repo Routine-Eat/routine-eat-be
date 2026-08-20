@@ -103,4 +103,11 @@ public class UserController implements UserControllerDocs {
         UserResponse user=userService.getUserByLoginNumber(loginNumber);
         return GlobalResponse.success(200,"사용자 단일 조회에 성공했습니다.",user);
     }
+
+    @Override
+    public GlobalResponse<Void> deleteUserById(Long userId){
+        userService.deleteUserById(userId);
+
+        return GlobalResponse.success(204,"사용자 삭제에 성공했습니다.",null);
+    }
 }

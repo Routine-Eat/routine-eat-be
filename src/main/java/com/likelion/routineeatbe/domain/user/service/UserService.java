@@ -75,4 +75,19 @@ public class UserService {
                 .orElseThrow(()->new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER));
         return UserResponse.fromUserEntity(user);
     }
+
+    /**
+     * 사용자 삭제 API
+     * - CascadeType.REMOVE 설정에 의해 연관된 모든 하위 엔티티가 함께 삭제됨
+     * @param userId 삭제할 사용자 id
+     */
+    @Transactional
+    public void deleteUserById(Long userId) {
+        // 1. 사용자 존재 여부 확인 (CustomException으로 통일)
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(UserFoodIngredientErrorCode.NOT_EXIST_USER));
+
+        // 2. 사용자 삭제
+        userRepository.delete(user);
+    }
 }

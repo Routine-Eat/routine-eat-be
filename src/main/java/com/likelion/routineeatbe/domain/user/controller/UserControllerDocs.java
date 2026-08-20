@@ -279,4 +279,21 @@ public interface UserControllerDocs {
     })
     @GetMapping("/{loginNumber}")
     GlobalResponse<UserResponse> getUserByLoginNumber(@PathVariable String loginNumber);
+
+    @Operation(
+            summary = "사용자 삭제",
+            description = """
+                    userId로 사용자 삭제 API
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "사용자 삭제 성공"
+            ),
+            @ApiResponse(responseCode = "4041", description = "없는 사용자 loginNumber 형식", content = @Content),
+    })
+    @DeleteMapping("/{userId}")
+    GlobalResponse<Void> deleteUserById(
+            @PathVariable Long userId);
 }

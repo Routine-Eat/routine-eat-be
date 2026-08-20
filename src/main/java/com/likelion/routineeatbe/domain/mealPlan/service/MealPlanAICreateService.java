@@ -83,17 +83,40 @@ public class MealPlanAICreateService {
                 .limit(MAX_AI_CANDIDATES)
                 .toList();
 
+        // 1차: 100% 보유 재료로만 만들 수 있는 레시피 후보 추출
         Set<Long> useAllCandidateMenuIds = candidates.stream()
                 .filter(Candidate::usesOnlyOwnedIngredients)
                 .map(Candidate::menuId)
                 .collect(Collectors.toSet());
+
+        // [수정 핵심] 2차: 100% 일치 후보가 3개 미만이고, 사용자가 등록한 보유 재료가 있다면 단계적 완화
+        if (!ownedIngredientIds.isEmpty() && useAllCandidateMenuIds.size() < MENUS_PER_PLAN) {
+            log.warn("[MealPlanRecommendation] USEALL 완벽 일치 후보 부족 ({}개). sameRate가 높은 순으로 보충합니다.", useAllCandidateMenuIds.size());
+
+            // 1단계: 보유 재료가 1개라도 포함된 메뉴를 포함도(sameRate)가 높은 순으로 추가 (AI 선택지 보장을 위해 최대 10개)
+            candidates.stream()
+                    .filter(c -> !useAllCandidateMenuIds.contains(c.menuId()))
+                    .filter(c -> c.ownedIngredientCount() > 0)
+                    .sorted(Comparator.comparingDouble(Candidate::sameRate).reversed())
+                    .limit(10)
+                    .forEach(c -> useAllCandidateMenuIds.add(c.menuId()));
+
+            // 2단계: 최악의 경우(보유 재료 포함 레시피 전체가 3개가 안 될 때), 무작위로라도 채워서 절대 에러/null 방지
+            if (useAllCandidateMenuIds.size() < MENUS_PER_PLAN) {
+                candidates.stream()
+                        .filter(c -> !useAllCandidateMenuIds.contains(c.menuId()))
+                        .limit(MENUS_PER_PLAN - useAllCandidateMenuIds.size())
+                        .forEach(c -> useAllCandidateMenuIds.add(c.menuId()));
+            }
+        }
 
         log.info(
                 "[MealPlanRecommendation] candidate summary | userId: {}, safeCandidateCount: {}, useAllCandidateCount: {}, ownedIngredientCount: {}, ownedEquipmentCount: {}",
                 userId, candidates.size(), useAllCandidateMenuIds.size(), ownedIngredientIds.size(), ownedEquipmentIds.size()
         );
 
-        boolean useAllAvailable = useAllCandidateMenuIds.size() >= MENUS_PER_PLAN;
+        // 사용자가 보유 재료를 아예 등록하지 않은(empty) 경우가 아니라면 무조건 USEALL을 응답에 포함
+        boolean useAllAvailable = !ownedIngredientIds.isEmpty();
         int requiredCandidateCount = useAllAvailable ? REQUIRED_MENU_COUNT : NON_USE_ALL_REQUIRED_MENU_COUNT;
 
         if (candidates.size() < requiredCandidateCount) {
@@ -102,8 +125,8 @@ public class MealPlanAICreateService {
 
         if (!useAllAvailable) {
             log.info(
-                    "[MealPlanRecommendation] USEALL unavailable | userId: {}, reason: fewer than {} menus can be made using only owned ingredients",
-                    userId, MENUS_PER_PLAN
+                    "[MealPlanRecommendation] USEALL unavailable | userId: {}, reason: user has no registered ingredients",
+                    userId
             );
         }
 
@@ -158,11 +181,12 @@ public class MealPlanAICreateService {
                 .collect(Collectors.joining("\n"));
 
         String requiredPlanTypes = useAllAvailable ? "PRACTICE, USEALL, SIMPLE, RECYCLING" : "PRACTICE, SIMPLE, RECYCLING";
+        // createPrompt 내부의 useAllInstruction 변수를 아래처럼 변경해 주세요.
+
         String useAllInstruction = useAllAvailable
                 ? "- USEALL: choose ONLY from these menu IDs: " + useAllCandidateMenuIds.stream().sorted().toList()
-                + ". These are the only menus whose every required ingredient is currently owned. Do not select any other ID for USEALL."
-                : "- USEALL: do not return this plan because fewer than three menus can be made using only owned ingredients.";
-
+                + ". These menus make the most use of the user's currently owned ingredients. Do not select any other ID for USEALL."
+                : "- USEALL: do not return this plan because the user has no registered ingredients.";
         return """
                 You MUST return exactly these plans: %s. Return each type exactly once.
                 Every plan MUST contain exactly three DISTINCT menu IDs.
@@ -227,8 +251,10 @@ public class MealPlanAICreateService {
                     throw invalidAiRecommendation("menuId " + aiMenu.menuId() + " is not in the safe candidate list", aiResult);
                 }
 
+                // toResponse 내부의 type == MealPlanType.USEALL 조건문 에러 메시지를 아래처럼 변경해 주세요.
+
                 if (type == MealPlanType.USEALL && !useAllCandidateMenuIds.contains(aiMenu.menuId())) {
-                    throw invalidAiRecommendation("USEALL menuId " + aiMenu.menuId() + " requires an ingredient the user does not own", aiResult);
+                    throw invalidAiRecommendation("USEALL menuId " + aiMenu.menuId() + " is not in the allowed USEALL candidate list", aiResult);
                 }
 
                 allSelectedMenuIds.add(aiMenu.menuId());
